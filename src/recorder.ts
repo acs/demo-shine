@@ -23,10 +23,12 @@ export async function startRec(): Promise<void> {
     el.recBtn.disabled = true;
     setStatus('proc', 'Select display…');
 
-    // `cursor` is a display-capture constraint; it is not in lib.dom's
-    // MediaTrackConstraints, hence the assertion. Audio is always requested —
-    // the browser only yields a track when the shared source has sound.
-    const video = { frameRate: { ideal: 30, max: 60 }, cursor: 'always' } as MediaTrackConstraints;
+    // `cursor` and `displaySurface` are display-capture constraints; they are
+    // not in lib.dom's MediaTrackConstraints, hence the assertion. Preferring
+    // 'monitor' preselects the entire screen in the picker (the browser still
+    // asks the user to confirm — a page can never capture silently). Audio is
+    // always requested: the browser only yields a track when the source has sound.
+    const video = { frameRate: { ideal: 30, max: 60 }, cursor: 'always', displaySurface: 'monitor' } as MediaTrackConstraints;
     app.stream = await navigator.mediaDevices.getDisplayMedia({ video, audio: true });
 
     app.recAudio = app.stream.getAudioTracks().length > 0;
