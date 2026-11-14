@@ -57,9 +57,17 @@ function init() {
     toast('Install Orbit Capture — click the ⊕ in your address bar', 5000);
   });
 
-  // Service worker
+  // Service worker. Skipped on localhost so its cache-first strategy does not
+  // shadow the dev server's live reload (and unregister any leftover worker).
+  const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    if (isLocal) {
+      navigator.serviceWorker.getRegistrations()
+        .then(rs => rs.forEach(r => r.unregister()))
+        .catch(() => {});
+    } else {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
   }
 }
 
