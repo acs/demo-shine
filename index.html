@@ -497,6 +497,11 @@ let rafId     = null;
 let mirroring = false;
 let captureW  = 1280;
 let captureH  = 720;
+/* Export audio passthrough — the review clip's soundtrack is fed into the
+   export recorder so trimmed WebM exports keep their audio. */
+let recAudio  = false;   // did the last recording actually capture an audio track?
+let audioCtx  = null;    // lazy Web Audio context, reused across exports
+let audioDest = null;    // MediaStreamDestination feeding the export recorder
 
 /* DOM */
 const cv       = document.getElementById('preview');
@@ -703,6 +708,12 @@ async function startRec() {
       audio: audioEnabled
     });
 
+    // getDisplayMedia only yields an audio track if the user ticked "share audio".
+    recAudio = audioEnabled && mStream.getAudioTracks().length > 0;
+    if (audioEnabled && !recAudio) {
+      toast('No audio track was shared — the recording will be silent.', 4000);
+    }
+
     let cancelled = false;
     mStream.getVideoTracks()[0].addEventListener('ended', () => {
       if (state === 'recording') stopRec();
@@ -738,7 +749,7 @@ async function startRec() {
       return;
     }
 
-    const mime = getBestMime();
+    const mime = getBestMime(recAudio);
     mRec   = new MediaRecorder(mStream, mime ? { mimeType:mime } : {});
     chunks = [];
     mRec.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
@@ -958,6 +969,39 @@ async function seekAndDraw(vid, t) {
 /* =========================================================
    EXPORT
    ========================================================= */
+/* Feed the review clip's audio into the export recorder.
+   The export canvas is drawn from the silent <video> element, so without this
+   the re-encoded WebM would have a video track only. */
+function attachExportAudio(stream) {
+  let tracks = [];
+  try {
+    if (!audioCtx) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) {
+        audioCtx  = new Ctx();
+        const src = audioCtx.createMediaElementSource(rv);
+        audioDest = audioCtx.createMediaStreamDestination();
+        src.connect(audioDest);
+        src.connect(audioCtx.destination); // keep the review clip audible
+        // Autoplay policy can leave the context suspended; resume on replay.
+        rv.addEventListener('play', () => {
+          if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+        });
+      }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    if (audioDest) tracks = audioDest.stream.getAudioTracks();
+  } catch (err) {
+    console.warn('Orbit: Web Audio passthrough failed —', err);
+    audioCtx = null; audioDest = null; tracks = [];
+  }
+  // Fallback: pull the audio track straight from the media element.
+  if (!tracks.length && typeof rv.captureStream === 'function') {
+    try { tracks = rv.captureStream().getAudioTracks(); } catch(_) {}
+  }
+  tracks.forEach(t => stream.addTrack(t));
+}
+
 async function doExport() {
   if (state !== 'review') return;
   state = 'encoding';
@@ -995,8 +1039,15 @@ async function exportWebM() {
     const ec = document.createElement('canvas');
     ec.width = cv.width; ec.height = cv.height;
     const ectx = ec.getContext('2d');
-    const mime = getBestMime();
-    const rec  = new MediaRecorder(ec.captureStream(30), mime ? { mimeType:mime } : {});
+
+    // A canvas captureStream() carries video only. When the recording has
+    // audio, mix the review clip's soundtrack into the same stream so the
+    // exported WebM is not silent.
+    const stream = ec.captureStream(30);
+    if (recAudio) attachExportAudio(stream);
+
+    const mime = getBestMime(recAudio);
+    const rec  = new MediaRecorder(stream, mime ? { mimeType:mime } : {});
     const out  = [];
 
     const finish = () => {
@@ -1065,7 +1116,7 @@ function resetAll() {
   if (state === 'encoding' || state === 'starting') return;
   state = 'idle';
   if (rv.src) { URL.revokeObjectURL(rv.src); rv.src = ''; }
-  blob = null; chunks = []; duration = 0;
+  blob = null; chunks = []; duration = 0; recAudio = false;
   timelineEl.classList.remove('on');
   idleOv.classList.remove('gone');
   btnReset.style.display = 'none';
@@ -1086,8 +1137,10 @@ function resetAll() {
 /* =========================================================
    UTILS
    ========================================================= */
-function getBestMime() {
-  const list = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+function getBestMime(hasAudio) {
+  const list = hasAudio
+    ? ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm']
+    : ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
   for (const m of list) if (MediaRecorder.isTypeSupported(m)) return m;
   return null;
 }
