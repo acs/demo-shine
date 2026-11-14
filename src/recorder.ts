@@ -8,7 +8,7 @@
 import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
 import { startMirror, stopMirror, seekAndDraw } from './ui/preview.js';
-import { runCountdown } from './ui/countdown.js';
+import { runCountdown, cancelCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { buildThumbs, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
 import { resetPlayback } from './ui/playback.js';
@@ -17,13 +17,24 @@ import { FULL, isFullRegion } from './ui/region.js';
 import { getBestMime } from './infra/codecs.js';
 
 export async function toggleRec(): Promise<void> {
-  // Ignore presses during the countdown (and while busy): pressing must not
-  // restart or cancel a recording that is about to begin.
-  if (app.phase === 'starting' || app.phase === 'countdown' || app.phase === 'encoding') return;
+  if (app.phase === 'starting' || app.phase === 'encoding') return;
+  if (app.phase === 'countdown') return cancelRecordingCountdown();
   if (app.phase === 'idle')      return startCapture();
   if (app.phase === 'live')      return startRecording();
   if (app.phase === 'recording') return stopRec();
 }
+
+// Pressing record during the countdown aborts it and the pending recording,
+// returning to the live preview.
+function cancelRecordingCountdown(): void {
+  countdownAborted = true;
+  cancelCountdown();
+  setPhase('live');
+  el.recLbl.textContent = 'Record';
+  setStatus('ready', `Live · ${app.captureW}×${app.captureH}`);
+}
+
+let countdownAborted = false;
 
 // Acquire the display and show it live on the preview. Called on load; also the
 // fallback when the browser blocked the gesture-less attempt.
@@ -125,13 +136,17 @@ function stopCropLoop(): void {
 
 async function startRecording(): Promise<void> {
   if (!app.stream || app.phase !== 'live') return;
+  countdownAborted = false;
   setPhase('countdown');
-  el.recBtn.disabled = true;
+  el.recBtn.disabled = false;          // stays clickable: a press cancels
+  el.recLbl.textContent = 'Cancel';
   setStatus('proc', 'Get ready…');
   await runCountdown();
 
-  if (!app.stream || !app.stream.active) {   // capture ended during the countdown
+  if (countdownAborted) return;                           // cancelled by a press
+  if (!app.stream || !app.stream.active) {                // capture ended meanwhile
     el.recBtn.disabled = false;
+    el.recLbl.textContent = 'Record';
     setPhase('idle');
     setStatus('ready', 'Ready');
     return;
@@ -181,6 +196,7 @@ export function stopRec(): void {
 // The user clicked the browser's "Stop sharing" chip.
 function onCaptureEnded(): void {
   if (app.phase === 'recording') { stopRec(); return; }
+  if (app.phase === 'countdown') cancelCountdown();
   if (app.phase !== 'live' && app.phase !== 'countdown') return;
   app.stream = null;
   el.sv.srcObject = null;

@@ -29,7 +29,7 @@ WebM screen recording with a timeline trimmer and playback, 3-second countdown, 
 
 1. Open [orbit-capture](https://afonsobranco.github.io/orbit-capture/) in Chrome or Edge — the picker opens straight away and the screen goes live in the preview (full screen is preselected; tick **Share tab audio** to capture sound)
 2. The red box over the preview shows what will be recorded — the whole screen by default; drag to record only a region, and click to go back to the full screen
-3. Press the red button to record (a 3-second countdown runs), and press it again to stop
+3. Press the red button to record — a 3-second countdown runs, and pressing the button again during it cancels; press it again to stop
 4. The timeline then appears with a playback control and an audio track
 5. Play it back, drag the **blue IN** and **red OUT** handles to trim, and scrub with the thumbnails
 6. Click **Export ↓** to encode and download
