@@ -4,7 +4,7 @@
 // importers, so cross-module state is carried here rather than in scattered
 // `let` variables. Domain logic stays out of this file.
 
-export type Phase = 'idle' | 'starting' | 'recording' | 'review' | 'encoding';
+export type Phase = 'idle' | 'starting' | 'live' | 'recording' | 'review' | 'encoding';
 
 export interface AppState {
   phase: Phase;

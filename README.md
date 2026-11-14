@@ -11,6 +11,7 @@ WebM screen recording with a timeline trimmer and playback, 3-second countdown, 
 ## Features
 
 - **Zero dependencies on your machine** — runs entirely in the browser via `getDisplayMedia`
+- **Live preview on start** — the screen capture begins as soon as the app opens (full screen preferred), no need to press record first
 - **WebM export** — VP9/VP8 codec with tab/system audio, re-encoded through a canvas stream
 - **Timeline trimmer** — drag IN/OUT handles, click thumbnail frames to scrub, live size estimate
 - **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
@@ -25,12 +26,11 @@ WebM screen recording with a timeline trimmer and playback, 3-second countdown, 
 
 ## Usage
 
-1. Open [orbit-capture](https://afonsobranco.github.io/orbit-capture/) in Chrome or Edge
-2. Click the red button — pick your screen, window, or tab when prompted (tick **Share tab audio** in the picker to capture sound)
-3. Wait out the 3-second countdown, then record
-4. Click again to stop — the timeline appears with a playback control and an audio track
-5. Play it back, drag the **blue IN** and **red OUT** handles to trim, and scrub with the thumbnails
-6. Click **Export ↓** to encode and download
+1. Open [orbit-capture](https://afonsobranco.github.io/orbit-capture/) in Chrome or Edge — the picker opens straight away and the screen goes live in the preview (full screen is preselected; tick **Share tab audio** to capture sound)
+2. Press the red button to record (a 3-second countdown runs), and press it again to stop
+3. The timeline then appears with a playback control and an audio track
+4. Play it back, drag the **blue IN** and **red OUT** handles to trim, and scrub with the thumbnails
+5. Click **Export ↓** to encode and download
 
 ---
 
