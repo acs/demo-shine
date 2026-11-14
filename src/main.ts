@@ -11,6 +11,7 @@ import { toggleRec, startCapture } from './recorder.js';
 import { doExport, resetAll } from './exporter.js';
 import { togglePlayback } from './ui/playback.js';
 import { drawWaveform } from './ui/waveform.js';
+import { initRegion } from './ui/region.js';
 
 function init(): void {
   const supported = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
@@ -52,6 +53,9 @@ function init(): void {
 
   // Keep the audio waveform aligned with the strip on resize.
   window.addEventListener('resize', drawWaveform);
+
+  // Drag on the preview to crop the recording to a region.
+  initRegion();
 
   // Go live as early as the browser allows. getDisplayMedia is gated behind a
   // user gesture + picker, so we (a) try on load, and (b) start on the first

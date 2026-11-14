@@ -6,6 +6,14 @@
 
 export type Phase = 'idle' | 'starting' | 'live' | 'recording' | 'review' | 'encoding';
 
+// A rectangular crop, normalised to 0..1 of the capture.
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface AppState {
   phase: Phase;
 
@@ -24,6 +32,9 @@ export interface AppState {
   mirroring: boolean;
   playing: boolean;             // clip playback in progress
   playRaf: number | null;       // playback render loop id
+
+  region: Rect | null;          // crop region to record, or null for the whole screen
+  cropRaf: number | null;       // crop render loop id while recording
 
   captureW: number;
   captureH: number;
@@ -53,6 +64,9 @@ export const app: AppState = {
   mirroring: false,
   playing: false,
   playRaf: null,
+
+  region: null,
+  cropRaf: null,
 
   captureW: 1280,
   captureH: 720,

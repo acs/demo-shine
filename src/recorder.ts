@@ -42,6 +42,8 @@ export async function startCapture(): Promise<void> {
     app.recAudio = app.stream.getAudioTracks().length > 0;
     if (!app.recAudio) toast('No audio was shared — the recording will be silent.', 4000);
 
+    app.region = null;   // a fresh capture starts with no crop region
+
     app.stream.getVideoTracks()[0].addEventListener('ended', onCaptureEnded);
 
     el.sv.srcObject = app.stream;
@@ -76,6 +78,48 @@ export async function startCapture(): Promise<void> {
   }
 }
 
+// --- Crop region ---------------------------------------------------------
+
+let crop: { ctx: CanvasRenderingContext2D; rx: number; ry: number; rw: number; rh: number } | null = null;
+
+// When a region is set, record a canvas mirrored from just that region (plus the
+// capture's audio); otherwise record the raw display stream.
+function buildRecordingStream(): MediaStream {
+  const src = app.stream!;
+  crop = null;
+  const region = app.region;
+  if (!region) return src;
+
+  const rx = Math.round(region.x * app.captureW);
+  const ry = Math.round(region.y * app.captureH);
+  const rw = Math.max(2, Math.round(region.w * app.captureW));
+  const rh = Math.max(2, Math.round(region.h * app.captureH));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = rw; canvas.height = rh;
+  const cctx = canvas.getContext('2d');
+  if (!cctx) return src;
+
+  const stream = canvas.captureStream(30);
+  for (const t of src.getAudioTracks()) stream.addTrack(t);
+  crop = { ctx: cctx, rx, ry, rw, rh };
+  return stream;
+}
+
+function startCropLoop(): void {
+  if (!crop) return;
+  (function loop() {
+    if (app.phase !== 'recording' || !crop) return;
+    crop.ctx.drawImage(el.sv, crop.rx, crop.ry, crop.rw, crop.rh, 0, 0, crop.rw, crop.rh);
+    app.cropRaf = requestAnimationFrame(loop);
+  })();
+}
+
+function stopCropLoop(): void {
+  if (app.cropRaf !== null) { cancelAnimationFrame(app.cropRaf); app.cropRaf = null; }
+  crop = null;
+}
+
 async function startRecording(): Promise<void> {
   if (!app.stream || app.phase !== 'live') return;
   el.recBtn.disabled = true;
@@ -87,8 +131,9 @@ async function startRecording(): Promise<void> {
     return;
   }
 
+  const recStream = buildRecordingStream();
   const mime = getBestMime(app.recAudio);
-  app.rec = new MediaRecorder(app.stream, mime ? { mimeType: mime } : {});
+  app.rec = new MediaRecorder(recStream, mime ? { mimeType: mime } : {});
   app.chunks = [];
   app.rec.ondataavailable = e => { if (e.data.size > 0) app.chunks.push(e.data); };
   app.rec.onstop = onRecStop;
@@ -96,6 +141,7 @@ async function startRecording(): Promise<void> {
 
   app.startAt = Date.now();
   setPhase('recording');
+  startCropLoop();
   el.recBtn.disabled = false;
 
   el.recBtn.classList.add('recording');
@@ -109,6 +155,7 @@ async function startRecording(): Promise<void> {
 
 export function stopRec(): void {
   if (app.rec && app.rec.state !== 'inactive') app.rec.stop();
+  stopCropLoop();
   if (app.stream) {
     // Detach first, so releasing the tracks doesn't re-enter onCaptureEnded.
     app.stream.getVideoTracks()[0]?.removeEventListener('ended', onCaptureEnded);
@@ -151,6 +198,8 @@ function onRecStop(): void {
     // Use actual file duration — wall clock is always slightly longer than the
     // encoded video, which causes exportWebM to hang if we use the wall clock.
     app.duration = (isFinite(el.rv.duration) && el.rv.duration > 0.1) ? el.rv.duration : wallClock;
+    // The clip may be a cropped region, so size the preview canvas to it.
+    if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
     resetPlayback();
     void buildWaveform(app.blob);
     void buildThumbs();
