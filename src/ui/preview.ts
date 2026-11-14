@@ -4,7 +4,7 @@
 import { el, ctx } from './dom.js';
 import { app } from '../state.js';
 
-export function drawGrid() {
+export function drawGrid(): void {
   const light = document.documentElement.dataset.theme === 'light';
   ctx.clearRect(0, 0, el.cv.width, el.cv.height);
   ctx.fillStyle = light ? '#ECF0FA' : '#050508';
@@ -22,11 +22,11 @@ export function drawGrid() {
   ctx.beginPath(); ctx.moveTo(mx, my - 62); ctx.lineTo(mx, my + 62); ctx.stroke();
 }
 
-function drawFrame(vid) {
+function drawFrame(vid: HTMLVideoElement): void {
   ctx.drawImage(vid, 0, 0, el.cv.width, el.cv.height);
 }
 
-export function seekTo(vid, t) {
+export function seekTo(vid: HTMLVideoElement, t: number): Promise<void> {
   return new Promise(res => {
     const fn = () => { vid.removeEventListener('seeked', fn); res(); };
     vid.addEventListener('seeked', fn);
@@ -34,13 +34,13 @@ export function seekTo(vid, t) {
   });
 }
 
-export async function seekAndDraw(vid, t) {
+export async function seekAndDraw(vid: HTMLVideoElement, t: number): Promise<void> {
   await seekTo(vid, t);
   drawFrame(vid);
 }
 
 // Live mirror: show the captured screen on the preview canvas during countdown.
-export function startMirror() {
+export function startMirror(): void {
   app.mirroring = true;
   (function loop() {
     if (!app.mirroring) return;
@@ -49,7 +49,7 @@ export function startMirror() {
   })();
 }
 
-export function stopMirror() {
+export function stopMirror(): void {
   app.mirroring = false;
   if (app.rafId) { cancelAnimationFrame(app.rafId); app.rafId = null; }
 }

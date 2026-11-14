@@ -6,28 +6,28 @@ import { app } from '../state.js';
 import { clipSeconds, normalizeTrim, estimateWebmText, estimateGifText } from '../domain/timeline.js';
 import { seekTo, seekAndDraw } from './preview.js';
 
-export function resetTrim() {
+export function resetTrim(): void {
   app.trimStart = 0;
   app.trimEnd = 1;
-  el.rStart.value = 0;
-  el.rEnd.value = 1000;
+  el.rStart.value = '0';
+  el.rEnd.value = '1000';
   updateTrimUI();
 }
 
-export function onTrim(evt) {
-  const moved = evt && evt.target === el.rStart ? 'start' : 'end';
+export function onTrim(evt: { target: EventTarget | null }): void {
+  const moved: 'start' | 'end' = evt.target === el.rStart ? 'start' : 'end';
   const { s, en } = normalizeTrim(parseInt(el.rStart.value), parseInt(el.rEnd.value), moved);
-  if (s  !== parseInt(el.rStart.value)) el.rStart.value = s;
-  if (en !== parseInt(el.rEnd.value))   el.rEnd.value   = en;
+  if (s  !== parseInt(el.rStart.value)) el.rStart.value = String(s);
+  if (en !== parseInt(el.rEnd.value))   el.rEnd.value   = String(en);
   app.trimStart = s / 1000;
   app.trimEnd   = en / 1000;
   updateTrimUI();
   updateSizeUI();
   checkGifWarning();
-  if (app.phase === 'review' && el.rv.readyState >= 2) seekAndDraw(el.rv, app.trimStart * app.duration);
+  if (app.phase === 'review' && el.rv.readyState >= 2) void seekAndDraw(el.rv, app.trimStart * app.duration);
 }
 
-export function updateTrimUI() {
+export function updateTrimUI(): void {
   const s = app.trimStart * app.duration;
   const e = app.trimEnd * app.duration;
   el.tIn.textContent   = s.toFixed(2) + 's';
@@ -37,7 +37,7 @@ export function updateTrimUI() {
   el.rFill.style.width = ((app.trimEnd - app.trimStart) * 100).toFixed(1) + '%';
 }
 
-export function updateSizeUI() {
+export function updateSizeUI(): void {
   if (!app.duration || app.phase === 'idle') { el.tSize.textContent = '—'; return; }
   const clip = clipSeconds(app.duration, app.trimStart, app.trimEnd);
   if (app.fmt === 'gif') {
@@ -48,7 +48,7 @@ export function updateSizeUI() {
   }
 }
 
-export function checkGifWarning() {
+export function checkGifWarning(): void {
   const clip = clipSeconds(app.duration, app.trimStart, app.trimEnd);
   const warn = app.fmt === 'gif' && clip > 30;
   el.gifWarn.style.display = warn ? '' : 'none';
@@ -61,10 +61,10 @@ export function checkGifWarning() {
   }
 }
 
-export async function buildThumbs() {
+export async function buildThumbs(): Promise<void> {
   el.thumbs.innerHTML = '';
   const COUNT = 22;
-  const frames = [];
+  const frames: Array<{ tc: HTMLCanvasElement }> = [];
   for (let i = 0; i < COUNT; i++) {
     const wrap = document.createElement('div');
     wrap.className = 'thumb-frame';
@@ -72,18 +72,18 @@ export async function buildThumbs() {
     tc.width = 80; tc.height = 45;
     wrap.appendChild(tc);
     el.thumbs.appendChild(wrap);
-    frames.push({ tc, wrap });
+    frames.push({ tc });
     const pct = i / COUNT;
     wrap.addEventListener('click', () => {
       if (app.phase !== 'review' || el.rv.readyState < 2) return;
       const t = pct * app.duration;
-      el.rStart.value = Math.min(Math.floor(pct * 1000), parseInt(el.rEnd.value) - 10);
+      el.rStart.value = String(Math.min(Math.floor(pct * 1000), parseInt(el.rEnd.value) - 10));
       onTrim({ target: el.rStart });
-      seekAndDraw(el.rv, t);
+      void seekAndDraw(el.rv, t);
     });
   }
   for (let i = 0; i < COUNT; i++) {
     await seekTo(el.rv, (i / COUNT) * app.duration);
-    frames[i].tc.getContext('2d').drawImage(el.rv, 0, 0, 80, 45);
+    frames[i].tc.getContext('2d')?.drawImage(el.rv, 0, 0, 80, 45);
   }
 }

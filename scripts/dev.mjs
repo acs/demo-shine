@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 // Zero-dependency dev server with live reload.
 //
-// Serves the repository root and reloads every connected browser as soon as a
-// file changes. No build step, no npm dependencies — just Node's standard
-// library. Usage: `npm run dev` (or `node scripts/dev.mjs`).
+// Serves the repository root, compiles the TypeScript sources in watch mode,
+// and reloads every connected browser as soon as a file changes. No bundler,
+// no runtime dependencies — just Node's standard library.
+// Usage: `npm run dev` (or `node scripts/dev.mjs`).
+import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import { createReadStream, statSync, watch } from 'node:fs';
+import { existsSync, createReadStream, statSync, watch } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -100,13 +102,33 @@ let debounce = null;
 watch(ROOT, { recursive: true }, (_event, filename) => {
   if (!filename) return;
   const f = String(filename);
+  // Ignore VCS internals, dependencies and the TS sources themselves — a .ts
+  // edit reloads once its compiled .js lands.
   if (f.startsWith('.git/') || f.includes('node_modules')) return;
+  if (f.endsWith('.ts') || f.endsWith('.tsbuildinfo')) return;
   clearTimeout(debounce);
   debounce = setTimeout(broadcast, 80); // collapse bursts of events
 });
+
+// Compile the TypeScript sources in watch mode, if TypeScript is installed.
+const tscBin = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
+let tsc = null;
+if (existsSync(tscBin)) {
+  tsc = spawn(process.execPath, [tscBin, '--watch', '--preserveWatchOutput'], { cwd: ROOT, stdio: 'inherit' });
+} else {
+  console.warn('  (typescript not installed — run `npm install` to compile the .ts sources)');
+}
 
 server.listen(PORT, () => {
   console.log(`\n  Orbit Capture dev server`);
   console.log(`  →  http://localhost:${PORT}`);
   console.log(`  live reload on file change — Ctrl+C to stop\n`);
 });
+
+function shutdown() {
+  if (tsc) tsc.kill();
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 500).unref();
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
