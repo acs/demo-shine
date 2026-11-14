@@ -55,10 +55,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 /* ── HEADER ── */
 .hdr{width:100%;max-width:1160px;display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-shrink:0;}
 .logo{display:flex;align-items:center;gap:10px;flex-shrink:0;}
-.logo-orbit{position:relative;width:27px;height:27px;border:1.5px solid var(--crimson);border-radius:50%;display:flex;align-items:center;justify-content:center;}
-.logo-orbit::before{content:'';position:absolute;width:33px;height:33px;border-radius:50%;border:1px solid rgba(229,62,62,.2);animation:orbit-ring 3s ease-in-out infinite;}
-.logo-orbit::after{content:'';width:8px;height:8px;border-radius:50%;background:var(--crimson);box-shadow:0 0 8px var(--crimson-glow);}
-@keyframes orbit-ring{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:.7;transform:scale(1.12)}}
+.logo-mark{position:relative;width:27px;height:27px;border:1.5px solid var(--crimson);border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.logo-mark::before{content:'';position:absolute;width:33px;height:33px;border-radius:50%;border:1px solid rgba(229,62,62,.2);animation:logo-ring 3s ease-in-out infinite;}
+.logo-mark::after{content:'';width:8px;height:8px;border-radius:50%;background:var(--crimson);box-shadow:0 0 8px var(--crimson-glow);}
+@keyframes logo-ring{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:.7;transform:scale(1.12)}}
 .logo-name{display:flex;flex-direction:column;gap:1px;}
 .logo-title{font-size:13px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--text);line-height:1;}
 .logo-sub{font-family:var(--font-mono);font-size:9px;letter-spacing:.2em;color:var(--text-dim);text-transform:uppercase;}

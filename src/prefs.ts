@@ -1,6 +1,6 @@
 // User preferences persisted to localStorage.
 
-const KEY = { theme: 'orbit_theme' } as const;
+const KEY = { theme: 'demoshine_theme' } as const;
 
 export interface Prefs {
   theme: string | null;
