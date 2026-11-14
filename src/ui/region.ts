@@ -78,9 +78,9 @@ function fontPx(): number {
 
 // Painted by the live mirror loop on the preview canvas.
 export function drawRegion(): void {
-  const live = app.phase === 'live' || app.phase === 'recording';
+  const visible = app.phase === 'live' || app.phase === 'countdown' || app.phase === 'recording';
   el.cv.style.cursor = app.phase === 'live' ? 'crosshair' : '';
-  if (!live) return;
+  if (!visible) return;
 
   const W = el.cv.width, H = el.cv.height;
   const fs = fontPx();

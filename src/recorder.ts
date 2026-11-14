@@ -17,7 +17,9 @@ import { FULL, isFullRegion } from './ui/region.js';
 import { getBestMime } from './infra/codecs.js';
 
 export async function toggleRec(): Promise<void> {
-  if (app.phase === 'starting' || app.phase === 'encoding') return;
+  // Ignore presses during the countdown (and while busy): pressing must not
+  // restart or cancel a recording that is about to begin.
+  if (app.phase === 'starting' || app.phase === 'countdown' || app.phase === 'encoding') return;
   if (app.phase === 'idle')      return startCapture();
   if (app.phase === 'live')      return startRecording();
   if (app.phase === 'recording') return stopRec();
@@ -123,12 +125,15 @@ function stopCropLoop(): void {
 
 async function startRecording(): Promise<void> {
   if (!app.stream || app.phase !== 'live') return;
+  setPhase('countdown');
   el.recBtn.disabled = true;
   setStatus('proc', 'Get ready…');
   await runCountdown();
 
   if (!app.stream || !app.stream.active) {   // capture ended during the countdown
     el.recBtn.disabled = false;
+    setPhase('idle');
+    setStatus('ready', 'Ready');
     return;
   }
 
@@ -176,7 +181,7 @@ export function stopRec(): void {
 // The user clicked the browser's "Stop sharing" chip.
 function onCaptureEnded(): void {
   if (app.phase === 'recording') { stopRec(); return; }
-  if (app.phase !== 'live') return;
+  if (app.phase !== 'live' && app.phase !== 'countdown') return;
   app.stream = null;
   el.sv.srcObject = null;
   stopMirror();
