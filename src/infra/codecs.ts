@@ -3,7 +3,7 @@
 const WITH_AUDIO = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
 const VIDEO_ONLY = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
 
-export function getBestMime(hasAudio) {
+export function getBestMime(hasAudio: boolean): string | null {
   const list = hasAudio ? WITH_AUDIO : VIDEO_ONLY;
   for (const m of list) if (MediaRecorder.isTypeSupported(m)) return m;
   return null;
