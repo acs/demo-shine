@@ -1,13 +1,21 @@
 // Rectangular crop region drawn over the live capture.
 //
-// Drag on the preview to select a region; only that region is recorded. The
-// overlay is painted straight onto the preview canvas (so it can never end up
-// in the recording, which reads from the source <video>). Double-click clears.
+// The region is always shown as a red box over the preview — by default it
+// covers the whole source. Drag to select a smaller region (only it is
+// recorded); double-click returns to the full source. The overlay is painted
+// straight onto the preview canvas, so it can never end up in the recording
+// (which reads from the source <video>).
 
-import { app } from '../state.js';
+import { app, type Rect } from '../state.js';
 import { el, ctx } from './dom.js';
 
-const MIN_PX = 16;              // ignore tiny accidental drags
+export const FULL: Rect = { x: 0, y: 0, w: 1, h: 1 };
+
+export function isFullRegion(r: Rect): boolean {
+  return r.x <= 0.001 && r.y <= 0.001 && r.w >= 0.999 && r.h >= 0.999;
+}
+
+const MIN_PX = 16;               // ignore accidental tiny drags
 
 let dragging = false;
 let sX = 0, sY = 0, cX = 0, cY = 0;   // canvas pixels
@@ -24,11 +32,7 @@ export function initRegion(): void {
 
 export function clearRegion(): void {
   if (dragging) return;
-  app.region = null;
-}
-
-export function hasRegion(): boolean {
-  return app.region !== null;
+  app.region = { ...FULL };       // back to the whole source
 }
 
 function toCanvas(e: PointerEvent): { x: number; y: number } {
@@ -40,7 +44,7 @@ function toCanvas(e: PointerEvent): { x: number; y: number } {
 }
 
 function onDown(e: PointerEvent): void {
-  if (app.phase !== 'live') return;   // only while the capture is live
+  if (app.phase !== 'live') return;
   const p = toCanvas(e);
   dragging = true; sX = cX = p.x; sY = cY = p.y;
   try { el.cv.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
@@ -58,7 +62,7 @@ function onUp(e: PointerEvent): void {
   dragging = false;
   try { el.cv.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
   const w = Math.abs(cX - sX), h = Math.abs(cY - sY);
-  if (w < MIN_PX || h < MIN_PX) { app.region = null; return; }   // treat as a click
+  if (w < MIN_PX || h < MIN_PX) return;   // a click, not a drag — keep the region
   const x = Math.min(sX, cX), y = Math.min(sY, cY);
   app.region = { x: x / el.cv.width, y: y / el.cv.height, w: w / el.cv.width, h: h / el.cv.height };
 }
@@ -70,6 +74,7 @@ export function drawRegion(): void {
   if (!live) return;
 
   const W = el.cv.width, H = el.cv.height;
+  const fs = Math.max(11, Math.round(W / 55));   // font / stroke scale
 
   let rect = app.region;
   if (dragging) {
@@ -79,58 +84,60 @@ export function drawRegion(): void {
     };
   }
 
-  if (!rect) { hint(W, H); return; }
-
   const x = rect.x * W, y = rect.y * H, w = rect.w * W, h = rect.h * H;
   const lw = Math.max(1.5, W / 480);
+  const full = isFullRegion(rect);
 
   ctx.save();
-  // Dim everything outside the region (single even-odd fill).
+  // Dim everything outside the region (empty for the full region).
   ctx.fillStyle = 'rgba(2,3,8,0.62)';
   ctx.beginPath();
   ctx.rect(0, 0, W, H);
   ctx.rect(x, y, w, h);
   ctx.fill('evenodd');
-  // Border + corner ticks.
+
+  // Red box, inset a hair so the stroke is never clipped at the edges.
+  const ix = x + lw / 2, iy = y + lw / 2, iw = Math.max(0, w - lw), ih = Math.max(0, h - lw);
   ctx.strokeStyle = '#E53E3E';
   ctx.lineWidth = lw;
-  ctx.strokeRect(x, y, w, h);
+  ctx.strokeRect(ix, iy, iw, ih);
+
+  // Corner ticks.
   ctx.fillStyle = '#E53E3E';
   const t = lw * 4;
-  for (const [px, py] of [[x, y], [x + w, y], [x, y + h], [x + w, y + h]]) {
+  for (const [px, py] of [[ix, iy], [ix + iw, iy], [ix, iy + ih], [ix + iw, iy + ih]]) {
     ctx.fillRect(px - t / 2, py - lw / 2, t, lw);
     ctx.fillRect(px - lw / 2, py - t / 2, lw, t);
   }
-  // Size readout.
+
+  // Size readout, inside the box near the top.
   const label = `${Math.round(rect.w * app.captureW)} × ${Math.round(rect.h * app.captureH)}`;
-  tag(label, x + w / 2, y + h + lw * 7, W, H);
+  tag(label, x + w / 2, y + fs * 1.9, W, fs);
+
+  if (full && app.phase === 'live') hint(W, H, fs);
   ctx.restore();
 }
 
-function hint(W: number, H: number): void {
-  const size = Math.max(11, Math.round(W / 55));
-  ctx.save();
-  ctx.font = `${size}px ui-monospace, SFMono-Regular, Menlo, monospace`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+function hint(W: number, H: number, fs: number): void {
   const text = 'Drag to record a region';
-  const tw = ctx.measureText(text).width;
-  ctx.fillRect(W / 2 - tw / 2 - size, H - size * 4, tw + size * 2, size * 2.4);
-  ctx.fillStyle = 'rgba(228,230,240,0.85)';
-  ctx.fillText(text, W / 2, H - size * 2.8);
-  ctx.restore();
-}
-
-function tag(text: string, cx: number, cy: number, W: number, H: number): void {
-  const size = Math.max(11, Math.round(W / 55));
-  ctx.font = `${size}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+  ctx.font = `${fs}px ui-monospace, SFMono-Regular, Menlo, monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   const tw = ctx.measureText(text).width;
-  const y = clamp(cy, size * 1.6, H - size * 1.6);
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(W / 2 - tw / 2 - fs, H - fs * 3.4, tw + fs * 2, fs * 2);
+  ctx.fillStyle = 'rgba(228,230,240,0.85)';
+  ctx.fillText(text, W / 2, H - fs * 2.4);
+}
+
+function tag(text: string, cx: number, cy: number, W: number, fs: number): void {
+  ctx.font = `${fs}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const tw = ctx.measureText(text).width;
+  const bx = clamp(cx, tw / 2 + fs, W - tw / 2 - fs) - tw / 2 - fs / 2;
   ctx.fillStyle = 'rgba(229,62,62,0.92)';
-  ctx.fillRect(clamp(cx, tw / 2 + size, W - tw / 2 - size) - tw / 2 - size / 2, y - size, tw + size, size * 2);
+  ctx.fillRect(bx, cy - fs, tw + fs, fs * 2);
   ctx.fillStyle = '#fff';
-  ctx.fillText(text, clamp(cx, tw / 2 + size, W - tw / 2 - size), y);
+  ctx.fillText(text, clamp(cx, tw / 2 + fs, W - tw / 2 - fs), cy);
 }

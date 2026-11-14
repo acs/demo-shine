@@ -33,7 +33,7 @@ export interface AppState {
   playing: boolean;             // clip playback in progress
   playRaf: number | null;       // playback render loop id
 
-  region: Rect | null;          // crop region to record, or null for the whole screen
+  region: Rect;                 // crop region to record (whole source by default)
   cropRaf: number | null;       // crop render loop id while recording
 
   captureW: number;
@@ -65,7 +65,7 @@ export const app: AppState = {
   playing: false,
   playRaf: null,
 
-  region: null,
+  region: { x: 0, y: 0, w: 1, h: 1 },
   cropRaf: null,
 
   captureW: 1280,
