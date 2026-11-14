@@ -7,13 +7,14 @@ import { toggleHelp, helpBdClick } from './ui/help.js';
 import { startStarfield } from './ui/starfield.js';
 import { drawGrid } from './ui/preview.js';
 import { onTrim, updateTrimUI, updateSizeUI } from './ui/timeline-ui.js';
-import { toggleRec } from './recorder.js';
+import { toggleRec, startCapture } from './recorder.js';
 import { doExport, resetAll } from './exporter.js';
 import { togglePlayback } from './ui/playback.js';
 import { drawWaveform } from './ui/waveform.js';
 
 function init(): void {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+  const supported = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
+  if (!supported) {
     el.compatWarn.style.display = '';
     setStatus('', 'Not supported');
   } else {
@@ -51,6 +52,14 @@ function init(): void {
 
   // Keep the audio waveform aligned with the strip on resize.
   window.addEventListener('resize', drawWaveform);
+
+  // Go live as early as the browser allows. getDisplayMedia is gated behind a
+  // user gesture + picker, so we (a) try on load, and (b) start on the first
+  // interaction anywhere — the capture goes live without the red button.
+  const startOnGesture = () => { if (supported) void startCapture(); };
+  if (supported) void startCapture();
+  window.addEventListener('pointerdown', startOnGesture, { once: true });
+  window.addEventListener('keydown', startOnGesture, { once: true });
 
   // Service worker: off under Vite's dev server, whose cache-first strategy
   // would shadow HMR; on for builds and `vite preview` (a real, installable,
