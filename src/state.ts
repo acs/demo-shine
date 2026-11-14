@@ -24,6 +24,8 @@ export interface AppState {
   startAt: number | null;       // recording start timestamp
   rafId: number | null;         // mirror render loop id
   mirroring: boolean;
+  playing: boolean;             // clip playback in progress
+  playRaf: number | null;       // playback render loop id
 
   captureW: number;
   captureH: number;
@@ -52,6 +54,8 @@ export const app: AppState = {
   startAt: null,
   rafId: null,
   mirroring: false,
+  playing: false,
+  playRaf: null,
 
   captureW: 1280,
   captureH: 720,

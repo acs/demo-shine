@@ -4,7 +4,8 @@
 import { el } from './dom.js';
 import { app } from '../state.js';
 import { clipSeconds, normalizeTrim, estimateWebmText, estimateGifText } from '../domain/timeline.js';
-import { seekTo, seekAndDraw } from './preview.js';
+import { seekTo } from './preview.js';
+import { syncToTrim, seekPlayback } from './playback.js';
 
 export function resetTrim(): void {
   app.trimStart = 0;
@@ -24,7 +25,7 @@ export function onTrim(evt: { target: EventTarget | null }): void {
   updateTrimUI();
   updateSizeUI();
   checkGifWarning();
-  if (app.phase === 'review' && el.rv.readyState >= 2) void seekAndDraw(el.rv, app.trimStart * app.duration);
+  syncToTrim(moved);
 }
 
 export function updateTrimUI(): void {
@@ -79,7 +80,7 @@ export async function buildThumbs(): Promise<void> {
       const t = pct * app.duration;
       el.rStart.value = String(Math.min(Math.floor(pct * 1000), parseInt(el.rEnd.value) - 10));
       onTrim({ target: el.rStart });
-      void seekAndDraw(el.rv, t);
+      if (app.playing) seekPlayback(t);
     });
   }
   for (let i = 0; i < COUNT; i++) {

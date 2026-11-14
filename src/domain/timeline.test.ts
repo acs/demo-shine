@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   MIN_TRIM_GAP,
+  clampToClip,
   clipSeconds,
   estimateGifText,
   estimateWebmText,
@@ -29,6 +30,20 @@ describe('clipSeconds', () => {
 
   it('is zero for an empty range', () => {
     expect(clipSeconds(10, 0.5, 0.5)).toBe(0);
+  });
+});
+
+describe('clampToClip', () => {
+  it('clamps a position below the start up to the start', () => {
+    expect(clampToClip(1, 2, 8)).toBe(2);
+  });
+
+  it('clamps a position past the end back to the end', () => {
+    expect(clampToClip(9, 2, 8)).toBe(8);
+  });
+
+  it('leaves a position inside the range untouched', () => {
+    expect(clampToClip(5, 2, 8)).toBe(5);
   });
 });
 

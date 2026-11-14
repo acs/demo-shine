@@ -22,7 +22,7 @@ export function drawGrid(): void {
   ctx.beginPath(); ctx.moveTo(mx, my - 62); ctx.lineTo(mx, my + 62); ctx.stroke();
 }
 
-function drawFrame(vid: HTMLVideoElement): void {
+export function drawFrame(vid: HTMLVideoElement): void {
   ctx.drawImage(vid, 0, 0, el.cv.width, el.cv.height);
 }
 

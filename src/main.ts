@@ -10,6 +10,7 @@ import { drawGrid } from './ui/preview.js';
 import { onTrim, updateTrimUI, updateSizeUI } from './ui/timeline-ui.js';
 import { toggleRec } from './recorder.js';
 import { doExport, resetAll } from './exporter.js';
+import { togglePlayback } from './ui/playback.js';
 
 function init(): void {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
@@ -50,6 +51,7 @@ function init(): void {
   el.recBtn.addEventListener('click', toggleRec);
   el.btnReset.addEventListener('click', resetAll);
   el.btnExp.addEventListener('click', doExport);
+  el.playBtn.addEventListener('click', togglePlayback);
 
   // PWA install prompt
   window.addEventListener('beforeinstallprompt', e => {
