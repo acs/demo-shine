@@ -8,7 +8,7 @@ import { setTimerMs } from './ui/timer.js';
 import { resetTrim, updateSizeUI } from './ui/timeline-ui.js';
 import { getBestMime } from './infra/codecs.js';
 import { dlBlob, ts } from './infra/download.js';
-import { stopRec } from './recorder.js';
+import { stopRec, startCapture } from './recorder.js';
 import { pausePlayback, resetPlayback } from './ui/playback.js';
 import { clearWaveform } from './ui/waveform.js';
 
@@ -141,4 +141,7 @@ export function resetAll(): void {
   updateSizeUI();
   drawGrid();
   setStatus('ready', 'Ready');
+  // Same as the app start: go straight back to a live capture. Reset is a click,
+  // so the gesture is available for getDisplayMedia.
+  void startCapture();
 }
