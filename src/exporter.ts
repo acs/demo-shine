@@ -9,13 +9,16 @@ import { checkGifWarning, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
 import { getBestMime } from './infra/codecs.js';
 import { dlBlob, ts } from './infra/download.js';
 import { stopRec } from './recorder.js';
+import { pausePlayback, resetPlayback } from './ui/playback.js';
 
 export async function doExport(): Promise<void> {
   if (app.phase !== 'review') return;
+  pausePlayback();
   setPhase('encoding');
   el.recBtn.disabled   = true;
   el.btnExp.disabled   = true;
   el.btnReset.disabled = true;
+  el.playBtn.disabled  = true;
   setStatus('proc', 'Encoding…');
   try {
     if (app.fmt === 'webm') await exportWebM();
@@ -31,7 +34,9 @@ export async function doExport(): Promise<void> {
   el.recBtn.disabled   = false;
   el.btnExp.disabled   = false;
   el.btnReset.disabled = false;
+  el.playBtn.disabled  = false;
   el.encBar.style.width = '0%';
+  pausePlayback();               // refresh the playhead after the export moved rv
   checkGifWarning();
 }
 
@@ -169,6 +174,7 @@ export function resetAll(): void {
   el.btnExp.classList.add('export');
   el.btnExp.classList.remove('warn-export');
   setTimerMs(0);
+  resetPlayback();
   resetTrim();
   updateSizeUI();
   drawGrid();

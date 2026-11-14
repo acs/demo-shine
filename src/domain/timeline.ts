@@ -13,6 +13,11 @@ export function clipSeconds(duration: number, trimStart: number, trimEnd: number
   return (trimEnd - trimStart) * duration;
 }
 
+// Keep a playback position inside a clip range, in seconds.
+export function clampToClip(time: number, start: number, end: number): number {
+  return Math.min(Math.max(time, start), end);
+}
+
 // Keep IN and OUT at least `gap` apart. `moved` names the handle the user
 // dragged, so the other one stays put.
 export function normalizeTrim(

@@ -7,6 +7,7 @@ import { startMirror, stopMirror, seekAndDraw } from './ui/preview.js';
 import { runCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { buildThumbs, resetTrim, updateSizeUI, checkGifWarning } from './ui/timeline-ui.js';
+import { resetPlayback } from './ui/playback.js';
 import { getBestMime } from './infra/codecs.js';
 
 export async function toggleRec(): Promise<void> {
@@ -124,6 +125,7 @@ function onRecStop(): void {
     // Use actual file duration — wall clock is always slightly longer than the
     // encoded video, which causes exportWebM to hang if we use the wall clock.
     app.duration = (isFinite(el.rv.duration) && el.rv.duration > 0.1) ? el.rv.duration : wallClock;
+    resetPlayback();
     void buildThumbs();
     void seekAndDraw(el.rv, 0);
     setTimerMs(app.duration * 1000);
