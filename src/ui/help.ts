@@ -2,11 +2,11 @@
 
 import { el } from './dom.js';
 
-export function toggleHelp() {
+export function toggleHelp(): void {
   el.helpBd.classList.toggle('on');
 }
 
-export function helpBdClick(e) {
+export function helpBdClick(e: MouseEvent): void {
   if (e.target === el.helpBd) toggleHelp();
 }
 

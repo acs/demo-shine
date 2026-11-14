@@ -1,6 +1,6 @@
 // Trigger a browser download for a produced Blob.
 
-export function dlBlob(blob, name) {
+export function dlBlob(blob: Blob, name: string): void {
   const url = URL.createObjectURL(blob);
   const a   = document.createElement('a');
   a.href = url;
@@ -9,4 +9,6 @@ export function dlBlob(blob, name) {
   setTimeout(() => URL.revokeObjectURL(url), 6000);
 }
 
-export function ts() { return Date.now(); }
+export function ts(): number {
+  return Date.now();
+}
