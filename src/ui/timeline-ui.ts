@@ -1,9 +1,9 @@
-// Timeline panel: trim handles, time labels, size estimate, GIF warning and
-// the thumbnail strip.
+// Timeline panel: trim handles, time labels, size estimate and the thumbnail
+// strip.
 
 import { el } from './dom.js';
 import { app } from '../state.js';
-import { clipSeconds, normalizeTrim, estimateWebmText, estimateGifText } from '../domain/timeline.js';
+import { clipSeconds, normalizeTrim, estimateWebmText } from '../domain/timeline.js';
 import { seekTo } from './preview.js';
 import { syncToTrim, seekPlayback } from './playback.js';
 import { drawWaveform } from './waveform.js';
@@ -25,7 +25,6 @@ export function onTrim(evt: { target: EventTarget | null }): void {
   app.trimEnd   = en / 1000;
   updateTrimUI();
   updateSizeUI();
-  checkGifWarning();
   syncToTrim(moved);
   drawWaveform();
 }
@@ -43,25 +42,7 @@ export function updateTrimUI(): void {
 export function updateSizeUI(): void {
   if (!app.duration || app.phase === 'idle') { el.tSize.textContent = '—'; return; }
   const clip = clipSeconds(app.duration, app.trimStart, app.trimEnd);
-  if (app.fmt === 'gif') {
-    const fps = parseInt(el.gFps.value) || 12;
-    el.tSize.textContent = estimateGifText(clip, fps, app.captureW, app.captureH);
-  } else {
-    el.tSize.textContent = estimateWebmText(clip);
-  }
-}
-
-export function checkGifWarning(): void {
-  const clip = clipSeconds(app.duration, app.trimStart, app.trimEnd);
-  const warn = app.fmt === 'gif' && clip > 30;
-  el.gifWarn.style.display = warn ? '' : 'none';
-  if (warn) {
-    el.btnExp.classList.remove('export');
-    el.btnExp.classList.add('warn-export');
-  } else {
-    el.btnExp.classList.add('export');
-    el.btnExp.classList.remove('warn-export');
-  }
+  el.tSize.textContent = estimateWebmText(clip);
 }
 
 export async function buildThumbs(): Promise<void> {

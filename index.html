@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Pure browser screen recorder. No extensions. No uploads. WebM and GIF export with timeline trimming.">
+<meta name="description" content="Pure browser screen recorder. No extensions. No uploads. WebM screen recording with timeline trimming and audio.">
 <meta property="og:title" content="Orbit Capture">
-<meta property="og:description" content="Pure browser screen recorder — WebM & GIF with trimming. No extensions, no uploads.">
+<meta property="og:description" content="Pure browser screen recorder — WebM with trimming and audio. No extensions, no uploads.">
 <meta property="og:url" content="https://afonsobranco.github.io/orbit-capture/">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Orbit Capture">
-<meta name="twitter:description" content="Pure browser screen recorder — WebM & GIF with trimming. No extensions, no uploads.">
+<meta name="twitter:description" content="Pure browser screen recorder — WebM with trimming and audio. No extensions, no uploads.">
 <meta name="theme-color" content="#060710" id="meta-theme">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icon.svg">
@@ -19,7 +19,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
-<script src="https://unpkg.com/gif.js@0.2.0/dist/gif.js"></script>
 </head>
 <body>
 
@@ -48,7 +47,7 @@
       <div class="logo-orbit"></div>
       <div class="logo-name">
         <span class="logo-title">Orbit Capture</span>
-        <span class="logo-sub">Screen · WebM · GIF</span>
+        <span class="logo-sub">Screen · WebM</span>
       </div>
     </div>
     <span id="compat-warn">⚠ Use Chrome or Firefox for full support</span>
@@ -122,7 +121,6 @@
     </div>
     <div class="thumb-strip" id="thumbs"></div>
     <canvas class="wave-strip" id="waveform" style="display:none"></canvas>
-    <div class="gif-warn" id="gif-warn">⚠ Clip exceeds 30 s — GIF may be very large</div>
     <div class="range-wrap">
       <div class="range-bg"></div>
       <div class="range-fill" id="r-fill"></div>
@@ -137,34 +135,8 @@
     <div class="ctrl-aperture"></div>
     <div class="ctrl-glow"></div>
 
-    <!-- LEFT -->
-    <div class="ctrl-left">
-      <span class="ctrl-sec-lbl">Output Format</span>
-      <div class="fmt-toggle">
-        <button class="fmt-btn active" id="fmt-webm">WebM</button>
-        <button class="fmt-btn"        id="fmt-gif">GIF</button>
-      </div>
-
-      <div class="gif-opts" id="gif-opts">
-        <div class="opt-row">
-          <span class="opt-lbl">FPS</span>
-          <select class="opt-sel" id="g-fps">
-            <option value="8">8 fps</option>
-            <option value="12" selected>12 fps</option>
-            <option value="15">15 fps</option>
-            <option value="20">20 fps</option>
-          </select>
-        </div>
-        <div class="opt-row">
-          <span class="opt-lbl">Quality</span>
-          <select class="opt-sel" id="g-qual">
-            <option value="3">High</option>
-            <option value="8" selected>Medium</option>
-            <option value="18">Low</option>
-          </select>
-        </div>
-      </div>
-    </div>
+    <!-- LEFT (empty: balances the row so the record button stays centred) -->
+    <div class="ctrl-spacer" aria-hidden="true"></div>
 
     <!-- CENTER -->
     <div class="ctrl-center">
@@ -204,8 +176,8 @@
       <div class="help-step">
         <div class="help-num">1</div>
         <div class="help-step-body">
-          <div class="help-step-title">Choose your format</div>
-          <div class="help-step-desc">WebM for GitHub PRs and docs — smaller, sharper, better quality. GIF for maximum compatibility. If the tab or window you share has sound, its audio is captured automatically.</div>
+          <div class="help-step-title">Choose what to record</div>
+          <div class="help-step-desc">Pick the screen, window or tab to capture. If that source has sound, its audio is captured automatically. Everything exports as WebM — a small, sharp video for GitHub PRs, docs and chat.</div>
         </div>
       </div>
       <div class="help-step">
@@ -226,7 +198,7 @@
         <div class="help-num">4</div>
         <div class="help-step-body">
           <div class="help-step-title">Export and download</div>
-          <div class="help-step-desc">Hit Export ↓ to encode and download your clip. GIF clips over 30 s trigger a warning — expect files above 20 MB. WebM exports stream in real time through a canvas re-encode.</div>
+          <div class="help-step-desc">Hit Export ↓ to encode and download your clip. WebM exports stream in real time through a canvas re-encode.</div>
         </div>
       </div>
       <div class="help-step">

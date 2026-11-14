@@ -4,7 +4,6 @@ import {
   MIN_TRIM_GAP,
   clampToClip,
   clipSeconds,
-  estimateGifText,
   estimateWebmText,
   normalizeTrim,
 } from './timeline.js';
@@ -50,9 +49,5 @@ describe('clampToClip', () => {
 describe('size estimates', () => {
   it('formats a WebM estimate', () => {
     expect(estimateWebmText(5)).toBe('~0.5–2.8 MB (WebM)');
-  });
-
-  it('formats a GIF estimate', () => {
-    expect(estimateGifText(5, 12, 1280, 720)).toBe('~5.9 MB (GIF)');
   });
 });

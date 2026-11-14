@@ -1,8 +1,7 @@
 // Composition root: wires the UI to the use cases and boots the app.
 
 import { el, setStatus, toast } from './ui/dom.js';
-import { loadPrefs, savePrefs } from './prefs.js';
-import { setFmt, onSettingsChange } from './ui/format.js';
+import { loadPrefs } from './prefs.js';
 import { applyTheme, toggleTheme } from './ui/theme.js';
 import { toggleHelp, helpBdClick } from './ui/help.js';
 import { startStarfield } from './ui/starfield.js';
@@ -23,9 +22,6 @@ function init(): void {
 
   // Apply persisted preferences.
   const prefs = loadPrefs();
-  if (prefs.fps)   el.gFps.value   = prefs.fps;
-  if (prefs.qual)  el.gQual.value  = prefs.qual;
-  if (prefs.fmt === 'webm' || prefs.fmt === 'gif') setFmt(prefs.fmt, true);
   if (prefs.theme && prefs.theme !== document.documentElement.dataset.theme) applyTheme(prefs.theme);
 
   drawGrid();
@@ -41,11 +37,6 @@ function init(): void {
   el.helpBtn.addEventListener('click', toggleHelp);
   el.helpClose.addEventListener('click', toggleHelp);
   el.helpBd.addEventListener('click', helpBdClick);
-
-  el.fmtWebm.addEventListener('click', () => setFmt('webm'));
-  el.fmtGif.addEventListener('click', () => setFmt('gif'));
-  el.gFps.addEventListener('change', onSettingsChange);
-  el.gQual.addEventListener('change', savePrefs);
 
   el.recBtn.addEventListener('click', toggleRec);
   el.btnReset.addEventListener('click', resetAll);
