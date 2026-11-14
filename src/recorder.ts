@@ -23,16 +23,15 @@ export async function startRec(): Promise<void> {
     el.recBtn.disabled = true;
     setStatus('proc', 'Select display…');
 
-    const audioEnabled = el.audioChk.checked && app.fmt === 'webm';
     // `cursor` is a display-capture constraint; it is not in lib.dom's
-    // MediaTrackConstraints, hence the assertion.
+    // MediaTrackConstraints, hence the assertion. Audio is always requested —
+    // the browser only yields a track when the shared source has sound.
     const video = { frameRate: { ideal: 30, max: 60 }, cursor: 'always' } as MediaTrackConstraints;
-    app.stream = await navigator.mediaDevices.getDisplayMedia({ video, audio: audioEnabled });
+    app.stream = await navigator.mediaDevices.getDisplayMedia({ video, audio: true });
 
-    // getDisplayMedia only yields an audio track if the user ticked "share audio".
-    app.recAudio = audioEnabled && app.stream.getAudioTracks().length > 0;
-    if (audioEnabled && !app.recAudio) {
-      toast('No audio track was shared — the recording will be silent.', 4000);
+    app.recAudio = app.stream.getAudioTracks().length > 0;
+    if (!app.recAudio) {
+      toast('No audio was shared — the recording will be silent.', 4000);
     }
 
     let cancelled = false;

@@ -2,7 +2,7 @@
 
 > Pure browser screen recorder. No extensions. No uploads. No server.
 
-WebM and GIF export with a timeline trimmer, 3-second countdown, system audio capture, light/dark mode, and PWA install support — written in TypeScript, tested with Vitest and linted with ESLint.
+WebM and GIF export with a timeline trimmer, 3-second countdown, tab/system audio capture, light/dark mode, and PWA install support — written in TypeScript, tested with Vitest and linted with ESLint.
 
 **[→ Launch Orbit Capture](https://afonsobranco.github.io/orbit-capture/)**
 
@@ -11,13 +11,13 @@ WebM and GIF export with a timeline trimmer, 3-second countdown, system audio ca
 ## Features
 
 - **Zero dependencies on your machine** — runs entirely in the browser via `getDisplayMedia`
-- **WebM export** — VP9/VP8 codec, optional tab/system audio, re-encoded through a canvas stream
+- **WebM export** — VP9/VP8 codec with tab/system audio, re-encoded through a canvas stream
 - **GIF export** — frame-sampled via `gif.js`, capped at 960 px wide, configurable FPS and quality
 - **Timeline trimmer** — drag IN/OUT handles, click thumbnail frames to scrub, live size estimate
 - **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
 - **Audio track** — a waveform of the recording under the thumbnails, shown when the clip has sound
 - **3-second countdown** — live screen preview shown behind the countdown so you can frame your shot
-- **System audio toggle** — opt-in tab audio capture (WebM only, Chrome/Edge)
+- **Tab / system audio** — captured automatically whenever the shared tab or window has sound
 - **GIF duration warning** — export button turns amber and a warning badge appears when the clip exceeds 30 s
 - **Light / dark mode** — full CSS variable theming, persisted to `localStorage`
 - **PWA** — installable as a desktop app, offline-capable for core recording and WebM export
@@ -29,12 +29,11 @@ WebM and GIF export with a timeline trimmer, 3-second countdown, system audio ca
 
 1. Open [orbit-capture](https://afonsobranco.github.io/orbit-capture/) in Chrome or Edge
 2. Choose **WebM** or **GIF** and configure FPS / quality if needed
-3. Toggle **System Audio** on if you want tab audio (WebM only)
-4. Click the red button — pick your screen, window, or tab when prompted
-5. Wait out the 3-second countdown, then record
-6. Click again to stop — the timeline appears
-7. Drag the **blue IN** and **red OUT** handles to trim your clip
-8. Click **Export ↓** to encode and download
+3. Click the red button — pick your screen, window, or tab when prompted (tick **Share tab audio** in the picker to capture sound)
+4. Wait out the 3-second countdown, then record
+5. Click again to stop — the timeline appears with a playback control and an audio track
+6. Play it back, drag the **blue IN** and **red OUT** handles to trim, and scrub with the thumbnails
+7. Click **Export ↓** to encode and download
 
 ---
 
