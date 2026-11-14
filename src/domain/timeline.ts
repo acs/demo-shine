@@ -40,13 +40,3 @@ export function estimateWebmText(clip: number): string {
   const hi = clip * 0.55;   // ~4.4 Mbps high motion
   return `~${lo.toFixed(1)}–${hi.toFixed(1)} MB (WebM)`;
 }
-
-export function estimateGifText(clip: number, fps: number, captureW: number, captureH: number): string {
-  const gW = Math.min(captureW, 960);
-  const gH = Math.round(captureH * (gW / captureW));
-  const frames = Math.ceil(clip * fps);
-  const mb = (frames * gW * gH) / 5 / 1048576;   // ~5× compression typical
-  return mb < 1
-    ? `~${Math.round(mb * 1024)} KB (GIF)`
-    : `~${mb.toFixed(1)} MB (GIF)`;
-}

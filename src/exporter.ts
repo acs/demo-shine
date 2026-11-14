@@ -1,11 +1,11 @@
-// Export and reset use cases: re-encode the trimmed clip to WebM or GIF, and
-// tear the session down again.
+// Export and reset use cases: re-encode the trimmed clip to WebM, and tear the
+// session down again.
 
 import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
 import { seekTo, drawGrid } from './ui/preview.js';
 import { setTimerMs } from './ui/timer.js';
-import { checkGifWarning, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
+import { resetTrim, updateSizeUI } from './ui/timeline-ui.js';
 import { getBestMime } from './infra/codecs.js';
 import { dlBlob, ts } from './infra/download.js';
 import { stopRec } from './recorder.js';
@@ -22,8 +22,7 @@ export async function doExport(): Promise<void> {
   el.playBtn.disabled  = true;
   setStatus('proc', 'Encoding…');
   try {
-    if (app.fmt === 'webm') await exportWebM();
-    else                    await exportGIF();
+    await exportWebM();
     setStatus('ready', 'Export complete ✓');
     toast('File downloaded successfully.', 3000);
   } catch (err) {
@@ -38,7 +37,6 @@ export async function doExport(): Promise<void> {
   el.playBtn.disabled  = false;
   el.encBar.style.width = '0%';
   pausePlayback();               // refresh the playhead after the export moved rv
-  checkGifWarning();
 }
 
 /* Feed the review clip's audio into the export recorder.
@@ -123,41 +121,6 @@ function exportWebM(): Promise<void> {
   });
 }
 
-async function exportGIF(): Promise<void> {
-  if (typeof GIF === 'undefined') throw new Error('gif.js not loaded — check your connection.');
-  const fps     = parseInt(el.gFps.value);
-  const quality = parseInt(el.gQual.value);
-  const vDur    = (isFinite(el.rv.duration) && el.rv.duration > 0) ? el.rv.duration : app.duration;
-  const s       = app.trimStart * app.duration;
-  const e       = Math.min(app.trimEnd * app.duration, vDur - 0.05);
-  const clipDur = Math.max(e - s, 0.1);
-  const total   = Math.max(1, Math.floor(clipDur * fps));
-  const delay   = Math.round(1000 / fps);
-  const gW      = Math.round(Math.min(el.cv.width, 960));
-  const gH      = Math.round(el.cv.height * (gW / el.cv.width));
-  const gif = new GIF({ workers: 2, quality, width: gW, height: gH, workerScript: 'https://unpkg.com/gif.js@0.2.0/dist/gif.worker.js' });
-  const fc  = document.createElement('canvas');
-  fc.width  = gW; fc.height = gH;
-  const fctx = fc.getContext('2d');
-
-  const finished = new Promise<void>((resolve, reject) => {
-    gif.on('finished', (b: Blob) => { dlBlob(b, 'orbit-' + ts() + '.gif'); resolve(); });
-    gif.on('progress',  (p: number) => { el.encBar.style.width = (50 + p * 50).toFixed(1) + '%'; });
-    gif.on('error', reject);
-  });
-
-  for (let i = 0; i < total; i++) {
-    el.encBar.style.width = ((i / total) * 50).toFixed(1) + '%';
-    // Clamp to actual video duration to avoid seeked event never firing
-    const seekT = Math.min(s + (i / fps), vDur - 0.05);
-    await seekTo(el.rv, seekT);
-    fctx?.drawImage(el.rv, 0, 0, gW, gH);
-    gif.addFrame(fc, { copy: true, delay });
-  }
-  gif.render();
-  await finished;
-}
-
 export function resetAll(): void {
   if (app.phase === 'recording') { stopRec(); return; }
   if (app.phase === 'encoding' || app.phase === 'starting') return;
@@ -171,9 +134,6 @@ export function resetAll(): void {
   el.encBar.style.width     = '0%';
   el.thumbs.innerHTML       = '';
   el.resBadge.style.display = 'none';
-  el.gifWarn.style.display  = 'none';
-  el.btnExp.classList.add('export');
-  el.btnExp.classList.remove('warn-export');
   setTimerMs(0);
   resetPlayback();
   clearWaveform();

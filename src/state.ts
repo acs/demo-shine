@@ -5,11 +5,9 @@
 // `let` variables. Domain logic stays out of this file.
 
 export type Phase = 'idle' | 'starting' | 'recording' | 'review' | 'encoding';
-export type Format = 'webm' | 'gif';
 
 export interface AppState {
   phase: Phase;
-  fmt: Format;
 
   stream: MediaStream | null;   // from getDisplayMedia
   rec: MediaRecorder | null;    // live recording
@@ -39,7 +37,6 @@ export interface AppState {
 
 export const app: AppState = {
   phase: 'idle',
-  fmt: 'webm',
 
   stream: null,
   rec: null,

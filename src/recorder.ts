@@ -6,7 +6,7 @@ import { el, setStatus, toast } from './ui/dom.js';
 import { startMirror, stopMirror, seekAndDraw } from './ui/preview.js';
 import { runCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
-import { buildThumbs, resetTrim, updateSizeUI, checkGifWarning } from './ui/timeline-ui.js';
+import { buildThumbs, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
 import { resetPlayback } from './ui/playback.js';
 import { buildWaveform } from './ui/waveform.js';
 import { getBestMime } from './infra/codecs.js';
@@ -135,6 +135,5 @@ function onRecStop(): void {
     el.btnReset.style.display = '';
     el.btnExp.style.display   = '';
     updateSizeUI();
-    checkGifWarning();
   }, { once: true });
 }

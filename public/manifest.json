@@ -1,7 +1,7 @@
 {
   "name": "Orbit Capture",
   "short_name": "Orbit",
-  "description": "Pure browser screen recorder — WebM & GIF with timeline trimming. No extensions, no uploads.",
+  "description": "Pure browser screen recorder — WebM with timeline trimming and audio. No extensions, no uploads.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
