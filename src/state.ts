@@ -4,7 +4,15 @@
 // importers, so cross-module state is carried here rather than in scattered
 // `let` variables. Domain logic stays out of this file.
 
-export type Phase = 'idle' | 'starting' | 'live' | 'recording' | 'review' | 'encoding';
+export type Phase = 'idle' | 'starting' | 'live' | 'countdown' | 'recording' | 'review' | 'encoding';
+
+// A rectangular crop, normalised to 0..1 of the capture.
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
 
 export interface AppState {
   phase: Phase;
@@ -24,6 +32,9 @@ export interface AppState {
   mirroring: boolean;
   playing: boolean;             // clip playback in progress
   playRaf: number | null;       // playback render loop id
+
+  region: Rect;                 // crop region to record (whole source by default)
+  cropRaf: number | null;       // crop render loop id while recording
 
   captureW: number;
   captureH: number;
@@ -53,6 +64,9 @@ export const app: AppState = {
   mirroring: false,
   playing: false,
   playRaf: null,
+
+  region: { x: 0, y: 0, w: 1, h: 1 },
+  cropRaf: null,
 
   captureW: 1280,
   captureH: 720,
