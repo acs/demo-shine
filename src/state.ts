@@ -4,12 +4,10 @@
 // importers, so cross-module state is carried here rather than in scattered
 // `let` variables. Domain logic stays out of this file.
 
-export type Phase = 'idle' | 'starting' | 'recording' | 'review' | 'encoding';
-export type Format = 'webm' | 'gif';
+export type Phase = 'idle' | 'starting' | 'live' | 'recording' | 'review' | 'encoding';
 
 export interface AppState {
   phase: Phase;
-  fmt: Format;
 
   stream: MediaStream | null;   // from getDisplayMedia
   rec: MediaRecorder | null;    // live recording
@@ -24,6 +22,8 @@ export interface AppState {
   startAt: number | null;       // recording start timestamp
   rafId: number | null;         // mirror render loop id
   mirroring: boolean;
+  playing: boolean;             // clip playback in progress
+  playRaf: number | null;       // playback render loop id
 
   captureW: number;
   captureH: number;
@@ -37,7 +37,6 @@ export interface AppState {
 
 export const app: AppState = {
   phase: 'idle',
-  fmt: 'webm',
 
   stream: null,
   rec: null,
@@ -52,6 +51,8 @@ export const app: AppState = {
   startAt: null,
   rafId: null,
   mirroring: false,
+  playing: false,
+  playRaf: null,
 
   captureW: 1280,
   captureH: 720,

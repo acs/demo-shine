@@ -1,43 +1,48 @@
-// Recording use case: pick a display, count down, record, and hand the result
-// to the review phase.
+// Screen capture + recording.
+//
+// The capture is acquired as soon as the app opens (full screen preferred) and
+// shown live on the preview, so the red button only starts/stops the recording.
+// If the browser requires a user gesture first, the red button falls back to
+// acquiring the capture.
 
 import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
 import { startMirror, stopMirror, seekAndDraw } from './ui/preview.js';
 import { runCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
-import { buildThumbs, resetTrim, updateSizeUI, checkGifWarning } from './ui/timeline-ui.js';
+import { buildThumbs, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
+import { resetPlayback } from './ui/playback.js';
+import { buildWaveform } from './ui/waveform.js';
 import { getBestMime } from './infra/codecs.js';
 
 export async function toggleRec(): Promise<void> {
   if (app.phase === 'starting' || app.phase === 'encoding') return;
-  if (app.phase === 'idle')      return startRec();
+  if (app.phase === 'idle')      return startCapture();
+  if (app.phase === 'live')      return startRecording();
   if (app.phase === 'recording') return stopRec();
 }
 
-export async function startRec(): Promise<void> {
+// Acquire the display and show it live on the preview. Called on load; also the
+// fallback when the browser blocked the gesture-less attempt.
+export async function startCapture(): Promise<void> {
+  if (app.stream || app.phase === 'starting' || app.phase === 'recording') return;
   try {
     setPhase('starting');
     el.recBtn.disabled = true;
-    setStatus('proc', 'Select display…');
+    setStatus('proc', 'Select screen…');
 
-    const audioEnabled = el.audioChk.checked && app.fmt === 'webm';
-    // `cursor` is a display-capture constraint; it is not in lib.dom's
-    // MediaTrackConstraints, hence the assertion.
-    const video = { frameRate: { ideal: 30, max: 60 }, cursor: 'always' } as MediaTrackConstraints;
-    app.stream = await navigator.mediaDevices.getDisplayMedia({ video, audio: audioEnabled });
+    // `cursor` and `displaySurface` are display-capture constraints; they are
+    // not in lib.dom's MediaTrackConstraints, hence the assertion. Preferring
+    // 'monitor' preselects the entire screen in the picker (the browser still
+    // asks the user to confirm — a page can never capture silently). Audio is
+    // always requested: the browser only yields a track when the source has sound.
+    const video = { frameRate: { ideal: 30, max: 60 }, cursor: 'always', displaySurface: 'monitor' } as MediaTrackConstraints;
+    app.stream = await navigator.mediaDevices.getDisplayMedia({ video, audio: true });
 
-    // getDisplayMedia only yields an audio track if the user ticked "share audio".
-    app.recAudio = audioEnabled && app.stream.getAudioTracks().length > 0;
-    if (audioEnabled && !app.recAudio) {
-      toast('No audio track was shared — the recording will be silent.', 4000);
-    }
+    app.recAudio = app.stream.getAudioTracks().length > 0;
+    if (!app.recAudio) toast('No audio was shared — the recording will be silent.', 4000);
 
-    let cancelled = false;
-    app.stream.getVideoTracks()[0].addEventListener('ended', () => {
-      if (app.phase === 'recording') stopRec();
-      else cancelled = true;
-    });
+    app.stream.getVideoTracks()[0].addEventListener('ended', onCaptureEnded);
 
     el.sv.srcObject = app.stream;
     await el.sv.play();
@@ -51,57 +56,65 @@ export async function startRec(): Promise<void> {
     el.resBadge.textContent = `${app.captureW} × ${app.captureH}`;
     el.resBadge.style.display = '';
 
-    // Start mirroring — user sees their screen during countdown.
-    startMirror();
+    startMirror();                       // live preview on the canvas
     el.idleOv.classList.add('gone');
-    setStatus('proc', 'Get ready…');
-    await runCountdown();
-
-    // Guard: stream may have ended during countdown.
-    if (cancelled || !app.stream || !app.stream.active) {
-      stopMirror();
-      el.idleOv.classList.remove('gone');
-      el.resBadge.style.display = 'none';
-      el.recBtn.disabled = false;
-      setPhase('idle');
-      setStatus('ready', 'Ready');
-      return;
-    }
-
-    const mime = getBestMime(app.recAudio);
-    app.rec = new MediaRecorder(app.stream, mime ? { mimeType: mime } : {});
-    app.chunks = [];
-    app.rec.ondataavailable = e => { if (e.data.size > 0) app.chunks.push(e.data); };
-    app.rec.onstop = onRecStop;
-    app.rec.start(100);
-
-    app.startAt = Date.now();
-    setPhase('recording');
     el.recBtn.disabled = false;
-
-    el.recBtn.classList.add('recording');
-    el.ring3.style.opacity = '1';
-    el.ctrl.classList.add('recording');
-    el.badge.classList.add('on');
-    el.recLbl.textContent = 'Stop';
-    setStatus('rec', `REC · ${app.captureW}×${app.captureH}`);
-    startTimer();
+    el.recLbl.textContent = 'Record';
+    setPhase('live');
+    setStatus('ready', `Live · ${app.captureW}×${app.captureH}`);
   } catch (err) {
-    const e = err as { name?: string; message?: string };
+    const e = err as { name?: string };
     stopMirror();
-    el.cdOv.style.display = 'none';
     el.idleOv.classList.remove('gone');
     el.resBadge.style.display = 'none';
     el.recBtn.disabled = false;
     setPhase('idle');
     setStatus('ready', 'Ready');
-    if (e.name !== 'NotAllowedError') toast('Could not start: ' + e.message, 4000);
+    // NotAllowedError just means "cancelled / needs a gesture" — the idle hint
+    // already tells the user to press record.
+    if (e.name && e.name !== 'NotAllowedError') toast('Could not start: ' + e.name, 4000);
   }
+}
+
+async function startRecording(): Promise<void> {
+  if (!app.stream || app.phase !== 'live') return;
+  el.recBtn.disabled = true;
+  setStatus('proc', 'Get ready…');
+  await runCountdown();
+
+  if (!app.stream || !app.stream.active) {   // capture ended during the countdown
+    el.recBtn.disabled = false;
+    return;
+  }
+
+  const mime = getBestMime(app.recAudio);
+  app.rec = new MediaRecorder(app.stream, mime ? { mimeType: mime } : {});
+  app.chunks = [];
+  app.rec.ondataavailable = e => { if (e.data.size > 0) app.chunks.push(e.data); };
+  app.rec.onstop = onRecStop;
+  app.rec.start(100);
+
+  app.startAt = Date.now();
+  setPhase('recording');
+  el.recBtn.disabled = false;
+
+  el.recBtn.classList.add('recording');
+  el.ring3.style.opacity = '1';
+  el.ctrl.classList.add('recording');
+  el.badge.classList.add('on');
+  el.recLbl.textContent = 'Stop';
+  setStatus('rec', `REC · ${app.captureW}×${app.captureH}`);
+  startTimer();
 }
 
 export function stopRec(): void {
   if (app.rec && app.rec.state !== 'inactive') app.rec.stop();
-  if (app.stream) { app.stream.getTracks().forEach(t => t.stop()); app.stream = null; }
+  if (app.stream) {
+    // Detach first, so releasing the tracks doesn't re-enter onCaptureEnded.
+    app.stream.getVideoTracks()[0]?.removeEventListener('ended', onCaptureEnded);
+    app.stream.getTracks().forEach(t => t.stop());
+    app.stream = null;
+  }
   stopTimer();
   stopMirror();
   el.recBtn.classList.remove('recording');
@@ -110,6 +123,20 @@ export function stopRec(): void {
   el.badge.classList.remove('on');
   el.recLbl.textContent = 'Record';
   setStatus('proc', 'Processing…');
+}
+
+// The user clicked the browser's "Stop sharing" chip.
+function onCaptureEnded(): void {
+  if (app.phase === 'recording') { stopRec(); return; }
+  if (app.phase !== 'live') return;
+  app.stream = null;
+  el.sv.srcObject = null;
+  stopMirror();
+  el.idleOv.classList.remove('gone');
+  el.resBadge.style.display = 'none';
+  el.recLbl.textContent = 'Record';
+  setPhase('idle');
+  setStatus('ready', 'Ready');
 }
 
 function onRecStop(): void {
@@ -124,6 +151,8 @@ function onRecStop(): void {
     // Use actual file duration — wall clock is always slightly longer than the
     // encoded video, which causes exportWebM to hang if we use the wall clock.
     app.duration = (isFinite(el.rv.duration) && el.rv.duration > 0.1) ? el.rv.duration : wallClock;
+    resetPlayback();
+    void buildWaveform(app.blob);
     void buildThumbs();
     void seekAndDraw(el.rv, 0);
     setTimerMs(app.duration * 1000);
@@ -132,6 +161,5 @@ function onRecStop(): void {
     el.btnReset.style.display = '';
     el.btnExp.style.display   = '';
     updateSizeUI();
-    checkGifWarning();
   }, { once: true });
 }

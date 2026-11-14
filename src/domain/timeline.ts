@@ -13,6 +13,11 @@ export function clipSeconds(duration: number, trimStart: number, trimEnd: number
   return (trimEnd - trimStart) * duration;
 }
 
+// Keep a playback position inside a clip range, in seconds.
+export function clampToClip(time: number, start: number, end: number): number {
+  return Math.min(Math.max(time, start), end);
+}
+
 // Keep IN and OUT at least `gap` apart. `moved` names the handle the user
 // dragged, so the other one stays put.
 export function normalizeTrim(
@@ -34,14 +39,4 @@ export function estimateWebmText(clip: number): string {
   const lo = clip * 0.1;    // ~800 Kbps low motion
   const hi = clip * 0.55;   // ~4.4 Mbps high motion
   return `~${lo.toFixed(1)}–${hi.toFixed(1)} MB (WebM)`;
-}
-
-export function estimateGifText(clip: number, fps: number, captureW: number, captureH: number): string {
-  const gW = Math.min(captureW, 960);
-  const gH = Math.round(captureH * (gW / captureW));
-  const frames = Math.ceil(clip * fps);
-  const mb = (frames * gW * gH) / 5 / 1048576;   // ~5× compression typical
-  return mb < 1
-    ? `~${Math.round(mb * 1024)} KB (GIF)`
-    : `~${mb.toFixed(1)} MB (GIF)`;
 }
