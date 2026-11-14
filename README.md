@@ -104,7 +104,9 @@ npm install
 | Command | Does |
 |---|---|
 | `npm run dev` | Serves the app at http://localhost:5173, compiles TypeScript in watch mode and live-reloads the browser on save |
+| `npm run dev:https` | Same, over HTTPS (see the certificate note below) |
 | `npm run preview` | Builds, then serves the app with the PWA/service worker active (for testing install and offline) |
+| `npm run preview:https` | Same as `preview`, over HTTPS |
 | `npm run build` | Compiles `src/**/*.ts` to JavaScript next to the sources |
 | `npm run build:dist` | Builds a publishable static site into `dist/` |
 | `npm run typecheck` | Type-checks without emitting |
@@ -114,6 +116,13 @@ npm install
 The dev server (`npm run dev`) disables the service worker so its cache-first
 strategy does not shadow live reload; use `npm run preview` to exercise the real
 PWA locally.
+
+Add `--https` (or use the `dev:https` / `preview:https` scripts) to serve over
+TLS. The first run generates a self-signed certificate into `.certs/` (needs the
+`openssl` CLI once); browsers will warn until that certificate is trusted, and
+the service worker will not register on an untrusted one. For a locally-trusted
+cert, generate with [`mkcert`](https://github.com/FiloSottile/mkcert) and pass
+`--cert cert.pem --key key.pem`.
 
 Linting runs on every commit through a Husky pre-commit hook, and the CI
 workflow runs lint, type-check and tests on every push and pull request.
