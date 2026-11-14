@@ -30,7 +30,7 @@ export async function buildWaveform(blob: Blob | null): Promise<void> {
     el.waveform.style.display = '';
     drawWaveform();
   } catch (err) {
-    console.warn('Orbit: could not decode audio for the waveform —', err);
+    console.warn('DemoShine: could not decode audio for the waveform —', err);
     clearWaveform();
   }
 }
