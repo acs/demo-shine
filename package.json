@@ -6,12 +6,11 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/dev.mjs",
-    "dev:https": "node scripts/dev.mjs --https",
-    "preview": "npm run build && node scripts/dev.mjs --no-reload",
-    "preview:https": "npm run build && node scripts/dev.mjs --no-reload --https",
-    "build": "tsc -p tsconfig.build.json",
-    "build:dist": "npm run build && node scripts/build-dist.mjs",
+    "dev": "vite",
+    "dev:https": "vite --mode https",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "preview:https": "vite preview --mode https",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -24,12 +23,14 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
     "eslint": "^10.15.0",
     "globals": "^17.14.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.2",
+    "vite": "^8.3.8",
     "vitest": "^5.1.0"
   }
 }

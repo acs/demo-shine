@@ -57,11 +57,11 @@ function init(): void {
     toast('Install Orbit Capture — click the ⊕ in your address bar', 5000);
   });
 
-  // Service worker. Skipped only under the live-reload dev server, whose
-  // cache-first strategy would shadow reloads; any other origin (including
-  // localhost served normally) gets a real, installable, offline-capable PWA.
+  // Service worker: off under Vite's dev server, whose cache-first strategy
+  // would shadow HMR; on for builds and `vite preview` (a real, installable,
+  // offline-capable PWA). Any leftover worker is removed in dev.
   if ('serviceWorker' in navigator) {
-    if (window.__ORBIT_LIVE_RELOAD__) {
+    if (import.meta.env.DEV) {
       navigator.serviceWorker.getRegistrations()
         .then(rs => rs.forEach(r => r.unregister()))
         .catch(() => {});
