@@ -2,7 +2,7 @@
 
 > Pure browser screen recorder. No extensions. No uploads. No server.
 
-WebM and GIF export with a timeline trimmer, 3-second countdown, system audio capture, light/dark mode, and PWA install support — all in a single HTML file.
+WebM and GIF export with a timeline trimmer, 3-second countdown, system audio capture, light/dark mode, and PWA install support — split into native ES modules, with no build step.
 
 **[→ Launch Orbit Capture](https://afonsobranco.github.io/orbit-capture/)**
 
@@ -52,11 +52,37 @@ WebM and GIF export with a timeline trimmer, 3-second countdown, system audio ca
 
 ```
 orbit-capture/
-├── index.html      # Full application — HTML, CSS, JS in one file
-├── manifest.json   # PWA manifest
-├── sw.js           # Service worker — cache-first offline support
-└── icon.svg        # App icon
+├── index.html          # Markup only — links the stylesheet and src/main.js
+├── styles.css          # All styling (theme variables, layout, components)
+├── src/
+│   ├── main.js         # Composition root — wires the UI to the use cases, boots the app
+│   ├── state.js        # Shared application state (the mutable model)
+│   ├── prefs.js        # User preferences (localStorage)
+│   ├── recorder.js     # Recording use case (getDisplayMedia + MediaRecorder)
+│   ├── exporter.js     # Export + reset use cases (WebM / GIF)
+│   ├── domain/         # Pure logic — no DOM, no browser APIs
+│   │   └── timeline.js   # Trim math + file-size estimates
+│   ├── infra/          # Browser boundary adapters
+│   │   ├── codecs.js     # WebM mime / codec selection
+│   │   └── download.js   # Blob download trigger
+│   └── ui/             # View layer (DOM) — one module per widget
+│       ├── dom.js        # Central element registry + status/toast helpers
+│       ├── preview.js    # Preview canvas, seeking, live mirror
+│       ├── timeline-ui.js # Trim handles, thumbnails, size + GIF warning
+│       ├── format.js     # WebM / GIF toggle + settings
+│       ├── theme.js      # Light / dark theme
+│       ├── countdown.js  # 3-2-1 overlay
+│       ├── timer.js      # Recording clock
+│       ├── help.js       # Instructions modal
+│       └── starfield.js  # Background animation
+├── manifest.json       # PWA manifest
+├── sw.js               # Service worker — cache-first offline support
+└── icon.svg            # App icon
 ```
+
+The split leans toward a hexagonal shape: `domain/` is pure, `infra/` and `ui/`
+are adapters, and `recorder.js` / `exporter.js` are the use cases that
+`main.js` composes. It uses native ES modules, so there is still no build step.
 
 ---
 

@@ -1,0 +1,55 @@
+// Preview canvas rendering, the review-video seeking primitives and the live
+// mirror loop.
+
+import { el, ctx } from './dom.js';
+import { app } from '../state.js';
+
+export function drawGrid() {
+  const light = document.documentElement.dataset.theme === 'light';
+  ctx.clearRect(0, 0, el.cv.width, el.cv.height);
+  ctx.fillStyle = light ? '#ECF0FA' : '#050508';
+  ctx.fillRect(0, 0, el.cv.width, el.cv.height);
+  ctx.strokeStyle = light ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.025)';
+  ctx.lineWidth = 1;
+  const g = 90;
+  for (let x = 0; x <= el.cv.width; x += g) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, el.cv.height); ctx.stroke(); }
+  for (let y = 0; y <= el.cv.height; y += g) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(el.cv.width, y); ctx.stroke(); }
+  const mx = el.cv.width / 2, my = el.cv.height / 2;
+  ctx.strokeStyle = light ? 'rgba(229,62,62,0.14)' : 'rgba(229,62,62,0.08)';
+  ctx.beginPath(); ctx.arc(mx, my, 40, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(mx, my, 10, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(mx - 62, my); ctx.lineTo(mx + 62, my); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(mx, my - 62); ctx.lineTo(mx, my + 62); ctx.stroke();
+}
+
+function drawFrame(vid) {
+  ctx.drawImage(vid, 0, 0, el.cv.width, el.cv.height);
+}
+
+export function seekTo(vid, t) {
+  return new Promise(res => {
+    const fn = () => { vid.removeEventListener('seeked', fn); res(); };
+    vid.addEventListener('seeked', fn);
+    vid.currentTime = Math.min(Math.max(t, 0), vid.duration || 0);
+  });
+}
+
+export async function seekAndDraw(vid, t) {
+  await seekTo(vid, t);
+  drawFrame(vid);
+}
+
+// Live mirror: show the captured screen on the preview canvas during countdown.
+export function startMirror() {
+  app.mirroring = true;
+  (function loop() {
+    if (!app.mirroring) return;
+    if (el.sv.readyState >= 2) drawFrame(el.sv);
+    app.rafId = requestAnimationFrame(loop);
+  })();
+}
+
+export function stopMirror() {
+  app.mirroring = false;
+  if (app.rafId) { cancelAnimationFrame(app.rafId); app.rafId = null; }
+}
