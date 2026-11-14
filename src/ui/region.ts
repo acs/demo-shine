@@ -68,6 +68,14 @@ function onUp(e: PointerEvent): void {
   app.region = { x: x / el.cv.width, y: y / el.cv.height, w: w / el.cv.width, h: h / el.cv.height };
 }
 
+// A small, consistent on-screen font size, whatever the capture resolution.
+function fontPx(): number {
+  const W  = el.cv.width;
+  const cw = el.cv.clientWidth || W;
+  const cssPx = Math.max(9, Math.min(11, Math.round(cw / 95)));
+  return Math.max(8, Math.round(cssPx * W / cw));
+}
+
 // Painted by the live mirror loop on the preview canvas.
 export function drawRegion(): void {
   const live = app.phase === 'live' || app.phase === 'recording';
@@ -75,7 +83,7 @@ export function drawRegion(): void {
   if (!live) return;
 
   const W = el.cv.width, H = el.cv.height;
-  const fs = Math.max(11, Math.round(W / 55));   // font / stroke scale
+  const fs = fontPx();
 
   let rect = app.region;
   if (dragging) {
@@ -111,33 +119,41 @@ export function drawRegion(): void {
     ctx.fillRect(px - lw / 2, py - t / 2, lw, t);
   }
 
-  // Size readout, inside the box near the top.
-  const label = `${Math.round(rect.w * app.captureW)} × ${Math.round(rect.h * app.captureH)}`;
-  tag(label, x + w / 2, y + fs * 1.9, W, fs);
+  // Size readout — small, tucked outside the top-right corner.
+  sizeBadge(
+    `${Math.round(rect.w * app.captureW)} × ${Math.round(rect.h * app.captureH)}`,
+    x + w, y, W, fs,
+  );
 
   if (app.phase === 'live') hint(full ? 'Drag to record a region' : 'Click to reset to the full screen', W, H, fs);
   ctx.restore();
 }
 
-function hint(text: string, W: number, H: number, fs: number): void {
+function sizeBadge(text: string, right: number, top: number, W: number, fs: number): void {
   ctx.font = `${fs}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  const tw = ctx.measureText(text).width;
+  const bw = tw + fs * 1.1, bh = fs * 1.8;
+
+  const bx = clamp(right - bw, 2, Math.max(2, W - bw - 2));   // right-aligned to the box
+  let by = top - bh - fs * 0.35;                              // above the box (outside)
+  if (by < 2) by = top + fs * 0.35;                           // no room above → tuck inside
+
+  ctx.fillStyle = 'rgba(6,7,16,0.82)';
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.fillStyle = 'rgba(228,230,240,0.95)';
+  ctx.fillText(text, bx + fs * 0.55, by + bh / 2);
+}
+
+function hint(text: string, W: number, H: number, fs: number): void {
+  const hfs = Math.round(fs * 1.25);
+  ctx.font = `${hfs}px ui-monospace, SFMono-Regular, Menlo, monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   const tw = ctx.measureText(text).width;
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  ctx.fillRect(W / 2 - tw / 2 - fs, H - fs * 3.4, tw + fs * 2, fs * 2);
+  ctx.fillRect(W / 2 - tw / 2 - hfs, H - hfs * 3.4, tw + hfs * 2, hfs * 2);
   ctx.fillStyle = 'rgba(228,230,240,0.85)';
-  ctx.fillText(text, W / 2, H - fs * 2.4);
-}
-
-function tag(text: string, cx: number, cy: number, W: number, fs: number): void {
-  ctx.font = `${fs}px ui-monospace, SFMono-Regular, Menlo, monospace`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  const tw = ctx.measureText(text).width;
-  const bx = clamp(cx, tw / 2 + fs, W - tw / 2 - fs) - tw / 2 - fs / 2;
-  ctx.fillStyle = 'rgba(229,62,62,0.92)';
-  ctx.fillRect(bx, cy - fs, tw + fs, fs * 2);
-  ctx.fillStyle = '#fff';
-  ctx.fillText(text, clamp(cx, tw / 2 + fs, W - tw / 2 - fs), cy);
+  ctx.fillText(text, W / 2, H - hfs * 2.4);
 }
