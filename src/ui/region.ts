@@ -2,9 +2,9 @@
 //
 // The region is always shown as a red box over the preview — by default it
 // covers the whole source. Drag to select a smaller region (only it is
-// recorded); double-click returns to the full source. The overlay is painted
-// straight onto the preview canvas, so it can never end up in the recording
-// (which reads from the source <video>).
+// recorded); a plain click resets back to the full source. The overlay is
+// painted straight onto the preview canvas, so it can never end up in the
+// recording (which reads from the source <video>).
 
 import { app, type Rect } from '../state.js';
 import { el, ctx } from './dom.js';
@@ -15,7 +15,7 @@ export function isFullRegion(r: Rect): boolean {
   return r.x <= 0.001 && r.y <= 0.001 && r.w >= 0.999 && r.h >= 0.999;
 }
 
-const MIN_PX = 16;               // ignore accidental tiny drags
+const MIN_PX = 16;               // below this a pointer gesture counts as a click
 
 let dragging = false;
 let sX = 0, sY = 0, cX = 0, cY = 0;   // canvas pixels
@@ -27,12 +27,11 @@ export function initRegion(): void {
   el.cv.addEventListener('pointermove', onMove);
   el.cv.addEventListener('pointerup', onUp);
   el.cv.addEventListener('pointercancel', onUp);
-  el.cv.addEventListener('dblclick', clearRegion);
 }
 
+// Back to the whole source.
 export function clearRegion(): void {
-  if (dragging) return;
-  app.region = { ...FULL };       // back to the whole source
+  app.region = { ...FULL };
 }
 
 function toCanvas(e: PointerEvent): { x: number; y: number } {
@@ -61,8 +60,10 @@ function onUp(e: PointerEvent): void {
   if (!dragging) return;
   dragging = false;
   try { el.cv.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+
   const w = Math.abs(cX - sX), h = Math.abs(cY - sY);
-  if (w < MIN_PX || h < MIN_PX) return;   // a click, not a drag — keep the region
+  if (w < MIN_PX || h < MIN_PX) { clearRegion(); return; }   // a click → full source
+
   const x = Math.min(sX, cX), y = Math.min(sY, cY);
   app.region = { x: x / el.cv.width, y: y / el.cv.height, w: w / el.cv.width, h: h / el.cv.height };
 }
@@ -114,12 +115,11 @@ export function drawRegion(): void {
   const label = `${Math.round(rect.w * app.captureW)} × ${Math.round(rect.h * app.captureH)}`;
   tag(label, x + w / 2, y + fs * 1.9, W, fs);
 
-  if (full && app.phase === 'live') hint(W, H, fs);
+  if (app.phase === 'live') hint(full ? 'Drag to record a region' : 'Click to reset to the full screen', W, H, fs);
   ctx.restore();
 }
 
-function hint(W: number, H: number, fs: number): void {
-  const text = 'Drag to record a region';
+function hint(text: string, W: number, H: number, fs: number): void {
   ctx.font = `${fs}px ui-monospace, SFMono-Regular, Menlo, monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
