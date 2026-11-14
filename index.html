@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Pure browser screen recorder. No extensions. No uploads. WebM and GIF export with timeline trimming.">
+<meta name="description" content="Pure browser screen recorder. No extensions. No uploads. WebM screen recording with timeline trimming and audio.">
 <meta property="og:title" content="Orbit Capture">
-<meta property="og:description" content="Pure browser screen recorder — WebM & GIF with trimming. No extensions, no uploads.">
+<meta property="og:description" content="Pure browser screen recorder — WebM with trimming and audio. No extensions, no uploads.">
 <meta property="og:url" content="https://afonsobranco.github.io/orbit-capture/">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Orbit Capture">
-<meta name="twitter:description" content="Pure browser screen recorder — WebM & GIF with trimming. No extensions, no uploads.">
+<meta name="twitter:description" content="Pure browser screen recorder — WebM with trimming and audio. No extensions, no uploads.">
 <meta name="theme-color" content="#060710" id="meta-theme">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icon.svg">
@@ -19,7 +19,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
-<script src="https://unpkg.com/gif.js@0.2.0/dist/gif.js"></script>
 </head>
 <body>
 
@@ -48,7 +47,7 @@
       <div class="logo-orbit"></div>
       <div class="logo-name">
         <span class="logo-title">Orbit Capture</span>
-        <span class="logo-sub">Screen · WebM · GIF</span>
+        <span class="logo-sub">Screen · WebM</span>
       </div>
     </div>
     <span id="compat-warn">⚠ Use Chrome or Firefox for full support</span>
@@ -82,7 +81,7 @@
           <path d="M8 21h8M12 17v4"/>
         </svg>
       </div>
-      <span class="idle-hint">Press record to capture your screen</span>
+      <span class="idle-hint">Press record to share your screen</span>
     </div>
 
     <!-- Countdown -->
@@ -106,8 +105,11 @@
   <div class="timeline" id="timeline">
     <div class="tl-header">
       <div class="tl-left">
+        <button class="tl-play" id="play-btn" aria-label="Play" title="Play / pause"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>
         <span class="tl-label">Timeline · Trim</span>
         <div class="tl-times">
+          <span class="tl-now-wrap">NOW <span id="t-now">0.00s</span></span>
+          <span class="tl-dur">·</span>
           <span class="tl-in">IN <span id="t-in">0.00s</span></span>
           <span class="tl-dur">·</span>
           <span class="tl-dur"><span id="t-clip">0.00s</span></span>
@@ -118,10 +120,11 @@
       <span class="tl-est"><span class="tl-est-lbl">Est. </span><span id="t-size">—</span></span>
     </div>
     <div class="thumb-strip" id="thumbs"></div>
-    <div class="gif-warn" id="gif-warn">⚠ Clip exceeds 30 s — GIF may be very large</div>
+    <canvas class="wave-strip" id="waveform" style="display:none"></canvas>
     <div class="range-wrap">
       <div class="range-bg"></div>
       <div class="range-fill" id="r-fill"></div>
+      <div class="range-playhead" id="playhead"></div>
       <input type="range" id="r-start" min="0" max="1000" value="0" step="1">
       <input type="range" id="r-end"   min="0" max="1000" value="1000" step="1">
     </div>
@@ -132,45 +135,8 @@
     <div class="ctrl-aperture"></div>
     <div class="ctrl-glow"></div>
 
-    <!-- LEFT -->
-    <div class="ctrl-left">
-      <span class="ctrl-sec-lbl">Output Format</span>
-      <div class="fmt-toggle">
-        <button class="fmt-btn active" id="fmt-webm">WebM</button>
-        <button class="fmt-btn"        id="fmt-gif">GIF</button>
-      </div>
-
-      <div class="gif-opts" id="gif-opts">
-        <div class="opt-row">
-          <span class="opt-lbl">FPS</span>
-          <select class="opt-sel" id="g-fps">
-            <option value="8">8 fps</option>
-            <option value="12" selected>12 fps</option>
-            <option value="15">15 fps</option>
-            <option value="20">20 fps</option>
-          </select>
-        </div>
-        <div class="opt-row">
-          <span class="opt-lbl">Quality</span>
-          <select class="opt-sel" id="g-qual">
-            <option value="3">High</option>
-            <option value="8" selected>Medium</option>
-            <option value="18">Low</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="audio-row on" id="audio-row">
-        <span class="ctrl-sec-lbl">System Audio</span>
-        <div class="audio-inner">
-          <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-mid);letter-spacing:.05em;">Capture tab audio</span>
-          <label class="toggle-sw" aria-label="Toggle system audio">
-            <input type="checkbox" id="audio-chk">
-            <div class="toggle-track"></div>
-          </label>
-        </div>
-      </div>
-    </div>
+    <!-- LEFT (empty: balances the row so the record button stays centred) -->
+    <div class="ctrl-spacer" aria-hidden="true"></div>
 
     <!-- CENTER -->
     <div class="ctrl-center">
@@ -210,29 +176,29 @@
       <div class="help-step">
         <div class="help-num">1</div>
         <div class="help-step-body">
-          <div class="help-step-title">Choose your format</div>
-          <div class="help-step-desc">WebM for GitHub PRs and docs — smaller, sharper, better quality. GIF for maximum compatibility. Audio capture is only available in WebM and must be enabled before recording starts.</div>
+          <div class="help-step-title">Choose what to record</div>
+          <div class="help-step-desc">When the app opens, your browser asks what to share — pick a screen, window or tab (full screen is preselected) and tick Share tab audio for sound. The preview goes live straight away.</div>
         </div>
       </div>
       <div class="help-step">
         <div class="help-num">2</div>
         <div class="help-step-body">
           <div class="help-step-title">Hit record</div>
-          <div class="help-step-desc">Click the crimson button. Your browser will ask which screen, window, or tab to capture. A 3-second countdown gives you time to arrange your view before recording begins.</div>
+          <div class="help-step-desc">Press the crimson button to start recording — a 3-second countdown gives you a beat — and press it again to stop. Everything exports as WebM, a small sharp video for PRs, docs and chat.</div>
         </div>
       </div>
       <div class="help-step">
         <div class="help-num">3</div>
         <div class="help-step-body">
           <div class="help-step-title">Stop and trim</div>
-          <div class="help-step-desc">Click again to stop. Drag the blue IN handle and red OUT handle on the timeline to define your clip. Click any thumbnail frame to scrub to that moment. The estimated file size updates live.</div>
+          <div class="help-step-desc">Press ▶ to play the clip back with sound — it plays within your IN/OUT range, and you can still drag the handles while it plays. Drag the blue IN handle and red OUT handle to define your clip. Click any thumbnail frame to scrub to that moment. The estimated file size updates live.</div>
         </div>
       </div>
       <div class="help-step">
         <div class="help-num">4</div>
         <div class="help-step-body">
           <div class="help-step-title">Export and download</div>
-          <div class="help-step-desc">Hit Export ↓ to encode and download your clip. GIF clips over 30 s trigger a warning — expect files above 20 MB. WebM exports stream in real time through a canvas re-encode.</div>
+          <div class="help-step-desc">Hit Export ↓ to encode and download your clip. WebM exports stream in real time through a canvas re-encode.</div>
         </div>
       </div>
       <div class="help-step">

@@ -1,18 +1,20 @@
 // Composition root: wires the UI to the use cases and boots the app.
 
 import { el, setStatus, toast } from './ui/dom.js';
-import { loadPrefs, savePrefs } from './prefs.js';
-import { setFmt, onSettingsChange } from './ui/format.js';
+import { loadPrefs } from './prefs.js';
 import { applyTheme, toggleTheme } from './ui/theme.js';
 import { toggleHelp, helpBdClick } from './ui/help.js';
 import { startStarfield } from './ui/starfield.js';
 import { drawGrid } from './ui/preview.js';
 import { onTrim, updateTrimUI, updateSizeUI } from './ui/timeline-ui.js';
-import { toggleRec } from './recorder.js';
+import { toggleRec, startCapture } from './recorder.js';
 import { doExport, resetAll } from './exporter.js';
+import { togglePlayback } from './ui/playback.js';
+import { drawWaveform } from './ui/waveform.js';
 
 function init(): void {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+  const supported = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
+  if (!supported) {
     el.compatWarn.style.display = '';
     setStatus('', 'Not supported');
   } else {
@@ -21,10 +23,6 @@ function init(): void {
 
   // Apply persisted preferences.
   const prefs = loadPrefs();
-  if (prefs.fps)   el.gFps.value   = prefs.fps;
-  if (prefs.qual)  el.gQual.value  = prefs.qual;
-  if (prefs.audio) el.audioChk.checked = prefs.audio === 'true';
-  if (prefs.fmt === 'webm' || prefs.fmt === 'gif') setFmt(prefs.fmt, true);
   if (prefs.theme && prefs.theme !== document.documentElement.dataset.theme) applyTheme(prefs.theme);
 
   drawGrid();
@@ -41,21 +39,27 @@ function init(): void {
   el.helpClose.addEventListener('click', toggleHelp);
   el.helpBd.addEventListener('click', helpBdClick);
 
-  el.fmtWebm.addEventListener('click', () => setFmt('webm'));
-  el.fmtGif.addEventListener('click', () => setFmt('gif'));
-  el.gFps.addEventListener('change', onSettingsChange);
-  el.gQual.addEventListener('change', savePrefs);
-  el.audioChk.addEventListener('change', savePrefs);
-
   el.recBtn.addEventListener('click', toggleRec);
   el.btnReset.addEventListener('click', resetAll);
   el.btnExp.addEventListener('click', doExport);
+  el.playBtn.addEventListener('click', togglePlayback);
 
   // PWA install prompt
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     toast('Install Orbit Capture — click the ⊕ in your address bar', 5000);
   });
+
+  // Keep the audio waveform aligned with the strip on resize.
+  window.addEventListener('resize', drawWaveform);
+
+  // Go live as early as the browser allows. getDisplayMedia is gated behind a
+  // user gesture + picker, so we (a) try on load, and (b) start on the first
+  // interaction anywhere — the capture goes live without the red button.
+  const startOnGesture = () => { if (supported) void startCapture(); };
+  if (supported) void startCapture();
+  window.addEventListener('pointerdown', startOnGesture, { once: true });
+  window.addEventListener('keydown', startOnGesture, { once: true });
 
   // Service worker: off under Vite's dev server, whose cache-first strategy
   // would shadow HMR; on for builds and `vite preview` (a real, installable,
