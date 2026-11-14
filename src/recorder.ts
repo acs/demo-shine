@@ -13,6 +13,7 @@ import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { buildThumbs, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
 import { resetPlayback } from './ui/playback.js';
 import { buildWaveform } from './ui/waveform.js';
+import { FULL, isFullRegion } from './ui/region.js';
 import { getBestMime } from './infra/codecs.js';
 
 export async function toggleRec(): Promise<void> {
@@ -42,7 +43,7 @@ export async function startCapture(): Promise<void> {
     app.recAudio = app.stream.getAudioTracks().length > 0;
     if (!app.recAudio) toast('No audio was shared — the recording will be silent.', 4000);
 
-    app.region = null;   // a fresh capture starts with no crop region
+    app.region = { ...FULL };   // a fresh capture records the whole source
 
     app.stream.getVideoTracks()[0].addEventListener('ended', onCaptureEnded);
 
@@ -88,7 +89,7 @@ function buildRecordingStream(): MediaStream {
   const src = app.stream!;
   crop = null;
   const region = app.region;
-  if (!region) return src;
+  if (isFullRegion(region)) return src;
 
   const rx = Math.round(region.x * app.captureW);
   const ry = Math.round(region.y * app.captureH);
