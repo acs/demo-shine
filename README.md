@@ -4,7 +4,7 @@
 
 WebM screen recording with region crop, a timeline trimmer, playback with sound, automatic tab/system audio, light/dark mode, and PWA install support — written in TypeScript, tested with Vitest and linted with ESLint.
 
-**[→ Launch DemoShine](https://acs.github.io/demoshine/)**
+**[→ Launch DemoShine](https://acs.github.io/demo-shine/)**
 
 ---
 
@@ -27,7 +27,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 
 ## Usage
 
-1. Open [DemoShine](https://acs.github.io/demoshine/) in Chrome or Edge — the picker opens straight away and the screen goes live in the preview (full screen is preselected; tick **Share tab audio** to capture sound)
+1. Open [DemoShine](https://acs.github.io/demo-shine/) in Chrome or Edge — the picker opens straight away and the screen goes live in the preview (full screen is preselected; tick **Share tab audio** to capture sound)
 2. The red box over the preview shows what will be recorded — the whole screen by default; drag to record only a region, and click to go back to the full screen
 3. Press the red button to record — a 3-second countdown runs, and pressing the button again during it cancels; press it again to stop
 4. The timeline then appears with a playback control and an audio track
