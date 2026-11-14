@@ -11,6 +11,7 @@ import { onTrim, updateTrimUI, updateSizeUI } from './ui/timeline-ui.js';
 import { toggleRec } from './recorder.js';
 import { doExport, resetAll } from './exporter.js';
 import { togglePlayback } from './ui/playback.js';
+import { drawWaveform } from './ui/waveform.js';
 
 function init(): void {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
@@ -58,6 +59,9 @@ function init(): void {
     e.preventDefault();
     toast('Install Orbit Capture — click the ⊕ in your address bar', 5000);
   });
+
+  // Keep the audio waveform aligned with the strip on resize.
+  window.addEventListener('resize', drawWaveform);
 
   // Service worker: off under Vite's dev server, whose cache-first strategy
   // would shadow HMR; on for builds and `vite preview` (a real, installable,

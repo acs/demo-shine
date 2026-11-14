@@ -6,6 +6,7 @@ import { app } from '../state.js';
 import { clipSeconds, normalizeTrim, estimateWebmText, estimateGifText } from '../domain/timeline.js';
 import { seekTo } from './preview.js';
 import { syncToTrim, seekPlayback } from './playback.js';
+import { drawWaveform } from './waveform.js';
 
 export function resetTrim(): void {
   app.trimStart = 0;
@@ -26,6 +27,7 @@ export function onTrim(evt: { target: EventTarget | null }): void {
   updateSizeUI();
   checkGifWarning();
   syncToTrim(moved);
+  drawWaveform();
 }
 
 export function updateTrimUI(): void {

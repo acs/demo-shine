@@ -34,6 +34,7 @@ export const el = {
   playhead:  byId<HTMLElement>('playhead'),
   playBtn:   byId<HTMLButtonElement>('play-btn'),
   tNow:      byId<HTMLElement>('t-now'),
+  waveform:  byId<HTMLCanvasElement>('waveform'),
   encBar:    byId<HTMLElement>('enc-bar'),
   thumbs:    byId<HTMLElement>('thumbs'),
   tIn:       byId<HTMLElement>('t-in'),
