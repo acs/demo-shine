@@ -7,7 +7,9 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "dev:https": "node scripts/dev.mjs --https",
     "preview": "npm run build && node scripts/dev.mjs --no-reload",
+    "preview:https": "npm run build && node scripts/dev.mjs --no-reload --https",
     "build": "tsc -p tsconfig.build.json",
     "build:dist": "npm run build && node scripts/build-dist.mjs",
     "typecheck": "tsc --noEmit",
