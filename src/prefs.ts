@@ -9,20 +9,28 @@ const KEY = {
   qual:  'orbit_qual',
   audio: 'orbit_audio',
   theme: 'orbit_theme',
-};
+} as const;
 
-export function savePrefs() {
+export interface Prefs {
+  fmt:   string | null;
+  fps:   string | null;
+  qual:  string | null;
+  audio: string | null;
+  theme: string | null;
+}
+
+export function savePrefs(): void {
   try {
     localStorage.setItem(KEY.fmt,   app.fmt);
     localStorage.setItem(KEY.fps,   el.gFps.value);
     localStorage.setItem(KEY.qual,  el.gQual.value);
-    localStorage.setItem(KEY.audio, el.audioChk.checked);
-    localStorage.setItem(KEY.theme, document.documentElement.dataset.theme);
-  } catch (_) {}
+    localStorage.setItem(KEY.audio, String(el.audioChk.checked));
+    localStorage.setItem(KEY.theme, document.documentElement.dataset.theme ?? 'dark');
+  } catch { /* storage unavailable */ }
 }
 
 // Returns the raw stored values; the composition root decides how to apply them.
-export function loadPrefs() {
+export function loadPrefs(): Prefs {
   try {
     return {
       fmt:   localStorage.getItem(KEY.fmt),
@@ -31,7 +39,7 @@ export function loadPrefs() {
       audio: localStorage.getItem(KEY.audio),
       theme: localStorage.getItem(KEY.theme),
     };
-  } catch (_) {
-    return {};
+  } catch {
+    return { fmt: null, fps: null, qual: null, audio: null, theme: null };
   }
 }

@@ -11,7 +11,7 @@ import { onTrim, updateTrimUI, updateSizeUI } from './ui/timeline-ui.js';
 import { toggleRec } from './recorder.js';
 import { doExport, resetAll } from './exporter.js';
 
-function init() {
+function init(): void {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
     el.compatWarn.style.display = '';
     setStatus('', 'Not supported');
@@ -24,7 +24,7 @@ function init() {
   if (prefs.fps)   el.gFps.value   = prefs.fps;
   if (prefs.qual)  el.gQual.value  = prefs.qual;
   if (prefs.audio) el.audioChk.checked = prefs.audio === 'true';
-  if (prefs.fmt)   setFmt(prefs.fmt, true);
+  if (prefs.fmt === 'webm' || prefs.fmt === 'gif') setFmt(prefs.fmt, true);
   if (prefs.theme && prefs.theme !== document.documentElement.dataset.theme) applyTheme(prefs.theme);
 
   drawGrid();
@@ -57,9 +57,17 @@ function init() {
     toast('Install Orbit Capture — click the ⊕ in your address bar', 5000);
   });
 
-  // Service worker
+  // Service worker: off under Vite's dev server, whose cache-first strategy
+  // would shadow HMR; on for builds and `vite preview` (a real, installable,
+  // offline-capable PWA). Any leftover worker is removed in dev.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    if (import.meta.env.DEV) {
+      navigator.serviceWorker.getRegistrations()
+        .then(rs => rs.forEach(r => r.unregister()))
+        .catch(() => {});
+    } else {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
   }
 }
 

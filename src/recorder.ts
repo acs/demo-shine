@@ -9,23 +9,23 @@ import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { buildThumbs, resetTrim, updateSizeUI, checkGifWarning } from './ui/timeline-ui.js';
 import { getBestMime } from './infra/codecs.js';
 
-export async function toggleRec() {
+export async function toggleRec(): Promise<void> {
   if (app.phase === 'starting' || app.phase === 'encoding') return;
   if (app.phase === 'idle')      return startRec();
   if (app.phase === 'recording') return stopRec();
 }
 
-export async function startRec() {
+export async function startRec(): Promise<void> {
   try {
     setPhase('starting');
     el.recBtn.disabled = true;
     setStatus('proc', 'Select display…');
 
     const audioEnabled = el.audioChk.checked && app.fmt === 'webm';
-    app.stream = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: { ideal: 30, max: 60 }, cursor: 'always' },
-      audio: audioEnabled,
-    });
+    // `cursor` is a display-capture constraint; it is not in lib.dom's
+    // MediaTrackConstraints, hence the assertion.
+    const video = { frameRate: { ideal: 30, max: 60 }, cursor: 'always' } as MediaTrackConstraints;
+    app.stream = await navigator.mediaDevices.getDisplayMedia({ video, audio: audioEnabled });
 
     // getDisplayMedia only yields an audio track if the user ticked "share audio".
     app.recAudio = audioEnabled && app.stream.getAudioTracks().length > 0;
@@ -87,6 +87,7 @@ export async function startRec() {
     setStatus('rec', `REC · ${app.captureW}×${app.captureH}`);
     startTimer();
   } catch (err) {
+    const e = err as { name?: string; message?: string };
     stopMirror();
     el.cdOv.style.display = 'none';
     el.idleOv.classList.remove('gone');
@@ -94,11 +95,11 @@ export async function startRec() {
     el.recBtn.disabled = false;
     setPhase('idle');
     setStatus('ready', 'Ready');
-    if (err.name !== 'NotAllowedError') toast('Could not start: ' + err.message, 4000);
+    if (e.name !== 'NotAllowedError') toast('Could not start: ' + e.message, 4000);
   }
 }
 
-export function stopRec() {
+export function stopRec(): void {
   if (app.rec && app.rec.state !== 'inactive') app.rec.stop();
   if (app.stream) { app.stream.getTracks().forEach(t => t.stop()); app.stream = null; }
   stopTimer();
@@ -111,9 +112,9 @@ export function stopRec() {
   setStatus('proc', 'Processing…');
 }
 
-function onRecStop() {
+function onRecStop(): void {
   app.blob = new Blob(app.chunks, { type: 'video/webm' });
-  const wallClock = (Date.now() - app.startAt) / 1000;
+  const wallClock = (Date.now() - (app.startAt ?? Date.now())) / 1000;
   setPhase('review');
   setStatus('ready', 'Ready to export');
 
@@ -123,8 +124,8 @@ function onRecStop() {
     // Use actual file duration — wall clock is always slightly longer than the
     // encoded video, which causes exportWebM to hang if we use the wall clock.
     app.duration = (isFinite(el.rv.duration) && el.rv.duration > 0.1) ? el.rv.duration : wallClock;
-    buildThumbs();
-    seekAndDraw(el.rv, 0);
+    void buildThumbs();
+    void seekAndDraw(el.rv, 0);
     setTimerMs(app.duration * 1000);
     resetTrim();
     el.timeline.classList.add('on');

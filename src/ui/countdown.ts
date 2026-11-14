@@ -3,10 +3,10 @@
 import { el } from './dom.js';
 import { sleep } from '../util.js';
 
-export async function runCountdown() {
+export async function runCountdown(): Promise<void> {
   el.cdOv.style.display = 'flex';
   for (let i = 3; i >= 1; i--) {
-    el.cdNum.textContent = i;
+    el.cdNum.textContent = String(i);
     el.cdNum.style.animation = 'none';
     void el.cdNum.offsetHeight;
     el.cdNum.style.animation = 'cd-pop .95s ease-out forwards';
