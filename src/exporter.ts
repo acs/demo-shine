@@ -62,7 +62,7 @@ function attachExportAudio(stream: MediaStream): void {
     if (app.audioCtx && app.audioCtx.state === 'suspended') app.audioCtx.resume().catch(() => {});
     if (app.audioDest) tracks = app.audioDest.stream.getAudioTracks();
   } catch (err) {
-    console.warn('Orbit: Web Audio passthrough failed —', err);
+    console.warn('DemoShine: Web Audio passthrough failed —', err);
     app.audioCtx = null; app.audioDest = null; tracks = [];
   }
   // Fallback: pull the audio track straight from the media element.
@@ -102,7 +102,7 @@ function exportWebM(): Promise<void> {
     };
 
     rec.ondataavailable = ev => { if (ev.data.size > 0) out.push(ev.data); };
-    rec.onstop = () => { dlBlob(new Blob(out, { type: 'video/webm' }), 'orbit-' + ts() + '.webm'); resolve(); };
+    rec.onstop = () => { dlBlob(new Blob(out, { type: 'video/webm' }), 'demoshine-' + ts() + '.webm'); resolve(); };
     rec.onerror = reject;
     rec.start(100);
 

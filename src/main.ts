@@ -48,7 +48,7 @@ function init(): void {
   // PWA install prompt
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
-    toast('Install Orbit Capture — click the ⊕ in your address bar', 5000);
+    toast('Install DemoShine — click the ⊕ in your address bar', 5000);
   });
 
   // Keep the audio waveform aligned with the strip on resize.
