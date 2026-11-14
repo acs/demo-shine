@@ -3,6 +3,7 @@
 
 import { el, ctx } from './dom.js';
 import { app } from '../state.js';
+import { drawRegion } from './region.js';
 
 export function drawGrid(): void {
   const light = document.documentElement.dataset.theme === 'light';
@@ -44,7 +45,7 @@ export function startMirror(): void {
   app.mirroring = true;
   (function loop() {
     if (!app.mirroring) return;
-    if (el.sv.readyState >= 2) drawFrame(el.sv);
+    if (el.sv.readyState >= 2) { drawFrame(el.sv); drawRegion(); }
     app.rafId = requestAnimationFrame(loop);
   })();
 }
