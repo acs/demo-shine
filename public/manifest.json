@@ -1,6 +1,6 @@
 {
-  "name": "Orbit Capture",
-  "short_name": "Orbit",
+  "name": "DemoShine",
+  "short_name": "DemoShine",
   "description": "Pure browser screen recorder — WebM with timeline trimming and audio. No extensions, no uploads.",
   "start_url": ".",
   "scope": ".",

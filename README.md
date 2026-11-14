@@ -1,10 +1,10 @@
-# Orbit Capture
+# DemoShine
 
 > Pure browser screen recorder. No extensions. No uploads. No server.
 
-WebM screen recording with a timeline trimmer and playback, 3-second countdown, tab/system audio, light/dark mode, and PWA install support — written in TypeScript, tested with Vitest and linted with ESLint.
+WebM screen recording with region crop, a timeline trimmer, playback with sound, automatic tab/system audio, light/dark mode, and PWA install support — written in TypeScript, tested with Vitest and linted with ESLint.
 
-**[→ Launch Orbit Capture](https://afonsobranco.github.io/orbit-capture/)**
+**[→ Launch DemoShine](https://acs.github.io/demo-shine/)**
 
 ---
 
@@ -13,11 +13,11 @@ WebM screen recording with a timeline trimmer and playback, 3-second countdown, 
 - **Zero dependencies on your machine** — runs entirely in the browser via `getDisplayMedia`
 - **Live preview on start** — the screen capture begins as soon as the app opens (full screen preferred), no need to press record first
 - **WebM export** — VP9/VP8 codec with tab/system audio, re-encoded through a canvas stream
-- **Region crop** — the red box over the preview shows what will be recorded; it covers the whole screen by default, drag to record only part of it, and click to go back to the full screen
+- **Region crop** — a red box over the preview always shows what will be recorded: the whole screen by default, drag to record just part of it, click to reset; while recording the box breathes (red ↔ background)
 - **Timeline trimmer** — drag IN/OUT handles, click thumbnail frames to scrub, live size estimate
 - **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
 - **Audio track** — a waveform of the recording under the thumbnails, shown when the clip has sound
-- **3-second countdown** — live screen preview shown behind the countdown so you can frame your shot
+- **3-second countdown** — the live preview stays visible behind it, and pressing record again during it cancels
 - **Tab / system audio** — captured automatically whenever the shared tab or window has sound
 - **Light / dark mode** — full CSS variable theming, persisted to `localStorage`
 - **PWA** — installable as a desktop app, offline-capable for core recording and WebM export
@@ -27,7 +27,7 @@ WebM screen recording with a timeline trimmer and playback, 3-second countdown, 
 
 ## Usage
 
-1. Open [orbit-capture](https://afonsobranco.github.io/orbit-capture/) in Chrome or Edge — the picker opens straight away and the screen goes live in the preview (full screen is preselected; tick **Share tab audio** to capture sound)
+1. Open [DemoShine](https://acs.github.io/demo-shine/) in Chrome or Edge — the picker opens straight away and the screen goes live in the preview (full screen is preselected; tick **Share tab audio** to capture sound)
 2. The red box over the preview shows what will be recorded — the whole screen by default; drag to record only a region, and click to go back to the full screen
 3. Press the red button to record — a 3-second countdown runs, and pressing the button again during it cancels; press it again to stop
 4. The timeline then appears with a playback control and an audio track
@@ -39,7 +39,7 @@ WebM screen recording with a timeline trimmer and playback, 3-second countdown, 
 ## File structure
 
 ```
-orbit-capture/
+demoshine/
 ├── index.html            # Entry HTML — links the stylesheet and src/main.ts
 ├── styles.css            # All styling (theme variables, layout, components)
 ├── src/                  # TypeScript source
@@ -59,9 +59,12 @@ orbit-capture/
 │   └── ui/               # View layer (DOM) — one module per widget
 │       ├── dom.ts          # Central element registry + status/toast helpers
 │       ├── preview.ts      # Preview canvas, seeking, live mirror
+│       ├── region.ts       # Crop-region selection + overlay
 │       ├── timeline-ui.ts  # Trim handles, thumbnails, size estimate
+│       ├── playback.ts     # Clip playback on the preview
+│       ├── waveform.ts     # Audio waveform track
 │       ├── theme.ts        # Light / dark theme
-│       ├── countdown.ts    # 3-2-1 overlay
+│       ├── countdown.ts    # 3-2-1 overlay (cancellable)
 │       ├── timer.ts        # Recording clock
 │       ├── help.ts         # Instructions modal
 │       └── starfield.ts    # Background animation

@@ -5,7 +5,7 @@
 
 export function byId<T extends Element>(id: string): T {
   const node = document.getElementById(id);
-  if (!node) throw new Error(`Orbit: missing #${id}`);
+  if (!node) throw new Error(`DemoShine: missing #${id}`);
   return node as unknown as T;
 }
 
@@ -56,7 +56,7 @@ export const el = {
 
 export const ctx: CanvasRenderingContext2D = (() => {
   const c = el.cv.getContext('2d');
-  if (!c) throw new Error('Orbit: 2D canvas context unavailable');
+  if (!c) throw new Error('DemoShine: 2D canvas context unavailable');
   return c;
 })();
 
