@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Zero-dependency dev server with live reload.
+// Zero-dependency static server.
 //
-// Serves the repository root, compiles the TypeScript sources in watch mode,
-// and reloads every connected browser as soon as a file changes. No bundler,
-// no runtime dependencies — just Node's standard library.
-// Usage: `npm run dev` (or `node scripts/dev.mjs`).
+// Two modes:
+//   npm run dev      live-reload + TypeScript watch (service worker disabled)
+//   npm run preview  serve the built app as-is, so the PWA/service worker is
+//                    active (no injection, no watch)
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { existsSync, createReadStream, statSync, watch } from 'node:fs';
@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const PORT = Number(process.env.PORT) || 5173;
+const PREVIEW = process.argv.includes('--no-reload') || process.env.ORBIT_PREVIEW === '1';
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -30,10 +31,12 @@ const TYPES = {
   '.map':  'application/json; charset=utf-8',
 };
 
-// Injected into every HTML response; reloads the page when the server signals.
+// Injected into every HTML response in dev; flags the page so the app skips its
+// service worker, and reloads when the server signals.
 const RELOAD_SNIPPET = `
 <script>
   // injected by scripts/dev.mjs — live reload
+  window.__ORBIT_LIVE_RELOAD__ = true;
   (() => {
     const es = new EventSource('/__dev_reload');
     es.onmessage = () => location.reload();
@@ -79,9 +82,7 @@ const server = createServer(async (req, res) => {
 
   if (ext === '.html') {
     const html = await readFile(target, 'utf8');
-    const body = html.includes('</body>')
-      ? html.replace('</body>', `${RELOAD_SNIPPET}\n</body>`)
-      : html + RELOAD_SNIPPET;
+    const body = PREVIEW ? html : injectReload(html);
     res.writeHead(200, { 'Content-Type': TYPES['.html'], 'Cache-Control': 'no-cache' });
     res.end(body);
     return;
@@ -93,6 +94,12 @@ const server = createServer(async (req, res) => {
   });
   createReadStream(target).pipe(res);
 });
+
+function injectReload(html) {
+  return html.includes('</body>')
+    ? html.replace('</body>', `${RELOAD_SNIPPET}\n</body>`)
+    : html + RELOAD_SNIPPET;
+}
 
 function broadcast() {
   for (const client of clients) client.write('data: reload\n\n');
@@ -110,19 +117,25 @@ watch(ROOT, { recursive: true }, (_event, filename) => {
   debounce = setTimeout(broadcast, 80); // collapse bursts of events
 });
 
-// Compile the TypeScript sources in watch mode, if TypeScript is installed.
-const tscBin = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
+// In dev, compile the TypeScript sources in watch mode if TypeScript is present.
 let tsc = null;
-if (existsSync(tscBin)) {
-  tsc = spawn(process.execPath, [tscBin, '--watch', '--preserveWatchOutput'], { cwd: ROOT, stdio: 'inherit' });
-} else {
-  console.warn('  (typescript not installed — run `npm install` to compile the .ts sources)');
+if (!PREVIEW) {
+  const tscBin = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
+  if (existsSync(tscBin)) {
+    tsc = spawn(process.execPath, [tscBin, '--watch', '--preserveWatchOutput'], { cwd: ROOT, stdio: 'inherit' });
+  } else {
+    console.warn('  (typescript not installed — run `npm install` to compile the .ts sources)');
+  }
 }
 
 server.listen(PORT, () => {
-  console.log(`\n  Orbit Capture dev server`);
+  console.log(`\n  Orbit Capture ${PREVIEW ? 'preview server (PWA active)' : 'dev server'}`);
   console.log(`  →  http://localhost:${PORT}`);
-  console.log(`  live reload on file change — Ctrl+C to stop\n`);
+  if (PREVIEW) {
+    console.log(`  serving the built app — the service worker is enabled\n`);
+  } else {
+    console.log(`  live reload on file change — Ctrl+C to stop\n`);
+  }
 });
 
 function shutdown() {

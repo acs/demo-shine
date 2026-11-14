@@ -57,11 +57,11 @@ function init(): void {
     toast('Install Orbit Capture — click the ⊕ in your address bar', 5000);
   });
 
-  // Service worker. Skipped on localhost so its cache-first strategy does not
-  // shadow the dev server's live reload (and unregister any leftover worker).
-  const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  // Service worker. Skipped only under the live-reload dev server, whose
+  // cache-first strategy would shadow reloads; any other origin (including
+  // localhost served normally) gets a real, installable, offline-capable PWA.
   if ('serviceWorker' in navigator) {
-    if (isLocal) {
+    if (window.__ORBIT_LIVE_RELOAD__) {
       navigator.serviceWorker.getRegistrations()
         .then(rs => rs.forEach(r => r.unregister()))
         .catch(() => {});
