@@ -7,7 +7,6 @@ const KEY = {
   fmt:   'orbit_fmt',
   fps:   'orbit_fps',
   qual:  'orbit_qual',
-  audio: 'orbit_audio',
   theme: 'orbit_theme',
 } as const;
 
@@ -15,7 +14,6 @@ export interface Prefs {
   fmt:   string | null;
   fps:   string | null;
   qual:  string | null;
-  audio: string | null;
   theme: string | null;
 }
 
@@ -24,7 +22,6 @@ export function savePrefs(): void {
     localStorage.setItem(KEY.fmt,   app.fmt);
     localStorage.setItem(KEY.fps,   el.gFps.value);
     localStorage.setItem(KEY.qual,  el.gQual.value);
-    localStorage.setItem(KEY.audio, String(el.audioChk.checked));
     localStorage.setItem(KEY.theme, document.documentElement.dataset.theme ?? 'dark');
   } catch { /* storage unavailable */ }
 }
@@ -36,10 +33,9 @@ export function loadPrefs(): Prefs {
       fmt:   localStorage.getItem(KEY.fmt),
       fps:   localStorage.getItem(KEY.fps),
       qual:  localStorage.getItem(KEY.qual),
-      audio: localStorage.getItem(KEY.audio),
       theme: localStorage.getItem(KEY.theme),
     };
   } catch {
-    return { fmt: null, fps: null, qual: null, audio: null, theme: null };
+    return { fmt: null, fps: null, qual: null, theme: null };
   }
 }

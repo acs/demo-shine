@@ -10,7 +10,6 @@ export function setFmt(f: Format, silent = false): void {
   el.fmtWebm.className = f === 'webm' ? 'fmt-btn active' : 'fmt-btn';
   el.fmtGif.className  = f === 'gif'  ? 'fmt-btn active' : 'fmt-btn';
   el.gifOpts.classList.toggle('on', f === 'gif');
-  el.audioRow.classList.toggle('on', f === 'webm');
   updateSizeUI();
   checkGifWarning();
   if (!silent) savePrefs();

@@ -25,7 +25,6 @@ function init(): void {
   const prefs = loadPrefs();
   if (prefs.fps)   el.gFps.value   = prefs.fps;
   if (prefs.qual)  el.gQual.value  = prefs.qual;
-  if (prefs.audio) el.audioChk.checked = prefs.audio === 'true';
   if (prefs.fmt === 'webm' || prefs.fmt === 'gif') setFmt(prefs.fmt, true);
   if (prefs.theme && prefs.theme !== document.documentElement.dataset.theme) applyTheme(prefs.theme);
 
@@ -47,7 +46,6 @@ function init(): void {
   el.fmtGif.addEventListener('click', () => setFmt('gif'));
   el.gFps.addEventListener('change', onSettingsChange);
   el.gQual.addEventListener('change', savePrefs);
-  el.audioChk.addEventListener('change', savePrefs);
 
   el.recBtn.addEventListener('click', toggleRec);
   el.btnReset.addEventListener('click', resetAll);
