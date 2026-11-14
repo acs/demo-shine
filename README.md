@@ -104,10 +104,16 @@ npm install
 | Command | Does |
 |---|---|
 | `npm run dev` | Serves the app at http://localhost:5173, compiles TypeScript in watch mode and live-reloads the browser on save |
+| `npm run preview` | Builds, then serves the app with the PWA/service worker active (for testing install and offline) |
 | `npm run build` | Compiles `src/**/*.ts` to JavaScript next to the sources |
+| `npm run build:dist` | Builds a publishable static site into `dist/` |
 | `npm run typecheck` | Type-checks without emitting |
 | `npm run lint` | ESLint (use `npm run lint:fix` to auto-fix) |
 | `npm test` | Runs the Vitest unit tests (`npm run test:watch` to watch) |
+
+The dev server (`npm run dev`) disables the service worker so its cache-first
+strategy does not shadow live reload; use `npm run preview` to exercise the real
+PWA locally.
 
 Linting runs on every commit through a Husky pre-commit hook, and the CI
 workflow runs lint, type-check and tests on every push and pull request.
@@ -129,10 +135,16 @@ Safari does not support `getDisplayMedia` for screen capture.
 
 ## Deploy your own
 
-1. Fork or clone this repo
-2. Build the TypeScript: `npm install && npm run build` — the page loads the compiled `src/**/*.js`
-3. Go to **Settings → Pages → Source → main branch / root**
-4. Your instance will be live at `https://<your-username>.github.io/orbit-capture/`
+A PWA has to be served over HTTP(S) from an origin — opening `index.html` from
+disk will not register the service worker (it needs a secure context).
+
+Pushing to `main` runs the **Deploy** workflow, which builds the app
+(`npm run build:dist`) and publishes `dist/` to GitHub Pages. Enable it once in
+**Settings → Pages → Source → GitHub Actions** (the workflow also attempts to
+enable Pages itself). Because the compiled JavaScript is gitignored, the site is
+built in CI rather than served from the repo root.
+
+To deploy elsewhere, run `npm run build:dist` and publish the `dist/` folder.
 
 ---
 
