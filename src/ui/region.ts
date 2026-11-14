@@ -105,19 +105,27 @@ export function drawRegion(): void {
   ctx.rect(x, y, w, h);
   ctx.fill('evenodd');
 
-  // Red box, inset a hair so the stroke is never clipped at the edges.
+  // Red box, inset a hair so the stroke is never clipped at the edges. While
+  // recording it breathes between red and the background with a soft glow.
+  const pulse = app.phase === 'recording' ? 0.5 + 0.5 * Math.sin(performance.now() / 450) : 1;
+  const alpha = 0.22 + 0.78 * pulse;
+
   const ix = x + lw / 2, iy = y + lw / 2, iw = Math.max(0, w - lw), ih = Math.max(0, h - lw);
-  ctx.strokeStyle = '#E53E3E';
+  ctx.save();
+  ctx.strokeStyle = `rgba(229,62,62,${alpha.toFixed(3)})`;
+  ctx.fillStyle   = `rgba(229,62,62,${alpha.toFixed(3)})`;
   ctx.lineWidth = lw;
+  ctx.shadowColor = `rgba(229,62,62,${(alpha * 0.9).toFixed(3)})`;
+  ctx.shadowBlur = lw * (3 + 7 * pulse);
   ctx.strokeRect(ix, iy, iw, ih);
 
-  // Corner ticks.
-  ctx.fillStyle = '#E53E3E';
+  // Corner ticks, pulsing with it.
   const t = lw * 4;
   for (const [px, py] of [[ix, iy], [ix + iw, iy], [ix, iy + ih], [ix + iw, iy + ih]]) {
     ctx.fillRect(px - t / 2, py - lw / 2, t, lw);
     ctx.fillRect(px - lw / 2, py - t / 2, lw, t);
   }
+  ctx.restore();
 
   // Size readout — small, tucked outside the top-right corner.
   sizeBadge(
