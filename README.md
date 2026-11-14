@@ -106,10 +106,10 @@ npm install
 
 | Command | Does |
 |---|---|
-| `npm run dev` | Starts the Vite dev server at http://localhost:5173 with hot module replacement |
+| `npm run dev` | Starts the Vite dev server at https://localhost:5173 with hot module replacement (HTTPS by default) |
 | `npm run build` | Type-checks and builds the production site into `dist/` |
-| `npm run preview` | Serves the built site (`dist/`) with the PWA/service worker active |
-| `npm run dev:https` / `preview:https` | Same, over HTTPS with a self-signed certificate |
+| `npm run preview` | Serves the built site (`dist/`) over HTTPS with the PWA/service worker active |
+| `npm run dev:http` / `preview:http` | Same, but over plain HTTP |
 | `npm run typecheck` | Type-checks without emitting |
 | `npm run lint` | ESLint (use `npm run lint:fix` to auto-fix) |
 | `npm test` | Runs the Vitest unit tests (`npm run test:watch` to watch) |
@@ -117,9 +117,11 @@ npm install
 The dev server disables the service worker — its cache-first strategy would
 shadow HMR — so use `npm run preview` to exercise the real PWA locally.
 
-HTTPS uses a self-signed certificate (via `@vitejs/plugin-basic-ssl`); browsers
-will warn and the service worker will not register until that certificate is
-trusted.
+HTTPS is on by default, using a self-signed certificate from
+`@vitejs/plugin-basic-ssl`. Browsers will warn until that certificate is
+trusted, and the service worker will not register on an untrusted one — trust
+the certificate (add it to your keychain) for install/offline testing. Use
+`npm run dev:http` / `preview:http` for plain HTTP.
 
 Linting runs on every commit through a Husky pre-commit hook, and the CI
 workflow runs lint, type-check, tests and the build on every push and pull
