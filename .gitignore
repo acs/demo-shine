@@ -3,8 +3,3 @@ dist/
 .certs/
 .DS_Store
 *.local
-
-# Compiled TypeScript output
-src/**/*.js
-src/**/*.js.map
-src/**/*.tsbuildinfo

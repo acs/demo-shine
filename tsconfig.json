@@ -18,9 +18,7 @@
     "forceConsistentCasingInFileNames": true,
 
     "rootDir": "src",
-    "declaration": false,
-    "sourceMap": false,
-    "noEmitOnError": true
+    "noEmit": true
   },
   "include": ["src"]
 }
