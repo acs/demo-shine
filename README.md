@@ -15,6 +15,7 @@ WebM and GIF export with a timeline trimmer, 3-second countdown, system audio ca
 - **GIF export** — frame-sampled via `gif.js`, capped at 960 px wide, configurable FPS and quality
 - **Timeline trimmer** — drag IN/OUT handles, click thumbnail frames to scrub, live size estimate
 - **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
+- **Audio track** — a waveform of the recording under the thumbnails, shown when the clip has sound
 - **3-second countdown** — live screen preview shown behind the countdown so you can frame your shot
 - **System audio toggle** — opt-in tab audio capture (WebM only, Chrome/Edge)
 - **GIF duration warning** — export button turns amber and a warning badge appears when the clip exceeds 30 s

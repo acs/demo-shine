@@ -8,6 +8,7 @@ import { runCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { buildThumbs, resetTrim, updateSizeUI, checkGifWarning } from './ui/timeline-ui.js';
 import { resetPlayback } from './ui/playback.js';
+import { buildWaveform } from './ui/waveform.js';
 import { getBestMime } from './infra/codecs.js';
 
 export async function toggleRec(): Promise<void> {
@@ -126,6 +127,7 @@ function onRecStop(): void {
     // encoded video, which causes exportWebM to hang if we use the wall clock.
     app.duration = (isFinite(el.rv.duration) && el.rv.duration > 0.1) ? el.rv.duration : wallClock;
     resetPlayback();
+    void buildWaveform(app.blob);
     void buildThumbs();
     void seekAndDraw(el.rv, 0);
     setTimerMs(app.duration * 1000);

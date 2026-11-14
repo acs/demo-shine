@@ -10,6 +10,7 @@ import { getBestMime } from './infra/codecs.js';
 import { dlBlob, ts } from './infra/download.js';
 import { stopRec } from './recorder.js';
 import { pausePlayback, resetPlayback } from './ui/playback.js';
+import { clearWaveform } from './ui/waveform.js';
 
 export async function doExport(): Promise<void> {
   if (app.phase !== 'review') return;
@@ -175,6 +176,7 @@ export function resetAll(): void {
   el.btnExp.classList.remove('warn-export');
   setTimerMs(0);
   resetPlayback();
+  clearWaveform();
   resetTrim();
   updateSizeUI();
   drawGrid();
