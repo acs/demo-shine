@@ -52,15 +52,16 @@ WebM and GIF export with a timeline trimmer, 3-second countdown, system audio ca
 
 ```
 orbit-capture/
-├── index.html            # Markup only — links the stylesheet and src/main.js
+├── index.html            # Entry HTML — links the stylesheet and src/main.ts
 ├── styles.css            # All styling (theme variables, layout, components)
-├── src/                  # TypeScript source, compiled to .js by tsc
+├── src/                  # TypeScript source
 │   ├── main.ts           # Composition root — wires the UI to the use cases
 │   ├── state.ts          # Shared application state (the mutable model)
 │   ├── prefs.ts          # User preferences (localStorage)
 │   ├── recorder.ts       # Recording use case (getDisplayMedia + MediaRecorder)
 │   ├── exporter.ts       # Export + reset use cases (WebM / GIF)
 │   ├── globals.d.ts      # Ambient types (gif.js, HTMLMediaElement.captureStream)
+│   ├── vite-env.d.ts     # Vite client types
 │   ├── domain/           # Pure logic — no DOM, no browser APIs
 │   │   ├── timeline.ts     # Trim math + file-size estimates
 │   │   └── timeline.test.ts
@@ -77,19 +78,21 @@ orbit-capture/
 │       ├── timer.ts        # Recording clock
 │       ├── help.ts         # Instructions modal
 │       └── starfield.ts    # Background animation
-├── scripts/dev.mjs       # Zero-dependency dev server with live reload
+├── public/               # Copied verbatim into the build
+│   ├── manifest.json       # PWA manifest
+│   ├── sw.js               # Service worker — cache-first offline support
+│   └── icon.svg            # App icon
+├── vite.config.ts        # Dev server + build config
 ├── tsconfig.json         # TypeScript config (type-check / editor)
 ├── eslint.config.js      # ESLint (flat config)
 ├── vitest.config.ts      # Test runner config
-├── .husky/pre-commit     # Runs lint-staged on commit
-├── manifest.json         # PWA manifest
-├── sw.js                 # Service worker — cache-first offline support
-└── icon.svg              # App icon
+└── .husky/pre-commit     # Runs lint-staged on commit
 ```
 
 The split leans toward a hexagonal shape: `domain/` is pure, `infra/` and `ui/`
 are adapters, and `recorder.ts` / `exporter.ts` are the use cases that
-`main.ts` composes. It is written in TypeScript and compiled with `tsc` — no bundler.
+`main.ts` composes. It is written in TypeScript and served and bundled by
+[Vite](https://vite.dev/).
 
 ---
 
@@ -103,29 +106,26 @@ npm install
 
 | Command | Does |
 |---|---|
-| `npm run dev` | Serves the app at http://localhost:5173, compiles TypeScript in watch mode and live-reloads the browser on save |
-| `npm run dev:https` | Same, over HTTPS (see the certificate note below) |
-| `npm run preview` | Builds, then serves the app with the PWA/service worker active (for testing install and offline) |
-| `npm run preview:https` | Same as `preview`, over HTTPS |
-| `npm run build` | Compiles `src/**/*.ts` to JavaScript next to the sources |
-| `npm run build:dist` | Builds a publishable static site into `dist/` |
+| `npm run dev` | Starts the Vite dev server at https://localhost:5173 with hot module replacement (HTTPS by default) |
+| `npm run build` | Type-checks and builds the production site into `dist/` |
+| `npm run preview` | Serves the built site (`dist/`) over HTTPS with the PWA/service worker active |
+| `npm run dev:http` / `preview:http` | Same, but over plain HTTP |
 | `npm run typecheck` | Type-checks without emitting |
 | `npm run lint` | ESLint (use `npm run lint:fix` to auto-fix) |
 | `npm test` | Runs the Vitest unit tests (`npm run test:watch` to watch) |
 
-The dev server (`npm run dev`) disables the service worker so its cache-first
-strategy does not shadow live reload; use `npm run preview` to exercise the real
-PWA locally.
+The dev server disables the service worker — its cache-first strategy would
+shadow HMR — so use `npm run preview` to exercise the real PWA locally.
 
-Add `--https` (or use the `dev:https` / `preview:https` scripts) to serve over
-TLS. The first run generates a self-signed certificate into `.certs/` (needs the
-`openssl` CLI once); browsers will warn until that certificate is trusted, and
-the service worker will not register on an untrusted one. For a locally-trusted
-cert, generate with [`mkcert`](https://github.com/FiloSottile/mkcert) and pass
-`--cert cert.pem --key key.pem`.
+HTTPS is on by default, using a self-signed certificate from
+`@vitejs/plugin-basic-ssl`. Browsers will warn until that certificate is
+trusted, and the service worker will not register on an untrusted one — trust
+the certificate (add it to your keychain) for install/offline testing. Use
+`npm run dev:http` / `preview:http` for plain HTTP.
 
 Linting runs on every commit through a Husky pre-commit hook, and the CI
-workflow runs lint, type-check and tests on every push and pull request.
+workflow runs lint, type-check, tests and the build on every push and pull
+request.
 
 ---
 
@@ -147,18 +147,18 @@ Safari does not support `getDisplayMedia` for screen capture.
 A PWA has to be served over HTTP(S) from an origin — opening `index.html` from
 disk will not register the service worker (it needs a secure context).
 
-Pushing to `main` runs the **Deploy** workflow, which builds the app
-(`npm run build:dist`) and publishes `dist/` to GitHub Pages. Enable it once in
+Pushing to `main` runs the **Deploy** workflow, which runs `npm run build` and
+publishes `dist/` to GitHub Pages. Enable it once in
 **Settings → Pages → Source → GitHub Actions** (the workflow also attempts to
-enable Pages itself). Because the compiled JavaScript is gitignored, the site is
-built in CI rather than served from the repo root.
+enable Pages itself).
 
-To deploy elsewhere, run `npm run build:dist` and publish the `dist/` folder.
+To deploy elsewhere, run `npm run build` and publish the `dist/` folder.
 
 ---
 
 ## Tech
 
+- [Vite](https://vite.dev/) — dev server and build
 - [`MediaDevices.getDisplayMedia()`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia) — screen capture
 - [`MediaRecorder`](https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder) — WebM encoding
 - [`gif.js`](https://github.com/jnordberg/gif.js) — GIF encoding via Web Workers

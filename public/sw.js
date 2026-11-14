@@ -1,6 +1,7 @@
-const CACHE = 'orbit-v3';
-// The app shell. ES modules under ./src/ are cached at runtime on first load.
-const CORE  = ['./', './index.html', './styles.css', './src/main.js', './manifest.json', './icon.svg'];
+const CACHE = 'orbit-v4';
+// The app shell. Vite emits hashed JS/CSS filenames, so those are cached at
+// runtime on first load rather than listed here.
+const CORE  = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e =>
   e.waitUntil(
