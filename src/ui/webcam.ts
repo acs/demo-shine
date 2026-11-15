@@ -59,7 +59,7 @@ export function drawWebcamOverlay(c: CanvasRenderingContext2D, boxX: number, box
   const v = el.wcv;
   if (!app.webcamOn || v.readyState < 2 || !v.videoWidth) return;
 
-  const d = Math.round(boxW * 0.10);            // circle diameter (10% of the box)
+  const d = Math.round(boxW * 0.15);            // circle diameter (15% of the box)
   const m = Math.round(boxW * 0.03);            // margin from the corner
   const cx = boxX + boxW - m - d / 2;
   const cy = boxY + boxH - m - d / 2;
