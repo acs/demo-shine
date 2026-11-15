@@ -53,22 +53,26 @@ demoshine/
 │   ├── globals.d.ts      # Ambient types (prefixed AudioContext, captureStream)
 │   ├── vite-env.d.ts     # Vite client types
 │   ├── domain/           # Pure logic — no DOM, no browser APIs
-│   │   ├── timeline.ts     # Trim math + file-size estimates
+│   │   ├── timeline.ts     # Trim math (keep range + removed spans) + size estimates
 │   │   └── timeline.test.ts
 │   ├── infra/            # Browser boundary adapters
 │   │   ├── codecs.ts       # WebM mime / codec selection
 │   │   └── download.ts     # Blob download trigger
+│   ├── util.ts           # Tiny shared helpers (sleep)
 │   └── ui/               # View layer (DOM) — one module per widget
 │       ├── dom.ts          # Central element registry + status/toast helpers
 │       ├── preview.ts      # Preview canvas, seeking, live mirror
 │       ├── region.ts       # Crop-region selection + overlay
-│       ├── timeline-ui.ts  # Trim handles, thumbnails, size estimate
-│       ├── playback.ts     # Clip playback on the preview
+│       ├── timeline-ui.ts  # IN/OUT handles, thumbnails, size estimate
+│       ├── marks.ts        # Marks + removed regions: click, drag, overlay
+│       ├── playback.ts     # Clip playback on the preview, skipping removed regions
 │       ├── waveform.ts     # Audio waveform track
 │       ├── theme.ts        # Light / dark theme
 │       ├── countdown.ts    # 3-2-1 overlay (cancellable)
 │       ├── timer.ts        # Recording clock
 │       ├── help.ts         # Instructions modal
+│       ├── webcam.ts       # Webcam bubble overlay
+│       ├── mic.ts          # Microphone capture + level meter
 │       └── starfield.ts    # Background animation
 ├── public/               # Copied verbatim into the build
 │   ├── manifest.json       # PWA manifest
