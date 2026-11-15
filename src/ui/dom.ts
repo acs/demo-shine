@@ -35,7 +35,6 @@ export const el = {
   playBtn:   byId<HTMLButtonElement>('play-btn'),
   tNow:      byId<HTMLElement>('t-now'),
   waveform:  byId<HTMLCanvasElement>('waveform'),
-  encBar:    byId<HTMLElement>('enc-bar'),
   thumbs:    byId<HTMLElement>('thumbs'),
   tlMarks:   byId<HTMLElement>('tl-marks'),
   tIn:       byId<HTMLElement>('t-in'),
@@ -72,6 +71,12 @@ export const ctx: CanvasRenderingContext2D = (() => {
   if (!c) throw new Error('DemoShine: 2D canvas context unavailable');
   return c;
 })();
+
+// Seconds as m:ss, for the readouts in the timeline.
+export function clock(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}
 
 export function setStatus(cls: string, txt: string): void {
   el.sDot.className = 's-dot ' + cls;

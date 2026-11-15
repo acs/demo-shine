@@ -14,7 +14,7 @@
 // from the file, exactly.
 
 import { app } from '../state.js';
-import { el } from './dom.js';
+import { clock, el } from './dom.js';
 import { estimateWebmText } from '../domain/timeline.js';
 import { drawWebcamOverlay } from './webcam.js';
 import { keptLengthNow, keptOf } from './clip.js';
@@ -179,11 +179,6 @@ function paintWave(span: number): void {
 }
 
 // ── the pieces behind it ─────────────────────────────────────────────────────
-
-function clock(seconds: number): string {
-  const s = Math.floor(seconds);
-  return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
-}
 
 function blank(): HTMLCanvasElement {
   const c = document.createElement('canvas');
