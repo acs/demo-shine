@@ -29,7 +29,7 @@ import {
 } from 'mediabunny';
 import type { ExportPlan } from './domain/clip/ExportPlan.js';
 import { ctx as preview, el } from './ui/dom.js';
-import { clearFrame, dissolveAlpha, heldCanvas, holdFrom } from './ui/dissolve.js';
+import { dissolve } from './ui/dissolve.js';
 
 const VIDEO_BITRATE  = 4_000_000;   // bits per second
 const AUDIO_BITRATE  = 128_000;
@@ -139,7 +139,7 @@ export async function exportOffline(plan: ExportPlan, onProgress?: (source: numb
     for (const step of plan.steps) {
       // Entering a take that follows another: the frame left behind is the one to
       // dissolve away from, and this is where the dissolve starts.
-      if (step.joinAt !== null) holdFrom(ec);
+      if (step.joinAt !== null) dissolve.hold(ec);
 
       const input = new Input({
         source: new BufferSource(await takes[step.takeIndex].blob.arrayBuffer()),
@@ -161,8 +161,8 @@ export async function exportOffline(plan: ExportPlan, onProgress?: (source: numb
 
             // The picture's side of the join, the same blend playback draws: the
             // frame left behind at full, the new take rising over it.
-            const alpha = step.joinAt === null ? null : dissolveAlpha(at - step.joinAt);
-            const held = alpha === null ? null : heldCanvas();
+            const alpha = step.joinAt === null ? null : dissolve.alpha(at - step.joinAt);
+            const held = alpha === null ? null : dissolve.canvas();
             if (held && alpha !== null) {
               ectx.globalAlpha = 1;
               ectx.drawImage(held, 0, 0, ec.width, ec.height);
@@ -193,7 +193,7 @@ export async function exportOffline(plan: ExportPlan, onProgress?: (source: numb
     if (sound && audio) await sound.add(audio);
     await output.finalize();
   } finally {
-    clearFrame();          // a dissolve must not outlive the export
+    dissolve.clear();      // a dissolve must not outlive the export
   }
 
   const buffer = output.target.buffer;

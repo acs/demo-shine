@@ -8,70 +8,79 @@
 //
 // The preview and the export draw through the same blend, so what is seen while
 // reviewing is what ends up in the file.
+//
+// The held frame is the state of one join, so it lives on this object: the join
+// that held it spends it (`draw`), and the export lets go of it when it is over
+// (`clear`), which is what keeps a dissolve from outliving the join it was taken
+// for.
 
 import { el } from './dom.js';
 
 export const DISSOLVE_S = 0.08;   // how long the dissolve lasts, in seconds
 
-let held: HTMLCanvasElement | null = null;   // the frame the last take ended on
+export class Dissolve {
+  private held: HTMLCanvasElement | null = null;   // the frame the last take ended on
 
-// Hold a frame to dissolve away from. The frames come from wherever the export
-// is drawing them: the video element when it plays the clip through in real
-// time, the export's own canvas when it encodes offline.
-export function holdFrom(source: CanvasImageSource): void {
-  const w = el.cv.width, h = el.cv.height;
-  if (!w || !h) return;
-  if (!held) held = document.createElement('canvas');
-  held.width = w; held.height = h;
-  const g = held.getContext('2d');
-  if (!g) { held = null; return; }
-  g.clearRect(0, 0, w, h);
-  try { g.drawImage(source, 0, 0, w, h); } catch { held = null; }
-}
-
-// Hold the frame the take in hand is ending on.
-export function holdFrame(): void {
-  holdFrom(el.rv);
-}
-
-// Forget the held frame: a dissolve must not outlive the join it was taken for.
-export function clearFrame(): void {
-  held = null;
-}
-
-// The held frame, for a caller that composites it itself — the offline export
-// draws the held frame and then the new one over it, which is the same blend.
-export function heldCanvas(): HTMLCanvasElement | null {
-  return held;
-}
-
-// How much of the new take to show `since` seconds into it: 0 at the join, rising
-// to 1 as the dissolve finishes, and null when there is nothing to dissolve.
-export function dissolveAlpha(since: number): number | null {
-  if (!held || !(since >= 0) || since >= DISSOLVE_S) return null;
-  return Math.max(0, Math.min(1, since / DISSOLVE_S));
-}
-
-// Draw the frame of `vid` into `g`, dissolving from the held frame for the first
-// DISSOLVE_S of a take — `since` being how long that take has been running, so a
-// seek into the middle of one draws plainly. The held frame is dropped once the
-// dissolve is over, so it is used for one join only. Returns whether it drew the
-// dissolve; otherwise the caller draws the plain frame itself.
-export function drawDissolve(
-  g: CanvasRenderingContext2D, vid: HTMLVideoElement, w: number, h: number, since: number,
-): boolean {
-  const frame = held;
-  if (!frame) return false;
-  const k = dissolveAlpha(since);
-  if (k === null) {
-    if (since >= DISSOLVE_S) held = null;      // spent on this join
-    return false;
+  // Hold a frame to dissolve away from. The frames come from wherever the export
+  // is drawing them: the video element when it plays the clip through in real
+  // time, the export's own canvas when it encodes offline.
+  hold(source: CanvasImageSource): void {
+    const w = el.cv.width, h = el.cv.height;
+    if (!w || !h) return;
+    if (!this.held) this.held = document.createElement('canvas');
+    this.held.width = w; this.held.height = h;
+    const g = this.held.getContext('2d');
+    if (!g) { this.held = null; return; }
+    g.clearRect(0, 0, w, h);
+    try { g.drawImage(source, 0, 0, w, h); } catch { this.held = null; }
   }
-  g.save();
-  g.globalAlpha = 1;
-  g.drawImage(frame, 0, 0, w, h);        // the frame being left behind
-  g.globalAlpha = k;
-  g.drawImage(vid, 0, 0, w, h);         // the new take coming in over it
-  g.restore();
-  return true;
+
+  // Hold the frame the take in hand is ending on.
+  holdFrame(): void {
+    this.hold(el.rv);
+  }
+
+  // Forget the held frame: a dissolve must not outlive the join it was taken for.
+  clear(): void {
+    this.held = null;
+  }
+
+  // The held frame, for a caller that composites it itself — the offline export
+  // draws the held frame and then the new one over it, which is the same blend.
+  canvas(): HTMLCanvasElement | null {
+    return this.held;
+  }
+
+  // How much of the new take to show `since` seconds into it: 0 at the join, rising
+  // to 1 as the dissolve finishes, and null when there is nothing to dissolve.
+  alpha(since: number): number | null {
+    if (!this.held || !(since >= 0) || since >= DISSOLVE_S) return null;
+    return Math.max(0, Math.min(1, since / DISSOLVE_S));
+  }
+
+  // Draw the frame of `vid` into `g`, dissolving from the held frame for the first
+  // DISSOLVE_S of a take — `since` being how long that take has been running, so a
+  // seek into the middle of one draws plainly. The held frame is dropped once the
+  // dissolve is over, so it is used for one join only. Returns whether it drew the
+  // dissolve; otherwise the caller draws the plain frame itself.
+  draw(
+    g: CanvasRenderingContext2D, vid: HTMLVideoElement, w: number, h: number, since: number,
+  ): boolean {
+    const frame = this.held;
+    if (!frame) return false;
+    const k = this.alpha(since);
+    if (k === null) {
+      if (since >= DISSOLVE_S) this.held = null;      // spent on this join
+      return false;
+    }
+    g.save();
+    g.globalAlpha = 1;
+    g.drawImage(frame, 0, 0, w, h);        // the frame being left behind
+    g.globalAlpha = k;
+    g.drawImage(vid, 0, 0, w, h);         // the new take coming in over it
+    g.restore();
+    return true;
+  }
 }
+
+export const dissolve = new Dissolve();

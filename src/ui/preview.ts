@@ -5,7 +5,7 @@ import { el, ctx } from './dom.js';
 import { app } from '../state.js';
 import { drawRegion } from './region.js';
 import { drawWebcamOverlay } from './webcam.js';
-import { drawDissolve } from './dissolve.js';
+import { dissolve } from './dissolve.js';
 
 export function drawGrid(): void {
   const light = document.documentElement.dataset.theme === 'light';
@@ -32,7 +32,7 @@ export function drawFrame(vid: HTMLVideoElement): void {
 // Draw the review clip's frame, dissolving from the frame held at the last join
 // for the first moments of a new take — the picture's side of the faded seam.
 export function drawClipFrame(vid: HTMLVideoElement): void {
-  if (!drawDissolve(ctx, vid, el.cv.width, el.cv.height, vid.currentTime)) drawFrame(vid);
+  if (!dissolve.draw(ctx, vid, el.cv.width, el.cv.height, vid.currentTime)) drawFrame(vid);
 }
 
 export function seekTo(vid: HTMLVideoElement, t: number): Promise<void> {
