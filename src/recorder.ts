@@ -5,15 +5,15 @@
 // If the browser requires a user gesture first, the red button falls back to
 // acquiring the capture.
 
-import { app, setPhase } from './state.js';
+import { app, setPhase, type Phase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
 import { startMirror, stopMirror, seekWithin } from './ui/preview.js';
 import { runCountdown, cancelCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { buildThumbs, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
 import { resetMarks, rescaleMarks } from './ui/marks.js';
-import { clipLoad, totalDuration } from './ui/clip.js';
-import { resetPlayback, seekPlayback } from './ui/playback.js';
+import { clipLoad, clipTime, totalDuration } from './ui/clip.js';
+import { pausePlayback, resetPlayback, seekPlayback } from './ui/playback.js';
 import { buildWaveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
 import { drawWebcamOverlay, stopWebcam } from './ui/webcam.js';
@@ -42,12 +42,22 @@ export async function toggleRec(): Promise<void> {
 function cancelRecordingCountdown(): void {
   countdownAborted = true;
   cancelCountdown();
-  setPhase('live');
+  // Back to whatever was on screen before the countdown: the clip being
+  // reviewed, not the live screen (its timeline is only live in 'review').
+  setPhase(phaseBeforeCountdown);
+  el.recBtn.disabled = false;
   el.recLbl.textContent = 'Record';
-  setStatus('ready', `Live · ${app.captureW}×${app.captureH}`);
+  if (phaseBeforeCountdown === 'review') {
+    stopMirror();
+    seekPlayback(clipTime());
+    setStatus('ready', 'Ready to export');
+  } else {
+    setStatus('ready', `Live · ${app.captureW}×${app.captureH}`);
+  }
 }
 
 let countdownAborted = false;
+let phaseBeforeCountdown: Phase = 'live';   // where a cancelled countdown returns to
 
 // Acquire the display and show it live on the preview. Called on load; also the
 // fallback when the browser blocked the gesture-less attempt.
@@ -216,11 +226,22 @@ async function startRecording(): Promise<void> {
   if (!app.stream || (app.phase !== 'live' && app.phase !== 'review')) return;
   const appending = app.parts.length > 0;
   countdownAborted = false;
+  phaseBeforeCountdown = app.phase;
   setPhase('countdown');
   el.recBtn.disabled = false;          // stays clickable: a press cancels
   el.recLbl.textContent = 'Cancel';
   setStatus('proc', appending ? 'Get ready to add…' : 'Get ready…');
   if (appending) toast('Recording will be added to the end', 3000);
+
+  // Show what is about to be recorded. When this take follows another one, the
+  // preview was showing the clip being reviewed and the live mirror that draws
+  // the screen — and the crop box over it — has to come back for the take.
+  if (appending) {
+    pausePlayback();                   // the clip was not being recorded
+    el.cv.width  = app.captureW;
+    el.cv.height = app.captureH;
+    startMirror();
+  }
   await runCountdown();
 
   if (countdownAborted) return;                           // cancelled by a press
