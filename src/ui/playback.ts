@@ -17,8 +17,18 @@ const clipStart = () => app.trimStart * app.duration;
 const clipEnd   = () => app.trimEnd * app.duration;
 
 let skipped  = 0;        // cut end already seeked to, so it is asked for once
+let scrubbing = false;   // a bar is being dragged: play even inside a cut
 let seenAt   = 0;        // watchdog: position of the playhead at the last look
 let seenTime = 0;        // watchdog: when that look happened
+
+// While a bar is dragged the clip is played from wherever it is, including the
+// inside of a removed region — otherwise there would be nothing to hear.
+export function setScrubbing(on: boolean): void {
+  scrubbing = on;
+  skipped = 0;
+  seenAt = el.rv.currentTime;
+  seenTime = Date.now();
+}
 
 export function isPlaying(): boolean {
   return app.playing;
@@ -46,9 +56,13 @@ export function playFrom(time: number): void {
   const end   = clipEnd();
   let t = clampToClip(time, start, end);
   // Land outside anything trimmed away, then off the OUT point, which restarts.
-  const cut = cutAt(t);
-  if (cut) t = Math.min(cut.e, end);
-  if (t >= end - 0.02) t = start;
+  // While a bar is being dragged, neither rule applies: the whole point is to
+  // hear what sits at the bar.
+  if (!scrubbing) {
+    const cut = cutAt(t);
+    if (cut) t = Math.min(cut.e, end);
+    if (t >= end - 0.02) t = start;
+  }
   updatePlayhead(t);
   skipped = 0;
   el.rv.currentTime = t;
@@ -137,7 +151,7 @@ function loop(): void {
   // A trimmed-away stretch is jumped over without pausing, so playback carries
   // straight on. The seek is asked for once and the playhead is left alone until
   // the element comes out of the seek, so the browser is not re-asked every frame.
-  const cut = cutAt(el.rv.currentTime);
+  const cut = scrubbing ? null : cutAt(el.rv.currentTime);
   if (cut) {
     const to = Math.min(cut.e, clipEnd());
     if (!el.rv.seeking && skipped !== to) { skipped = to; el.rv.currentTime = to; }
