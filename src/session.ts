@@ -25,7 +25,7 @@ import { el } from './ui/dom.js';
 import { drawGrid } from './ui/preview.js';
 import { setTimerMs } from './ui/timer.js';
 import { updateSizeUI } from './ui/timeline-ui.js';
-import { forgetLoaded } from './ui/clip.js';
+import { player } from './ui/clip.js';
 import { playback } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
 import { liveTimeline } from './ui/live-timeline.js';
@@ -44,7 +44,7 @@ export class Session {
     if (el.rv.src) el.rv.src = '';
 
     app.clip.clear();
-    forgetLoaded();
+    player.forget();
     app.chunks = [];
     app.recAudio = false;
 
