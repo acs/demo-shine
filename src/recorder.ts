@@ -12,11 +12,11 @@ import { runCountdown, cancelCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { buildThumbs } from './ui/timeline-ui.js';
 import { clipLoad, clipTime, keptLengthNow } from './ui/clip.js';
-import { pausePlayback, resetPlayback, seekPlayback } from './ui/playback.js';
+import { playback } from './ui/playback.js';
 import { buildWaveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
 import { drawWebcamOverlay, stopWebcam } from './ui/webcam.js';
-import { session } from './session.js';
+import { liveTimeline } from './ui/live-timeline.js';
 import { stopMic } from './ui/mic.js';
 import { getBestMime } from './infra/codecs.js';
 
@@ -49,7 +49,7 @@ function cancelRecordingCountdown(): void {
   el.recLbl.textContent = 'Record';
   if (phaseBeforeCountdown === 'review') {
     stopMirror();
-    seekPlayback(clipTime());
+    playback.seek(clipTime());
     setStatus('ready', 'Ready to export');
   } else {
     setStatus('ready', `Live · ${app.captureW}×${app.captureH}`);
@@ -237,7 +237,7 @@ async function startRecording(): Promise<void> {
   // preview was showing the clip being reviewed and the live mirror that draws
   // the screen — and the crop box over it — has to come back for the take.
   if (appending) {
-    pausePlayback();                   // the clip was not being recorded
+    playback.pause();                   // the clip was not being recorded
     el.cv.width  = app.captureW;
     el.cv.height = app.captureH;
     startMirror();
@@ -269,7 +269,7 @@ async function startRecording(): Promise<void> {
   setPhase('recording');
   startCropLoop();
   // Show the timeline filling in as the take records.
-  session.live.start(recStream);
+  liveTimeline.start(recStream);
   el.recBtn.disabled = false;
 
   el.recBtn.classList.add('recording');
@@ -285,7 +285,7 @@ export function stopRec(): void {
   if (app.rec && app.rec.state !== 'inactive') app.rec.stop();
   stopCropLoop();
   stopMix();
-  session.live.stop();         // the review rebuilds the timeline from the file
+  liveTimeline.stop();         // the review rebuilds the timeline from the file
   // The share is kept: reviewing a clip and then pressing Record again adds to
   // it, which should not cost another trip through the picker.
   stopTimer();
@@ -352,7 +352,7 @@ async function onRecStop(): Promise<void> {
   // element, which only now starts holding the new take.
   app.clip.addTake(blob, duration);
 
-  resetPlayback();
+  playback.reset();
   await clipLoad(appending ? app.clip.takes.count() - 1 : 0);
 
   // The clip may be a cropped region, so size the preview canvas to it.
@@ -362,7 +362,7 @@ async function onRecStop(): Promise<void> {
   // Building the thumbnails seeks through the clip; once that is done, park the
   // playhead at the trim IN, or at the join when a recording was just added.
   const park = appending ? previous : app.clip.trim.start * app.clip.total();
-  void buildThumbs().then(() => seekPlayback(park));
+  void buildThumbs().then(() => playback.seek(park));
   el.timeline.classList.add('on');
   el.btnExp.style.display   = '';
 }
