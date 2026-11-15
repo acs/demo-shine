@@ -64,8 +64,7 @@ export function rescaleMarks(wasTotal: number, nowTotal: number): void {
 
 export function initTimelineMarks(): void {
   el.timeline.addEventListener('click', onTimelineClick);
-  el.trimOk.addEventListener('click', approveTrim);
-  el.trimNo.addEventListener('click', dismissSelection);
+  el.tlMarks.addEventListener('click', onActionClick);     // the check and the cross
   el.trimUndo.addEventListener('click', undoTrim);
   el.tlMarks.addEventListener('pointerdown', onBarDown);
   window.addEventListener('pointermove', onBarMove);
@@ -95,6 +94,14 @@ export function renderMarks(): void {
   if (region) {
     html += `<div class="tl-sel" style="left:${at(region.s * d)};width:${pctWidth(region)}">`
           + `<em>TRIM ${stamp(region.s * d)}–${stamp(region.e * d)}</em></div>`;
+    // the two answers sit on the section itself, clamped so they stay reachable
+    const centre = (keptOf(region.s * d) + keptOf(region.e * d)) / 2 / Math.max(0.001, keptLengthNow()) * 100;
+    html += `<span class="tl-acts" style="left:${Math.max(7, Math.min(93, centre)).toFixed(2)}%">`
+          + `<button class="tl-act ok" data-act="trim" title="Trim this section out" aria-label="Trim this section out">`
+          + `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg></button>`
+          + `<button class="tl-act no" data-act="keep" title="Leave this section in" aria-label="Leave this section in">`
+          + `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`
+          + `</span>`;
   }
   app.marks.forEach((m, i) => {
     html += `<div class="tl-mark" data-i="${i}" style="left:${at(m * d)}" title="Mark ${stamp(m * d)} — drag to move"></div>`;
@@ -104,20 +111,14 @@ export function renderMarks(): void {
   // the actions: approve or leave the selection, or take the last trim back
   if (region) {
     el.tCut.textContent = `TRIM ${stamp(region.s * d)}–${stamp(region.e * d)}`;
-    el.trimOk.style.display = '';
-    el.trimNo.style.display = '';
     el.trimUndo.style.display = 'none';
     el.tTrim.classList.add('on');
   } else if (lastTrim) {
     el.tCut.textContent = `TRIMMED ${lastTrim.removed.toFixed(2)}s`;
-    el.trimOk.style.display = 'none';
-    el.trimNo.style.display = 'none';
     el.trimUndo.style.display = '';
     el.tTrim.classList.add('on');
   } else {
     el.tCut.textContent = app.marks.length === 1 ? 'mark set — click again to close the section' : '';
-    el.trimOk.style.display = 'none';
-    el.trimNo.style.display = 'none';
     el.trimUndo.style.display = 'none';
     el.tTrim.classList.toggle('on', app.marks.length === 1);
   }
@@ -126,6 +127,16 @@ export function renderMarks(): void {
 function pctWidth(region: Span): string {
   const kept = Math.max(0.001, keptLengthNow());
   return (((keptOf(region.e * app.duration) - keptOf(region.s * app.duration)) / kept) * 100).toFixed(3) + '%';
+}
+
+// The check and the cross are drawn with the section, so they are read here
+// rather than bound to an element that is replaced on every repaint.
+function onActionClick(evt: MouseEvent): void {
+  const act = (evt.target as HTMLElement | null)?.closest<HTMLElement>('.tl-act');
+  if (!act) return;
+  evt.stopPropagation();
+  if (act.dataset.act === 'trim') approveTrim();
+  else                            dismissSelection();
 }
 
 // ── Approving, dismissing, undoing ───────────────────────────────────────────
@@ -276,7 +287,7 @@ function dragTo(f: number): void {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function canEdit(): boolean {
-  return app.phase === 'review' && el.rv.readyState >= 2;
+  return app.phase === 'review' && el.rv.readyState >= 1;   // metadata is enough; a seek in flight must not drop a click
 }
 
 // The track is what the marks are laid out against; a click x maps onto it.
