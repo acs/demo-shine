@@ -2,12 +2,16 @@ DemoShine — third-party notices
 ==============================
 
 DemoShine itself is MIT licensed (see LICENSE.md). The built app bundles the two
-libraries below, both unmodified. This file is copied into the build, and the
-Mediabunny notice is also carried in the JavaScript bundle itself.
+libraries below, both unmodified.
+
+This is the template: the build fills in the versions from what is actually
+installed (see the `demoshine-notices` plugin in vite.config.ts) and ships the
+result as THIRD-PARTY-NOTICES.txt beside the app, inside the JavaScript bundle
+as well.
 
 -------------------------------------------------------------------------------
 
-Mediabunny 1.66.0
+Mediabunny {{mediabunny}}
   https://github.com/Vanilagy/mediabunny
   Mozilla Public License 2.0 (MPL-2.0)
   Copyright (c) 2026-present, Vanilagy and contributors
@@ -21,7 +25,7 @@ Mediabunny 1.66.0
 
 -------------------------------------------------------------------------------
 
-webm-muxer 5.1.4
+webm-muxer {{webm-muxer}}
   https://github.com/Vanilagy/webm-muxer
   MIT License
   Copyright (c) 2022 Vanilagy
