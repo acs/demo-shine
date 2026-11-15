@@ -1,0 +1,25 @@
+import { describe, expect, it } from 'vitest';
+
+import { Take } from './Take.js';
+
+describe('Take', () => {
+  const blob = new Blob(['x']);
+
+  it('is a recording with a length, a blob and a way to play it', () => {
+    const take = Take.of(3, blob, 'blob:one', 4.5);
+    expect(take.id).toBe(3);
+    expect(take.duration).toBe(4.5);
+    expect(take.blob).toBe(blob);
+    expect(take.url).toBe('blob:one');
+  });
+
+  it('refuses a length that would make the joined timeline wrong', () => {
+    expect(() => Take.of(1, blob, 'blob:one', 0)).toThrow(/length/);
+    expect(() => Take.of(1, blob, 'blob:one', -1)).toThrow(/length/);
+  });
+
+  it('is the same take only when it is the same recording', () => {
+    expect(Take.of(2, blob, 'a', 1).equals(Take.of(2, new Blob(['y']), 'b', 9))).toBe(true);
+    expect(Take.of(2, blob, 'a', 1).equals(Take.of(3, blob, 'a', 1))).toBe(false);
+  });
+});

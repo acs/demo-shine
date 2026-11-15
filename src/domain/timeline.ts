@@ -118,13 +118,13 @@ export interface Timed {
   duration: number;
 }
 
-export function partStart(parts: Timed[], index: number): number {
+export function partStart(parts: readonly Timed[], index: number): number {
   let at = 0;
   for (let i = 0; i < index && i < parts.length; i++) at += parts[i].duration;
   return at;
 }
 
-export function partAt(parts: Timed[], time: number): number {
+export function partAt(parts: readonly Timed[], time: number): number {
   for (let i = 0; i < parts.length; i++) {
     if (time < partStart(parts, i) + parts[i].duration) return i;
   }

@@ -54,13 +54,14 @@ type Segment = { part: number; from: number; to: number };
 // out — the same timeline the player walks, made explicit so that the picture
 // and the sound cannot disagree about it.
 function keptSegments(from: number, to: number, cuts: Span[]): Segment[] {
+  const takes = app.takes.all();
   const out: Segment[] = [];
   let t = from;
   while (t < to - 0.001) {
     const cutEnd = cutEndAt(cuts, t);
     if (cutEnd !== null) { t = Math.min(cutEnd, to); continue; }
-    const index = partAt(app.parts, t);
-    let end = Math.min(to, partStart(app.parts, index) + app.parts[index].duration);
+    const index = partAt(takes, t);
+    let end = Math.min(to, partStart(takes, index) + takes[index].duration);
     for (const c of cuts) if (c.s > t + 0.001 && c.s < end) end = c.s;
     if (end <= t + 0.001) break;
     out.push({ part: index, from: t, to: end });
@@ -94,13 +95,14 @@ async function pickVideoCodec(width: number, height: number): Promise<'vp9' | 'v
 // can be rendered faster than real time.
 async function renderAudio(segments: Segment[], offsets: number[], total: number): Promise<AudioBuffer | null> {
   if (!app.recAudio || !segments.length) return null;
+  const takes = app.takes.all();
   const ctx = new OfflineAudioContext(2, Math.max(1, Math.ceil(total * SAMPLE_RATE)), SAMPLE_RATE);
   const decoded = new Map<number, AudioBuffer>();
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
     let buffer = decoded.get(seg.part);
     if (!buffer) {
-      buffer = await ctx.decodeAudioData(await app.parts[seg.part].blob.arrayBuffer());
+      buffer = await ctx.decodeAudioData(await takes[seg.part].blob.arrayBuffer());
       decoded.set(seg.part, buffer);
     }
     const src = ctx.createBufferSource();
@@ -122,16 +124,17 @@ async function renderAudio(segments: Segment[], offsets: number[], total: number
     }
     src.connect(gain).connect(ctx.destination);
     // The stretch of the take, placed where it belongs on the output timeline.
-    src.start(start, seg.from - partStart(app.parts, seg.part), length);
+    src.start(start, seg.from - partStart(takes, seg.part), length);
   }
   return ctx.startRendering();
 }
 
 export async function exportOffline(onProgress?: (source: number) => void): Promise<{ blob: Blob; stats: OfflineStats }> {
   const started = performance.now();
+  const takes = app.takes.all();
   const s = app.trimStart * app.duration;
   const e = Math.min(app.trimEnd * app.duration, app.duration - 0.05);
-  if (!app.parts.length || e <= s) throw new Error('nothing to export');
+  if (!takes.length || e <= s) throw new Error('nothing to export');
   const cuts = cutsInSeconds(app.cuts, app.duration);
 
   const segments = keptSegments(s, e, cuts);
@@ -181,7 +184,7 @@ export async function exportOffline(onProgress?: (source: number) => void): Prom
       if (followsAnother) holdFrom(ec);
 
       const input = new Input({
-        source: new BufferSource(await app.parts[part].blob.arrayBuffer()),
+        source: new BufferSource(await takes[part].blob.arrayBuffer()),
         formats: [WEBM],   // WebM only: Mediabunny's other demuxers stay out of the bundle
       });
       try {
@@ -189,12 +192,12 @@ export async function exportOffline(onProgress?: (source: number) => void): Prom
         if (!track) throw new Error('a take has no video track');
         if (!(await track.canDecode())) throw new Error('a take cannot be decoded');
         const first = await input.getFirstTimestamp();
-        const from = Math.max(s, partStart(app.parts, part)) - partStart(app.parts, part) + first;
-        const to   = Math.min(e, partStart(app.parts, part) + app.parts[part].duration) - partStart(app.parts, part) + first;
+        const from = Math.max(s, partStart(takes, part)) - partStart(takes, part) + first;
+        const to   = Math.min(e, partStart(takes, part) + takes[part].duration) - partStart(takes, part) + first;
 
         for await (const frame of new VideoSampleSink(track).samples(from, to)) {
           try {
-            const source = partStart(app.parts, part) + (frame.timestamp - first);
+            const source = partStart(takes, part) + (frame.timestamp - first);
             const at = keptTime(cuts, source) - base;      // the output timeline
             if (at < -0.001 || at > total + 0.001) continue;   // trimmed away, or outside
 

@@ -16,7 +16,7 @@ import { drawGrid } from './ui/preview.js';
 import { setTimerMs } from './ui/timer.js';
 import { beginEncoding, encodingAt, endEncoding, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
 import { resetMarks } from './ui/marks.js';
-import { releaseParts } from './ui/clip.js';
+import { forgetLoaded } from './ui/clip.js';
 import { dlBlob, ts } from './infra/download.js';
 import { stopRec, startCapture, releaseDisplay } from './recorder.js';
 import { pausePlayback, resetPlayback } from './ui/playback.js';
@@ -80,8 +80,7 @@ export function resetAll(): void {
 
   setPhase('idle');
   if (el.rv.src) { URL.revokeObjectURL(el.rv.src); el.rv.src = ''; }
-  releaseParts();
-  app.parts = []; app.chunks = []; app.duration = 0; app.recAudio = false;
+  app.takes.clear(); forgetLoaded(); app.chunks = []; app.duration = 0; app.recAudio = false;
   el.timeline.classList.remove('on');
   el.idleOv.classList.remove('gone');
   el.btnExp.style.display   = 'none';

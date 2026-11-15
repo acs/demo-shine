@@ -6,7 +6,8 @@
 // The bars come from a decode of the recording, which is read-only: the file, the
 // playback and the export are untouched by it. See PEAK_RATE below.
 
-import { app, type Part } from '../state.js';
+import { app } from '../state.js';
+import type { Take } from '../domain/clip/Take.js';
 import { el } from './dom.js';
 import { SpanSet } from '../domain/clip/SpanSet.js';
 import { keptLengthNow, keptOf } from './clip.js';
@@ -35,8 +36,8 @@ export function currentPeaks(): Float32Array | null {
   return peaks;
 }
 
-export async function buildWaveform(parts: Part[]): Promise<void> {
-  if (!parts.length || !app.recAudio) { clearWaveform(); return; }
+export async function buildWaveform(takes: readonly Take[]): Promise<void> {
+  if (!takes.length || !app.recAudio) { clearWaveform(); return; }
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if (!Ctx) { clearWaveform(); return; }
 
@@ -48,16 +49,16 @@ export async function buildWaveform(parts: Part[]): Promise<void> {
   try { ctx = new Ctx({ sampleRate: PEAK_RATE }); }
   catch { ctx = new Ctx(); }                    // a rate it will not take: its own
 
-  const total = parts.reduce((n, p) => n + p.duration, 0);
+  const total = takes.reduce((n, take) => n + take.duration, 0);
   if (!(total > 0)) { void ctx.close(); clearWaveform(); return; }
 
   try {
     // One recording per press of Record: each gets as many bars as its share of
     // the clip, so the strip lines up with the whole of it.
     const out: number[] = [];
-    for (const part of parts) {
-      const audio = await ctx.decodeAudioData(await part.blob.arrayBuffer());
-      const bars = Math.max(1, Math.round(BUCKETS * (part.duration / total)));
+    for (const take of takes) {
+      const audio = await ctx.decodeAudioData(await take.blob.arrayBuffer());
+      const bars = Math.max(1, Math.round(BUCKETS * (take.duration / total)));
       out.push(...computePeaks(audio, bars));
     }
     if (!out.length) { clearWaveform(); return; }
