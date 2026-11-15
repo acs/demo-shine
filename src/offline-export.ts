@@ -23,8 +23,8 @@ import {
   VideoSampleSink, WEBM, WebMOutputFormat,
 } from 'mediabunny';
 import { app } from './state.js';
+import type { Segment } from './domain/clip/Clip.js';
 import { ctx as preview, el } from './ui/dom.js';
-import { cutEndAt, cutsInSeconds, keptTime, partAt, partStart, type Span } from './domain/timeline.js';
 import { clearFrame, dissolveAlpha, heldCanvas, holdFrom } from './ui/dissolve.js';
 import { FADE_S } from './ui/fade.js';
 
@@ -48,28 +48,6 @@ export function offlineAvailable(): boolean {
 }
 
 // A kept stretch: a range of one take that survives the trims.
-type Segment = { part: number; from: number; to: number };
-
-// The kept stretches of [from, to], in order, with the trimmed stretches taken
-// out — the same timeline the player walks, made explicit so that the picture
-// and the sound cannot disagree about it.
-function keptSegments(from: number, to: number, cuts: Span[]): Segment[] {
-  const takes = app.takes.all();
-  const out: Segment[] = [];
-  let t = from;
-  while (t < to - 0.001) {
-    const cutEnd = cutEndAt(cuts, t);
-    if (cutEnd !== null) { t = Math.min(cutEnd, to); continue; }
-    const index = partAt(takes, t);
-    let end = Math.min(to, partStart(takes, index) + takes[index].duration);
-    for (const c of cuts) if (c.s > t + 0.001 && c.s < end) end = c.s;
-    if (end <= t + 0.001) break;
-    out.push({ part: index, from: t, to: end });
-    t = end;
-  }
-  return out;
-}
-
 // VP9, the codec the recording itself prefers, with VP8 behind it. Asked of
 // WebCodecs directly rather than of Mediabunny: its codec registry is a lot of
 // table for one question, and this is the one it is kept out of the bundle for.
@@ -95,7 +73,7 @@ async function pickVideoCodec(width: number, height: number): Promise<'vp9' | 'v
 // can be rendered faster than real time.
 async function renderAudio(segments: Segment[], offsets: number[], total: number): Promise<AudioBuffer | null> {
   if (!app.recAudio || !segments.length) return null;
-  const takes = app.takes.all();
+  const takes = app.clip.takes.all();
   const ctx = new OfflineAudioContext(2, Math.max(1, Math.ceil(total * SAMPLE_RATE)), SAMPLE_RATE);
   const decoded = new Map<number, AudioBuffer>();
   for (let i = 0; i < segments.length; i++) {
@@ -124,20 +102,19 @@ async function renderAudio(segments: Segment[], offsets: number[], total: number
     }
     src.connect(gain).connect(ctx.destination);
     // The stretch of the take, placed where it belongs on the output timeline.
-    src.start(start, seg.from - partStart(takes, seg.part), length);
+    src.start(start, seg.from - app.clip.takes.startOf(seg.part), length);
   }
   return ctx.startRendering();
 }
 
 export async function exportOffline(onProgress?: (source: number) => void): Promise<{ blob: Blob; stats: OfflineStats }> {
   const started = performance.now();
-  const takes = app.takes.all();
-  const s = app.trimStart * app.duration;
-  const e = Math.min(app.trimEnd * app.duration, app.duration - 0.05);
+  const takes = app.clip.takes.all();
+  const s = app.clip.trim.start * app.clip.total();
+  const e = Math.min(app.clip.trim.end * app.clip.total(), app.clip.total() - 0.05);
   if (!takes.length || e <= s) throw new Error('nothing to export');
-  const cuts = cutsInSeconds(app.cuts, app.duration);
 
-  const segments = keptSegments(s, e, cuts);
+  const segments = app.clip.segmentsIn(s, e);
   if (!segments.length) throw new Error('nothing to export');
   const offsets: number[] = [];
   let total = 0;
@@ -171,7 +148,8 @@ export async function exportOffline(onProgress?: (source: number) => void): Prom
   if (sound) output.addAudioTrack(sound);
   await output.start();
 
-  const base = keptTime(cuts, s);      // where the export starts on the kept timeline
+  const map  = app.clip.timeline();    // the recording and the timeline, mapped both ways
+  const base = map.keptOf(s);          // where the export starts on the kept timeline
   let frames = 0;
 
   try {
@@ -192,13 +170,13 @@ export async function exportOffline(onProgress?: (source: number) => void): Prom
         if (!track) throw new Error('a take has no video track');
         if (!(await track.canDecode())) throw new Error('a take cannot be decoded');
         const first = await input.getFirstTimestamp();
-        const from = Math.max(s, partStart(takes, part)) - partStart(takes, part) + first;
-        const to   = Math.min(e, partStart(takes, part) + takes[part].duration) - partStart(takes, part) + first;
+        const from = Math.max(s, app.clip.takes.startOf(part)) - app.clip.takes.startOf(part) + first;
+        const to   = Math.min(e, app.clip.takes.startOf(part) + takes[part].duration) - app.clip.takes.startOf(part) + first;
 
         for await (const frame of new VideoSampleSink(track).samples(from, to)) {
           try {
-            const source = partStart(takes, part) + (frame.timestamp - first);
-            const at = keptTime(cuts, source) - base;      // the output timeline
+            const source = app.clip.takes.startOf(part) + (frame.timestamp - first);
+            const at = map.keptOf(source) - base;          // the output timeline
             if (at < -0.001 || at > total + 0.001) continue;   // trimmed away, or outside
 
             // The picture's side of the join, the same blend playback draws: the

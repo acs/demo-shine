@@ -8,8 +8,7 @@
 
 import { clock, el } from './dom.js';
 import { app } from '../state.js';
-import { estimateWebmText } from '../domain/timeline.js';
-import { TimelineMap } from '../domain/clip/TimelineMap.js';
+import { estimateWebmText } from './size-estimate.js';
 import { Trim } from '../domain/clip/Trim.js';
 import { clipSeek, keptLengthNow, keptOf, sourceOf } from './clip.js';
 import { setTimerMs } from './timer.js';
@@ -19,8 +18,7 @@ import { drawWaveform } from './waveform.js';
 const COUNT = 22;         // thumbnail frames across the strip
 
 export function resetTrim(): void {
-  app.trimStart = 0;
-  app.trimEnd = 1;
+  app.clip.keepRange(Trim.of(0, 1));
   updateTrimUI();
 }
 
@@ -29,8 +27,7 @@ export function onTrim(evt: { target: EventTarget | null }): void {
   // The handles work in timeline units (0..1000 of what is left), so the model
   // keeps its own fractions of the recording.
   const { start: s, end: en } = Trim.fromSlider(parseInt(el.rStart.value), parseInt(el.rEnd.value)).normalized(moved).slider;
-  app.trimStart = toRecordingFraction(s);
-  app.trimEnd   = toRecordingFraction(en);
+  app.clip.keepRange(Trim.of(toRecordingFraction(s), toRecordingFraction(en)));
   updateTrimUI(false);       // the handles are the authority while dragging
   updateSizeUI();
   syncToTrim(moved);
@@ -39,8 +36,8 @@ export function onTrim(evt: { target: EventTarget | null }): void {
 
 export function updateTrimUI(syncHandles = true): void {
   const kept = keptLengthNow();
-  const s = keptOf(app.trimStart * app.duration);
-  const e = keptOf(app.trimEnd * app.duration);
+  const s = keptOf(app.clip.trim.start * app.clip.total());
+  const e = keptOf(app.clip.trim.end * app.clip.total());
   el.tIn.textContent   = s.toFixed(2) + 's';
   el.tOut.textContent  = e.toFixed(2) + 's';
   el.tClip.textContent = Math.max(0, e - s).toFixed(2) + 's';
@@ -53,10 +50,10 @@ export function updateTrimUI(syncHandles = true): void {
 }
 
 export function updateSizeUI(): void {
-  if (!app.duration || app.phase === 'idle') { el.tSize.textContent = '—'; return; }
+  if (!app.clip.total() || app.phase === 'idle') { el.tSize.textContent = '—'; return; }
   // Cuts are trimmed away, so they shrink the estimate too.
-  const timeline = TimelineMap.forClip(app.cuts, app.duration);
-  const clip = timeline.keptLength(app.trimStart * app.duration, app.trimEnd * app.duration);
+  const timeline = app.clip.timeline();
+  const clip = timeline.keptLength(app.clip.trim.start * app.clip.total(), app.clip.trim.end * app.clip.total());
   el.tSize.textContent = estimateWebmText(clip);
 }
 
@@ -133,7 +130,7 @@ function pct(kept: number, seconds: number): number {
 
 // A handle position (0..1000 of the timeline) as a fraction of the recording.
 function toRecordingFraction(units: number): number {
-  if (!(app.duration > 0)) return 0;
+  if (!(app.clip.total() > 0)) return 0;
   const seconds = sourceOf((units / 1000) * keptLengthNow());
-  return Math.max(0, Math.min(1, seconds / app.duration));
+  return Math.max(0, Math.min(1, seconds / app.clip.total()));
 }

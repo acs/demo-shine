@@ -27,7 +27,7 @@ import { exportOffline, offlineAvailable, type OfflineStats } from './offline-ex
 // recorder and nothing to play: it reports how far it has got as it goes, and
 // hands back what it managed so the caller can say it.
 async function exportOfflineHere(): Promise<OfflineStats> {
-  const end = Math.min(app.trimEnd * app.duration, app.duration - 0.05);
+  const end = Math.min(app.clip.trim.end * app.clip.total(), app.clip.total() - 0.05);
   const { blob, stats } = await exportOffline(source => encodingAt(source, end));
   dlBlob(blob, 'demoshine-' + ts() + '.webm');
   console.info('DemoShine export', stats);
@@ -80,7 +80,7 @@ export function resetAll(): void {
 
   setPhase('idle');
   if (el.rv.src) { URL.revokeObjectURL(el.rv.src); el.rv.src = ''; }
-  app.takes.clear(); forgetLoaded(); app.chunks = []; app.duration = 0; app.recAudio = false;
+  app.clip.clear(); forgetLoaded(); app.chunks = []; app.recAudio = false;
   el.timeline.classList.remove('on');
   el.idleOv.classList.remove('gone');
   el.btnExp.style.display   = 'none';
