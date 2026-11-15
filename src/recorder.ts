@@ -16,7 +16,7 @@ import { pausePlayback, resetPlayback, seekPlayback } from './ui/playback.js';
 import { buildWaveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
 import { drawWebcamOverlay, stopWebcam } from './ui/webcam.js';
-import { startLiveTimeline, stopLiveTimeline } from './ui/live-timeline.js';
+import { session } from './session.js';
 import { stopMic } from './ui/mic.js';
 import { getBestMime } from './infra/codecs.js';
 
@@ -269,7 +269,7 @@ async function startRecording(): Promise<void> {
   setPhase('recording');
   startCropLoop();
   // Show the timeline filling in as the take records.
-  startLiveTimeline(recStream);
+  session.live.start(recStream);
   el.recBtn.disabled = false;
 
   el.recBtn.classList.add('recording');
@@ -285,7 +285,7 @@ export function stopRec(): void {
   if (app.rec && app.rec.state !== 'inactive') app.rec.stop();
   stopCropLoop();
   stopMix();
-  stopLiveTimeline();          // the review rebuilds the timeline from the file
+  session.live.stop();         // the review rebuilds the timeline from the file
   // The share is kept: reviewing a clip and then pressing Record again adds to
   // it, which should not cost another trip through the picker.
   stopTimer();
