@@ -11,8 +11,9 @@
 // and read back here, and nothing outside would have to know.
 
 import { Take } from '../domain/clip/Take.js';
+import type { TakeRepository } from '../domain/clip/TakeRepository.js';
 
-export class TakeRepository {
+export class InMemoryTakeRepository implements TakeRepository {
   private takes: Take[] = [];
   private nextId = 1;
 
@@ -39,6 +40,21 @@ export class TakeRepository {
 
   isEmpty(): boolean {
     return this.takes.length === 0;
+  }
+
+  /** Where a take begins on the joined timeline. */
+  startOf(index: number): number {
+    let at = 0;
+    for (let i = 0; i < index && i < this.takes.length; i++) at += this.takes[i].duration;
+    return at;
+  }
+
+  /** Which take holds a moment of the joined timeline. */
+  indexAt(seconds: number): number {
+    for (let i = 0; i < this.takes.length; i++) {
+      if (seconds < this.startOf(i) + this.takes[i].duration) return i;
+    }
+    return Math.max(0, this.takes.length - 1);
   }
 
   /** How long the joined clip is. */

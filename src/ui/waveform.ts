@@ -9,7 +9,6 @@
 import { app } from '../state.js';
 import type { Take } from '../domain/clip/Take.js';
 import { el } from './dom.js';
-import { SpanSet } from '../domain/clip/SpanSet.js';
 import { keptLengthNow, keptOf } from './clip.js';
 
 const BUCKETS = 600;          // horizontal resolution of the waveform
@@ -94,8 +93,8 @@ export function drawWaveform(): void {
   // screen, so its bars are left out and the rest closes up over it.
   const kept = keptLengthNow();
   if (!(kept > 0)) return;
-  const gone = SpanSet.of(app.cuts).scaled(app.duration);   // the removed regions, in seconds
-  const step = app.duration / peaks.length;
+  const gone = app.clip.cuts.scaled(app.clip.total());   // the removed regions, in seconds
+  const step = app.clip.total() / peaks.length;
   const bw = Math.max(0.7, (w / kept) * step);
 
   const mid = h / 2;
@@ -108,8 +107,8 @@ export function drawWaveform(): void {
   }
 
   // Dim everything outside the kept range.
-  const x0 = (keptOf(app.trimStart * app.duration) / kept) * w;
-  const x1 = (keptOf(app.trimEnd * app.duration) / kept) * w;
+  const x0 = (keptOf(app.clip.trim.start * app.clip.total()) / kept) * w;
+  const x1 = (keptOf(app.clip.trim.end * app.clip.total()) / kept) * w;
   ctx.fillStyle = shade;
   ctx.fillRect(0, 0, Math.max(0, x0), h);
   ctx.fillRect(Math.min(w, x1), 0, Math.max(0, w - x1), h);
