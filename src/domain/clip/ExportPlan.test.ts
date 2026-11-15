@@ -1,0 +1,75 @@
+import { describe, expect, it } from 'vitest';
+
+import { ExportPlan } from './ExportPlan.js';
+import { Take } from './Take.js';
+import { TimelineMap } from './TimelineMap.js';
+
+// Two 5s takes, so the clip is 10s and a join falls halfway along it.
+const takes = [
+  Take.of(1, new Blob(['x']), 'blob:1', 5),
+  Take.of(2, new Blob(['x']), 'blob:2', 5),
+];
+
+// What a clip of those takes says when 3s-4s was cut out: three kept stretches,
+// the last one in the second take, and the join where the takes meet.
+const parts = () => ({
+  map: TimelineMap.forClip([{ s: 0.3, e: 0.4 }], 10),
+  segments: [
+    { takeIndex: 0, from: 0, to: 3 },
+    { takeIndex: 0, from: 4, to: 5 },
+    { takeIndex: 1, from: 5, to: 10 },
+  ],
+});
+
+const planOf = (settings = { audio: false, fadeSeconds: 0.08 }): ExportPlan =>
+  ExportPlan.of(parts().segments, takes, { from: 0, to: 10 }, parts().map, settings);
+
+describe('ExportPlan', () => {
+  it('places the kept stretches end to end, closing the cut', () => {
+    const plan = planOf();
+    expect(plan.pieces.map(p => [p.takeIndex, p.at])).toEqual([[0, 0], [0, 3], [1, 4]]);
+    expect(plan.total).toBeCloseTo(9);          // 10s of recording, 1s of it cut out
+  });
+
+  it('says which stretch of each take to decode, in the take’s own seconds', () => {
+    expect(planOf().steps.map(s => [s.takeIndex, s.local.from, s.local.to]))
+      .toEqual([[0, 0, 5], [1, 0, 5]]);
+  });
+
+  it('marks the join where one take follows another, and nowhere else', () => {
+    const plan = planOf();
+    expect(plan.steps.map(s => s.joinAt)).toEqual([null, 4]);
+    expect(plan.pieces.map((_, i) => plan.joinsPrev(i))).toEqual([false, false, true]);
+    expect(plan.pieces.map((_, i) => plan.joinsNext(i))).toEqual([false, true, false]);
+  });
+
+  it('maps a moment of the recording to the file, a cut included', () => {
+    const plan = planOf();
+    expect(plan.outputTimeOf(2)).toBeCloseTo(2);
+    expect(plan.outputTimeOf(4)).toBeCloseTo(3);      // where the second stretch begins
+    expect(plan.outputTimeOf(3.5)).toBeCloseTo(3);    // inside the cut: the time before it
+    expect(plan.outputTimeOf(9)).toBeCloseTo(8);
+  });
+
+  it('knows where each take begins on the recording', () => {
+    expect(planOf().startOf(1)).toBeCloseTo(5);
+  });
+
+  it('plans a range that begins and ends inside the clip', () => {
+    const { map } = parts();
+    const plan = ExportPlan.of(
+      [{ takeIndex: 1, from: 5, to: 8 }], takes, { from: 5, to: 8 }, map,
+      { audio: false, fadeSeconds: 0.08 });
+    expect(plan.pieces.map(p => p.at)).toEqual([0]);
+    expect(plan.total).toBeCloseTo(3);
+    expect(plan.steps[0].joinAt).toBeNull();          // one take only: nothing to join to
+    expect(plan.steps[0].local).toEqual({ from: 0, to: 3 });
+    expect(plan.outputTimeOf(6)).toBeCloseTo(1);       // 5s in is 4s kept, and the file starts there
+  });
+
+  it('carries what an export needs that is not the clip', () => {
+    const plan = planOf({ audio: true, fadeSeconds: 0.5 });
+    expect(plan.audio).toBe(true);
+    expect(plan.fadeSeconds).toBe(0.5);
+  });
+});
