@@ -61,7 +61,7 @@ export function togglePlayback(): void {
 }
 
 export function startPlayback(): void {
-  if (app.phase !== 'review' || el.rv.readyState < 2) return;
+  if (app.phase !== 'review' || el.rv.readyState < 1) return;
   const start = clipStart();
   const end   = clipEnd();
   // (Re)start from IN when the playhead sits outside the trimmed range.
@@ -72,7 +72,7 @@ export function startPlayback(): void {
 
 // Start (or keep) playing from an absolute time — a click on the timeline.
 export function playFrom(time: number): void {
-  if (app.phase !== 'review' || el.rv.readyState < 2) return;
+  if (app.phase !== 'review' || el.rv.readyState < 1) return;
   const start = clipStart();
   const end   = clipEnd();
   let t = clampToClip(time, start, end);
@@ -121,7 +121,7 @@ export function resetPlayback(): void {
 
 // Called by the timeline when a trim handle moves.
 export function syncToTrim(moved: 'start' | 'end'): void {
-  if (app.phase !== 'review' || el.rv.readyState < 2) return;
+  if (app.phase !== 'review' || el.rv.readyState < 1) return;
   const start = clipStart();
   const end   = clipEnd();
   if (app.playing) {
@@ -139,7 +139,7 @@ export function syncToTrim(moved: 'start' | 'end'): void {
 
 // Jump the playhead to an absolute time (thumbnail scrub), keeping transport state.
 export function seekPlayback(time: number): void {
-  if (app.phase !== 'review' || el.rv.readyState < 2) return;
+  if (app.phase !== 'review' || el.rv.readyState < 1) return;
   const t = clampToClip(time, clipStart(), clipEnd());
   askedSkip = 0;
   updatePlayhead(t);

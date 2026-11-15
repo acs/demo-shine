@@ -52,8 +52,6 @@ export const el = {
   tLiveTime: byId<HTMLElement>('t-live-time'),
   tlLabel:   byId<HTMLElement>('tl-label'),
   tTrim:     byId<HTMLElement>('t-trim'),
-  trimOk:    byId<HTMLButtonElement>('trim-ok'),
-  trimNo:    byId<HTMLButtonElement>('trim-no'),
   trimUndo:  byId<HTMLButtonElement>('trim-undo'),
   helpBd:    byId<HTMLElement>('help-bd'),
   helpBtn:   byId<HTMLButtonElement>('help-btn'),
