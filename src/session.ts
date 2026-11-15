@@ -24,8 +24,10 @@ import { app } from './state.js';
 import { el } from './ui/dom.js';
 import { drawGrid } from './ui/preview.js';
 import { setTimerMs } from './ui/timer.js';
-import { updateSizeUI } from './ui/timeline-ui.js';
+import { strip, updateSizeUI } from './ui/timeline-ui.js';
 import { player } from './ui/clip.js';
+import { drag } from './ui/marks.js';
+import { crop } from './ui/region.js';
 import { playback } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
 import { liveTimeline } from './ui/live-timeline.js';
@@ -38,7 +40,12 @@ export class Session {
    * is nothing to do about them here.
    */
   reset(): void {
+    // Everything in flight goes first: a strip being built, a bar being dragged,
+    // a crop being drawn. None of them may outlive the clip they belong to.
     liveTimeline.stop();
+    strip.cancel();
+    drag.cancel();
+    crop.cancel();
     // The element was holding a take that no longer exists: let go of it rather
     // than revoke its URL a second time.
     if (el.rv.src) el.rv.src = '';
@@ -51,7 +58,6 @@ export class Session {
     el.timeline.classList.remove('on');
     el.idleOv.classList.remove('gone');
     el.btnExp.style.display = 'none';
-    el.thumbs.innerHTML = '';
     el.resBadge.style.display = 'none';
 
     setTimerMs(0);

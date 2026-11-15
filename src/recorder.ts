@@ -10,7 +10,7 @@ import { el, setStatus, toast } from './ui/dom.js';
 import { startMirror, stopMirror, seekWithin } from './ui/preview.js';
 import { runCountdown, cancelCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
-import { buildThumbs } from './ui/timeline-ui.js';
+import { strip } from './ui/timeline-ui.js';
 import { keptLengthNow, player } from './ui/clip.js';
 import { playback } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
@@ -362,7 +362,7 @@ async function onRecStop(): Promise<void> {
   // Building the thumbnails seeks through the clip; once that is done, park the
   // playhead at the trim IN, or at the join when a recording was just added.
   const park = appending ? previous : app.clip.trim.start * app.clip.total();
-  void buildThumbs().then(() => playback.seek(park));
+  void strip.build().then(() => playback.seek(park));
   el.timeline.classList.add('on');
   el.btnExp.style.display   = '';
 }
