@@ -1,164 +1,118 @@
-// Pure trim / timeline math. No DOM and no browser APIs, so this module can be
-// read and tested on its own.
+// The trim and timeline math, as the rest of the app still calls it.
 //
-// The app trims in two independent ways, and both live here as pure functions:
+// The rules themselves now live in the value objects under domain/clip/ — a range
+// knows how to merge and clamp, a set of ranges knows it cannot overlap, a map
+// knows the two-way question between the recording and the timeline, and the keep
+// range knows its own units. This module is the old free-function face of them.
 //
-//   * the keep range — `trimStart`/`trimEnd`, dragged with the IN/OUT handles;
-//   * the removed regions ("cuts") — bounded by two marks on the timeline.
-//
-// A "span" is any { s, e } pair; most functions here do not care what unit it is
-// in. The app stores cuts as fractions of the clip (0..1) because that is what
-// the timeline is drawn in, and converts to seconds only where the media element
-// needs them (`cutsInSeconds`).
+// It is on its way out: its remaining callers are `clip.ts` and
+// `offline-export.ts`, which the next two steps rebuild around a `Take`
+// repository and a `Clip` aggregate, and the last of it goes with them. Nothing
+// new should be written against this file.
 
-export const MIN_TRIM_GAP = 10;   // slider units (the range is 0..1000)
-export const SLIDER_MAX = 1000;
+import { Span } from './clip/Span.js';
+import { SpanSet } from './clip/SpanSet.js';
+import { TimelineMap } from './clip/TimelineMap.js';
+import { Trim as KeepRange } from './clip/Trim.js';
 
+export { Span };
+
+// Slider units, which is what the IN/OUT handles are dragged in.
+export const MIN_TRIM_GAP = KeepRange.MIN_GAP * KeepRange.SLIDER_MAX;
+export const SLIDER_MAX = KeepRange.SLIDER_MAX;
+
+/** The keep range as the handles hold it: slider units. */
 export interface Trim {
-  s: number;   // IN, in slider units
-  en: number;  // OUT, in slider units
+  s: number;   // IN
+  en: number;  // OUT
 }
 
 export function clipSeconds(duration: number, trimStart: number, trimEnd: number): number {
-  return (trimEnd - trimStart) * duration;
+  return KeepRange.of(trimStart, trimEnd).seconds(duration);
 }
 
-// Keep a playback position inside a clip range, in seconds.
+// Keep a playback position inside a clip range, in seconds. Not a range rule, so
+// it is still a function.
 export function clampToClip(time: number, start: number, end: number): number {
   return Math.min(Math.max(time, start), end);
 }
 
-// Keep IN and OUT at least `gap` apart. `moved` names the handle the user
-// dragged, so the other one stays put.
 export function normalizeTrim(
   startVal: number,
   endVal: number,
   moved: 'start' | 'end',
   gap: number = MIN_TRIM_GAP,
 ): Trim {
-  let s = startVal;
-  let en = endVal;
-  if (s >= en - gap) {
-    if (moved === 'start') s = en - gap;
-    else                   en = s + gap;
-  }
-  return { s, en };
+  const { start, end } = KeepRange.fromSlider(startVal, endVal).normalized(moved, gap / SLIDER_MAX).slider;
+  return { s: start, en: end };
 }
 
+// A rough size for the export, for the timeline to show. Drafting advice rather
+// than a rule: this belongs with the view, and moves there when the layers do.
 export function estimateWebmText(clip: number): string {
   const lo = clip * 0.1;    // ~800 Kbps low motion
   const hi = clip * 0.55;   // ~4.4 Mbps high motion
   return `~${lo.toFixed(1)}–${hi.toFixed(1)} MB (WebM)`;
 }
 
-// ── Marks and cuts ───────────────────────────────────────────────────────────
-//
-// A span is half-open, [s, e). Cuts are spans removed from the kept range: they
-// are skipped on playback and on export, never re-encoded away.
+// ── marks and cuts ───────────────────────────────────────────────────────────
 
-export interface Span {
+export interface SpanShape {
   s: number;
   e: number;
 }
 
-// Two marks bound a span; too thin a region is not worth offering.
 export function spanBetween(a: number, b: number, minGap = 0): Span | null {
-  const s = Math.min(a, b);
-  const e = Math.max(a, b);
-  return e - s >= minGap ? { s, e } : null;
+  return Span.between(a, b, minGap);
 }
 
-// Add a span, merging anything it touches so the list stays sorted and disjoint.
-export function addSpan(spans: Span[], add: Span): Span[] {
-  const out: Span[] = [];
-  for (const sp of [...spans, add].sort((a, b) => a.s - b.s)) {
-    const last = out[out.length - 1];
-    if (last && sp.s <= last.e) last.e = Math.max(last.e, sp.e);
-    else out.push({ s: sp.s, e: sp.e });
-  }
-  return out;
+export function addSpan(spans: readonly SpanShape[], add: SpanShape): Span[] {
+  return [...SpanSet.of(spans).add(add).spans];
 }
 
-// Index of the span containing v, or -1.
-export function spanAt(spans: Span[], v: number): number {
-  return spans.findIndex(sp => v >= sp.s && v < sp.e);
+export function spanAt(spans: readonly SpanShape[], v: number): number {
+  const set = SpanSet.of(spans);
+  return set.spans.findIndex(span => span.contains(v));
 }
 
-// The end of the span containing v, or null when v is not inside one. This is
-// where the playhead has to jump to in order to leave a removed region.
-export function cutEndAt(spans: Span[], v: number): number | null {
-  const i = spanAt(spans, v);
-  return i < 0 ? null : spans[i].e;
+export function cutEndAt(spans: readonly SpanShape[], v: number): number | null {
+  return SpanSet.of(spans).endAt(v);
 }
 
-// Length of the spans inside [start, end], counting an overlap only once.
-export function spanLength(spans: Span[], start: number, end: number): number {
-  let total = 0;
-  let covered = -Infinity;                 // end of the last merged span
-  for (const sp of [...spans].sort((a, b) => a.s - b.s)) {
-    const s = Math.max(sp.s, covered);     // drop whatever an earlier span covered
-    if (sp.e <= s) continue;
-    const lo = Math.max(s, start);
-    const hi = Math.min(sp.e, end);
-    if (hi > lo) total += hi - lo;
-    covered = sp.e;
-  }
-  return total;
+export function spanLength(spans: readonly SpanShape[], start: number, end: number): number {
+  return SpanSet.of(spans).within(start, end);
 }
 
-// The length left after a range has had the spans inside it removed.
-export function keptLength(spans: Span[], start: number, end: number): number {
-  return Math.max(0, (end - start) - spanLength(spans, start, end));
+export function keptLength(spans: readonly SpanShape[], start: number, end: number): number {
+  return Math.max(0, (end - start) - SpanSet.of(spans).within(start, end));
 }
 
-// A trim that has been approved disappears from the timeline and what is left
-// closes up, so the timeline shows what the export will hold. These two map
-// between a time in the recording and that time as the user sees it. They are
-// inverses of each other, except exactly at the edge of a removed region, where
-// keptTime gives the time before it and sourceTime the time after.
-export function keptTime(cuts: Span[], source: number): number {
-  let kept = source;
-  for (const c of cuts) {
-    if (source <= c.s) break;
-    kept -= Math.min(source, c.e) - c.s;
-  }
-  return Math.max(0, kept);
+// `total` is not consulted by the mapping — only the removed regions are — so it
+// is left at zero here.
+export function keptTime(cuts: readonly SpanShape[], source: number): number {
+  return TimelineMap.of(cuts, 0).keptOf(source);
 }
 
-export function sourceTime(cuts: Span[], kept: number): number {
-  let source = kept;
-  for (const c of cuts) {
-    if (source < c.s) break;
-    source += c.e - c.s;
-  }
-  return source;
+export function sourceTime(cuts: readonly SpanShape[], kept: number): number {
+  return TimelineMap.of(cuts, 0).sourceOf(kept);
 }
 
-// Cuts in seconds, for the media element. The app keeps them as fractions.
-export function cutsInSeconds(cuts: Span[], duration: number): Span[] {
-  return cuts.map(c => ({ s: c.s * duration, e: c.e * duration }));
+export function cutsInSeconds(cuts: readonly SpanShape[], duration: number): Span[] {
+  return [...SpanSet.of(cuts).scaled(duration).spans];
 }
 
-// Slide a span so that it starts at `toStart`, keeping its length and staying
-// inside [0, 1].
-export function moveSpan(span: Span, toStart: number): Span {
-  const len = span.e - span.s;
-  const s = Math.min(Math.max(toStart, 0), 1 - len);
-  return { s, e: s + len };
+export function moveSpan(span: SpanShape, toStart: number): Span {
+  return Span.of(span.s, span.e).movedTo(toStart);
 }
 
-// Drag one edge of a span, keeping it at least `min` long and inside [0, 1].
-export function resizeSpan(span: Span, edge: 's' | 'e', to: number, min = 0): Span {
-  return edge === 's'
-    ? { s: Math.min(Math.max(to, 0), span.e - min), e: span.e }
-    : { s: span.s, e: Math.max(Math.min(to, 1), span.s + min) };
+export function resizeSpan(span: SpanShape, edge: 's' | 'e', to: number, min = 0): Span {
+  return Span.of(span.s, span.e).resized(edge, to, min);
 }
 
-// ── Several recordings as one clip ───────────────────────────────────────────
+// ── several recordings as one clip ───────────────────────────────────────────
 //
-// A session can hold more than one recording ("parts"), played one after another
-// as a single clip. Two questions follow from that: where a part begins on the
-// joined timeline, and which part holds a given time.
+// About the takes, which the Clip aggregate owns in the next step, so these two
+// stay here until it does.
 
 export interface Timed {
   duration: number;

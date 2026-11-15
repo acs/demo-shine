@@ -8,7 +8,9 @@
 
 import { clock, el } from './dom.js';
 import { app } from '../state.js';
-import { estimateWebmText, keptLength, normalizeTrim } from '../domain/timeline.js';
+import { estimateWebmText } from '../domain/timeline.js';
+import { TimelineMap } from '../domain/clip/TimelineMap.js';
+import { Trim } from '../domain/clip/Trim.js';
 import { clipSeek, keptLengthNow, keptOf, sourceOf } from './clip.js';
 import { setTimerMs } from './timer.js';
 import { syncToTrim } from './playback.js';
@@ -26,7 +28,7 @@ export function onTrim(evt: { target: EventTarget | null }): void {
   const moved: 'start' | 'end' = evt.target === el.rStart ? 'start' : 'end';
   // The handles work in timeline units (0..1000 of what is left), so the model
   // keeps its own fractions of the recording.
-  const { s, en } = normalizeTrim(parseInt(el.rStart.value), parseInt(el.rEnd.value), moved);
+  const { start: s, end: en } = Trim.fromSlider(parseInt(el.rStart.value), parseInt(el.rEnd.value)).normalized(moved).slider;
   app.trimStart = toRecordingFraction(s);
   app.trimEnd   = toRecordingFraction(en);
   updateTrimUI(false);       // the handles are the authority while dragging
@@ -53,7 +55,8 @@ export function updateTrimUI(syncHandles = true): void {
 export function updateSizeUI(): void {
   if (!app.duration || app.phase === 'idle') { el.tSize.textContent = '—'; return; }
   // Cuts are trimmed away, so they shrink the estimate too.
-  const clip = keptLength(app.cuts, app.trimStart, app.trimEnd) * app.duration;
+  const timeline = TimelineMap.forClip(app.cuts, app.duration);
+  const clip = timeline.keptLength(app.trimStart * app.duration, app.trimEnd * app.duration);
   el.tSize.textContent = estimateWebmText(clip);
 }
 
