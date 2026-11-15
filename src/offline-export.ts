@@ -10,23 +10,26 @@
 // clock goes the same way. One library reads and writes; the file it writes
 // carries the Duration and Cues that MediaRecorder leaves out.
 //
+// What to write is not decided here. It arrives as an `ExportPlan` — the kept
+// stretches, where each lands, where the joins are — built in
+// src/application/export-clip.ts, which is where that thinking belongs and where
+// it can be tested. This file keeps the browser.
+//
 // Measured on a 6 s 1280x720 take (see POC-offline-export.md): 11.6x real time,
 // against 1x for the real-time export and 1.8x for an attempt that seeked to each
 // frame. It runs with the tab in the background, and the file it writes seeks.
 //
 // What this deliberately does not do: fall back to anything. If WebCodecs is not
 // there, or a take cannot be read, it throws — src/exporter.ts owns the decision
-// to export the slow way instead.
+// to refuse and say so.
 
 import {
   AudioBufferSource, BufferSource, BufferTarget, CanvasSource, Input, Output, Quality,
   VideoSampleSink, WEBM, WebMOutputFormat,
 } from 'mediabunny';
-import { app } from './state.js';
-import type { Segment } from './domain/clip/Clip.js';
+import type { ExportPlan } from './domain/clip/ExportPlan.js';
 import { ctx as preview, el } from './ui/dom.js';
 import { clearFrame, dissolveAlpha, heldCanvas, holdFrom } from './ui/dissolve.js';
-import { FADE_S } from './ui/fade.js';
 
 const VIDEO_BITRATE  = 4_000_000;   // bits per second
 const AUDIO_BITRATE  = 128_000;
@@ -47,7 +50,6 @@ export function offlineAvailable(): boolean {
   return typeof VideoEncoder === 'function' && typeof AudioEncoder === 'function';
 }
 
-// A kept stretch: a range of one take that survives the trims.
 // VP9, the codec the recording itself prefers, with VP8 behind it. Asked of
 // WebCodecs directly rather than of Mediabunny: its codec registry is a lot of
 // table for one question, and this is the one it is kept out of the bundle for.
@@ -71,61 +73,44 @@ async function pickVideoCodec(width: number, height: number): Promise<'vp9' | 'v
 // It is handed over as one buffer, which is why the mixing happens here rather
 // than in the encoder: an OfflineAudioContext is the only place a Web Audio graph
 // can be rendered faster than real time.
-async function renderAudio(segments: Segment[], offsets: number[], total: number): Promise<AudioBuffer | null> {
-  if (!app.recAudio || !segments.length) return null;
-  const takes = app.clip.takes.all();
-  const ctx = new OfflineAudioContext(2, Math.max(1, Math.ceil(total * SAMPLE_RATE)), SAMPLE_RATE);
+async function renderAudio(plan: ExportPlan): Promise<AudioBuffer | null> {
+  const pieces = plan.pieces;
+  if (!plan.audio || !pieces.length) return null;
+  const takes = plan.takes;
+  const ctx = new OfflineAudioContext(2, Math.max(1, Math.ceil(plan.total * SAMPLE_RATE)), SAMPLE_RATE);
   const decoded = new Map<number, AudioBuffer>();
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i];
-    let buffer = decoded.get(seg.takeIndex);
+  for (let i = 0; i < pieces.length; i++) {
+    const piece = pieces[i];
+    let buffer = decoded.get(piece.takeIndex);
     if (!buffer) {
-      buffer = await ctx.decodeAudioData(await takes[seg.takeIndex].blob.arrayBuffer());
-      decoded.set(seg.takeIndex, buffer);
+      buffer = await ctx.decodeAudioData(await takes[piece.takeIndex].blob.arrayBuffer());
+      decoded.set(piece.takeIndex, buffer);
     }
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     const gain = ctx.createGain();
     gain.gain.value = 1;
-    const start = offsets[i];
-    const length = seg.to - seg.from;
+    const length = piece.to - piece.from;
     // Down as this take runs out, up as the next begins — only at a real join.
-    const joinsNext = segments[i + 1] && segments[i + 1].takeIndex !== seg.takeIndex;
-    const joinsPrev = segments[i - 1] && segments[i - 1].takeIndex !== seg.takeIndex;
-    if (joinsPrev) {
-      gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(1, start + Math.min(FADE_S, length));
+    if (plan.joinsPrev(i)) {
+      gain.gain.setValueAtTime(0, piece.at);
+      gain.gain.linearRampToValueAtTime(1, piece.at + Math.min(plan.fadeSeconds, length));
     }
-    if (joinsNext && length > FADE_S) {
-      gain.gain.setValueAtTime(1, start + length - FADE_S);
-      gain.gain.linearRampToValueAtTime(0, start + length);
+    if (plan.joinsNext(i) && length > plan.fadeSeconds) {
+      gain.gain.setValueAtTime(1, piece.at + length - plan.fadeSeconds);
+      gain.gain.linearRampToValueAtTime(0, piece.at + length);
     }
     src.connect(gain).connect(ctx.destination);
     // The stretch of the take, placed where it belongs on the output timeline.
-    src.start(start, seg.from - app.clip.takes.startOf(seg.takeIndex), length);
+    src.start(piece.at, piece.from - plan.startOf(piece.takeIndex), length);
   }
   return ctx.startRendering();
 }
 
-export async function exportOffline(onProgress?: (source: number) => void): Promise<{ blob: Blob; stats: OfflineStats }> {
+export async function exportOffline(plan: ExportPlan, onProgress?: (source: number) => void): Promise<{ blob: Blob; stats: OfflineStats }> {
   const started = performance.now();
-  const takes = app.clip.takes.all();
-  const s = app.clip.trim.start * app.clip.total();
-  const e = Math.min(app.clip.trim.end * app.clip.total(), app.clip.total() - 0.05);
-  if (!takes.length || e <= s) throw new Error('nothing to export');
-
-  const segments = app.clip.segmentsIn(s, e);
-  if (!segments.length) throw new Error('nothing to export');
-  const offsets: number[] = [];
-  let total = 0;
-  for (const seg of segments) { offsets.push(total); total += seg.to - seg.from; }
-
-  // Where each take first appears on the output timeline: that is where a join
-  // is, and so where a dissolve has to start.
-  const takeFirstOffset = new Map<number, number>();
-  segments.forEach((seg, i) => { if (!takeFirstOffset.has(seg.takeIndex)) takeFirstOffset.set(seg.takeIndex, offsets[i]); });
-  const takeOrder = [...takeFirstOffset.keys()];
-  if (!takeOrder.length) throw new Error('nothing to export');
+  const takes = plan.takes;
+  if (!plan.pieces.length) throw new Error('nothing to export');
 
   const ec = document.createElement('canvas');
   ec.width = el.cv.width || 1280;
@@ -135,7 +120,7 @@ export async function exportOffline(onProgress?: (source: number) => void): Prom
 
   const codec = await pickVideoCodec(ec.width, ec.height);
   if (!codec) throw new Error('this browser cannot encode WebM offline');
-  const audio = await renderAudio(segments, offsets, total);
+  const audio = await renderAudio(plan);
 
   const output = new Output({ format: new WebMOutputFormat(), target: new BufferTarget() });
   const video = new CanvasSource(ec, {
@@ -148,21 +133,16 @@ export async function exportOffline(onProgress?: (source: number) => void): Prom
   if (sound) output.addAudioTrack(sound);
   await output.start();
 
-  const map  = app.clip.timeline();    // the recording and the timeline, mapped both ways
-  const base = map.keptOf(s);          // where the export starts on the kept timeline
   let frames = 0;
 
   try {
-    for (let p = 0; p < takeOrder.length; p++) {
-      const takeIndex = takeOrder[p];
+    for (const step of plan.steps) {
       // Entering a take that follows another: the frame left behind is the one to
       // dissolve away from, and this is where the dissolve starts.
-      const joinAt = takeFirstOffset.get(takeIndex) ?? 0;
-      const followsAnother = p > 0;
-      if (followsAnother) holdFrom(ec);
+      if (step.joinAt !== null) holdFrom(ec);
 
       const input = new Input({
-        source: new BufferSource(await takes[takeIndex].blob.arrayBuffer()),
+        source: new BufferSource(await takes[step.takeIndex].blob.arrayBuffer()),
         formats: [WEBM],   // WebM only: Mediabunny's other demuxers stay out of the bundle
       });
       try {
@@ -170,18 +150,18 @@ export async function exportOffline(onProgress?: (source: number) => void): Prom
         if (!track) throw new Error('a take has no video track');
         if (!(await track.canDecode())) throw new Error('a take cannot be decoded');
         const first = await input.getFirstTimestamp();
-        const from = Math.max(s, app.clip.takes.startOf(takeIndex)) - app.clip.takes.startOf(takeIndex) + first;
-        const to   = Math.min(e, app.clip.takes.startOf(takeIndex) + takes[takeIndex].duration) - app.clip.takes.startOf(takeIndex) + first;
+        const from = step.local.from + first;
+        const to   = step.local.to + first;
 
         for await (const frame of new VideoSampleSink(track).samples(from, to)) {
           try {
-            const source = app.clip.takes.startOf(takeIndex) + (frame.timestamp - first);
-            const at = map.keptOf(source) - base;          // the output timeline
-            if (at < -0.001 || at > total + 0.001) continue;   // trimmed away, or outside
+            const source = plan.startOf(step.takeIndex) + (frame.timestamp - first);
+            const at = plan.outputTimeOf(source);              // the output timeline
+            if (at < -0.001 || at > plan.total + 0.001) continue;   // cut away, or outside
 
             // The picture's side of the join, the same blend playback draws: the
             // frame left behind at full, the new take rising over it.
-            const alpha = followsAnother ? dissolveAlpha(at - joinAt) : null;
+            const alpha = step.joinAt === null ? null : dissolveAlpha(at - step.joinAt);
             const held = alpha === null ? null : heldCanvas();
             if (held && alpha !== null) {
               ectx.globalAlpha = 1;
@@ -190,8 +170,8 @@ export async function exportOffline(onProgress?: (source: number) => void): Prom
             }
             frame.draw(ectx, 0, 0, ec.width, ec.height);
             ectx.globalAlpha = 1;
-            // The preview shows what is being written, as the real-time export
-            // does — the export does not play, so nothing else would move.
+            // The preview shows what is being written: the export does not play, so
+            // nothing else would move.
             preview.drawImage(ec, 0, 0, el.cv.width, el.cv.height);
 
             // Hand the canvas over: Mediabunny encodes it and writes the frame,
@@ -220,5 +200,5 @@ export async function exportOffline(onProgress?: (source: number) => void): Prom
   if (!buffer) throw new Error('the encoder wrote nothing');
   const blob = new Blob([buffer], { type: 'video/webm' });
   const ms = performance.now() - started;
-  return { blob, stats: { clip: total, ms, realtime: (total * 1000) / ms, frames, bytes: blob.size } };
+  return { blob, stats: { clip: plan.total, ms, realtime: (plan.total * 1000) / ms, frames, bytes: blob.size } };
 }
