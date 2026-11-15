@@ -19,7 +19,7 @@ import { estimateWebmText } from '../domain/timeline.js';
 import { drawWebcamOverlay } from './webcam.js';
 import { keptLengthNow, keptOf } from './clip.js';
 import { currentPeaks } from './waveform.js';
-import { spanAt } from '../domain/timeline.js';
+import { SpanSet } from '../domain/clip/SpanSet.js';
 
 const CELLS     = 22;     // the same strip the review builds
 const CELL_W    = 80;
@@ -162,12 +162,12 @@ function paintWave(span: number): void {
 
   if (echo && echo.length) {
     // every bar of the clip so far, over the recording's own time
-    const cuts = app.cuts.map(c => ({ s: c.s * app.duration, e: c.e * app.duration }));
+    const gone = SpanSet.of(app.cuts).scaled(app.duration);
     const step = app.duration / echo.length;
     const bw = Math.max(0.7, (w / span) * step);
     for (let i = 0; i < echo.length; i++) {
       const at = (i + 0.5) * step;
-      if (spanAt(cuts, at) >= 0) continue;               // trimmed away: not in the clip
+      if (gone.contains(at)) continue;                   // trimmed away: not in the clip
       bar(echo[i], keptOf(at), bw);
     }
   }
