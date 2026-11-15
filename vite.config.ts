@@ -31,6 +31,22 @@ export default defineConfig(({ mode }) => ({
         this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ version }) });
       },
     },
+    {
+      // Carry the licences of what we bundle. Vite's minifier drops every comment
+      // and does not take esbuild's `legalComments` for it, so the notices are
+      // appended here — after minification, where they survive. Mediabunny, which
+      // the offline export brings in, is MPL-2.0, and its notice is meant to
+      // travel with the copies made of it. public/THIRD-PARTY-NOTICES.txt is the
+      // readable version, and ships beside the app as well.
+      name: 'demoshine-notices',
+      apply: 'build',
+      generateBundle(_options, bundle) {
+        const notices = readFileSync('public/THIRD-PARTY-NOTICES.txt', 'utf8');
+        for (const file of Object.values(bundle)) {
+          if (file.type === 'chunk') file.code += '\n/*!\n' + notices + '*/\n';
+        }
+      },
+    },
   ],
   server: { port: 5173 },
   preview: { port: 5173 },
