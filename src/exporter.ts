@@ -3,9 +3,9 @@
 
 import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
-import { drawGrid } from './ui/preview.js';
+import { drawFrame, drawGrid } from './ui/preview.js';
 import { setTimerMs } from './ui/timer.js';
-import { resetTrim, updateSizeUI } from './ui/timeline-ui.js';
+import { beginEncoding, encodingAt, endEncoding, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
 import { resetMarks } from './ui/marks.js';
 import { clipSeek, clipTime, releaseParts } from './ui/clip.js';
 import { getBestMime } from './infra/codecs.js';
@@ -13,7 +13,7 @@ import { dlBlob, ts } from './infra/download.js';
 import { stopRec, startCapture, releaseDisplay } from './recorder.js';
 import { pausePlayback, resetPlayback } from './ui/playback.js';
 import { clearWaveform } from './ui/waveform.js';
-import { cutEndAt, cutsInSeconds, keptLength, partAt, partStart, spanLength } from './domain/timeline.js';
+import { cutEndAt, cutsInSeconds, partAt, partStart } from './domain/timeline.js';
 
 export async function doExport(): Promise<void> {
   if (app.phase !== 'review') return;
@@ -24,6 +24,7 @@ export async function doExport(): Promise<void> {
   el.btnReset.disabled = true;
   el.playBtn.disabled  = true;
   setStatus('proc', 'Encoding…');
+  beginEncoding();
   try {
     await exportWebM();
     setStatus('ready', 'Export complete ✓');
@@ -38,7 +39,7 @@ export async function doExport(): Promise<void> {
   el.btnExp.disabled   = false;
   el.btnReset.disabled = false;
   el.playBtn.disabled  = false;
-  el.encBar.style.width = '0%';
+  endEncoding();
   pausePlayback();               // refresh the playhead after the export moved rv
 }
 
@@ -75,15 +76,28 @@ function attachExportAudio(stream: MediaStream): void {
   tracks.forEach(t => stream.addTrack(t));
 }
 
+// An export is driven by the clip playing, not by a clock the page owns, so if
+// the clip stops moving — a decode that never starts, a seek that never lands —
+// it would sit there for good with the app stuck in 'encoding'. Every step that
+// waits has a limit, and gives up loudly rather than quietly.
+const STEP_MS = 10000;
+
+function within<T>(work: Promise<T>, ms: number, what: string): Promise<T> {
+  return Promise.race([
+    work,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(what)), ms)),
+  ]);
+}
+
 function exportWebM(): Promise<void> {
   return new Promise((resolve, reject) => {
+    let stalled = false;
     const s       = app.trimStart * app.duration;
     // Clamp the end to the clip itself — a measured total, so this is exact.
     const e       = Math.min(app.trimEnd * app.duration, app.duration - 0.05);
     // Cuts (regions trimmed away) are skipped below, so they must not count
     // towards the progress bar or the clip length.
     const cuts    = cutsInSeconds(app.cuts, app.duration);
-    const keptDur = Math.max(keptLength(cuts, s, e), 0.1);
 
     const ec = document.createElement('canvas');
     ec.width = el.cv.width; ec.height = el.cv.height;
@@ -102,7 +116,7 @@ function exportWebM(): Promise<void> {
     const finish = () => {
       el.rv.pause();
       if (rec.state !== 'inactive') rec.stop();
-      el.encBar.style.width = '100%';
+      encodingAt(e, e);                        // the range is written right through
     };
 
     rec.ondataavailable = ev => { if (ev.data.size > 0) out.push(ev.data); };
@@ -117,8 +131,11 @@ function exportWebM(): Promise<void> {
       return new Promise(done => {
         let asked = 0;          // cut end already seeked to, so it is asked for once
         let stuckAt = 0;        // when the playhead last failed to get out of a cut
+        let lastT = -1, movedAt = Date.now();
         (function frame() {
           const t = clipTime();
+          if (t !== lastT) { lastT = t; movedAt = Date.now(); }
+          else if (Date.now() - movedAt > STEP_MS) { stalled = true; done(); return; }
           if (t >= limit - 0.01 || el.rv.ended || el.rv.paused) { done(); return; }
           const cutEnd = cutEndAt(cuts, t);
           if (cutEnd !== null) {
@@ -134,8 +151,8 @@ function exportWebM(): Promise<void> {
           }
           asked = 0; stuckAt = 0;
           ectx?.drawImage(el.rv, 0, 0, ec.width, ec.height);
-          const removed = spanLength(cuts, s, t);
-          el.encBar.style.width = Math.min(((t - s - removed) / keptDur) * 100, 99).toFixed(1) + '%';
+          try { drawFrame(el.rv); } catch { /* a frame not ready: the next one will do */ }
+          encodingAt(t, e);                      // where it has got to, and what is left
           requestAnimationFrame(frame);
         })();
       });
@@ -146,9 +163,10 @@ function exportWebM(): Promise<void> {
       while (at < e - 0.01) {
         const index = partAt(app.parts, at);
         const limit = Math.min(partStart(app.parts, index) + app.parts[index].duration, e);
-        await clipSeek(at);
-        await el.rv.play().catch(err => { throw err; });
+        await within(clipSeek(at), STEP_MS, 'the clip would not seek');
+        await within(el.rv.play(), STEP_MS, 'the clip would not play');
         await drawTo(limit);
+        if (stalled) throw new Error('the clip stopped playing');
         at = limit;
       }
       finish();
@@ -172,7 +190,6 @@ export function resetAll(): void {
   el.timeline.classList.remove('on');
   el.idleOv.classList.remove('gone');
   el.btnExp.style.display   = 'none';
-  el.encBar.style.width     = '0%';
   el.thumbs.innerHTML       = '';
   el.resBadge.style.display = 'none';
   setTimerMs(0);
