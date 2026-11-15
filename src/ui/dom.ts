@@ -57,6 +57,8 @@ export const el = {
   helpClose: byId<HTMLButtonElement>('help-close'),
   compatWarn: byId<HTMLElement>('compat-warn'),
   ver:       byId<HTMLElement>('ver'),
+  verNew:    byId<HTMLButtonElement>('ver-new'),
+  helpVer:   byId<HTMLElement>('help-ver'),
   webcamBtn: byId<HTMLButtonElement>('webcam-btn'),
   wcv:       byId<HTMLVideoElement>('wcv'),
   micBtn:    byId<HTMLButtonElement>('mic-btn'),
