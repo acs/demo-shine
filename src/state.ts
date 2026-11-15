@@ -4,7 +4,8 @@
 // importers, so cross-module state is carried here rather than in scattered
 // `let` variables. Domain logic stays out of this file.
 
-import type { Span } from './domain/timeline.js';
+import { Clip } from './domain/clip/Clip.js';
+import { InMemoryTakeRepository } from './infra/takes.js';
 
 export type Phase = 'idle' | 'starting' | 'live' | 'countdown' | 'recording' | 'review' | 'encoding';
 
@@ -17,28 +18,17 @@ export interface Rect {
 }
 
 // One recording. A session is a list of them, reviewed as one joined clip.
-export interface Part {
-  blob: Blob;
-  duration: number;   // seconds of media
-}
-
 export interface AppState {
   phase: Phase;
 
   stream: MediaStream | null;   // from getDisplayMedia
   rec: MediaRecorder | null;    // live recording
   chunks: Blob[];               // blobs of the recording in progress
-  parts: Part[];                // the recordings made so far, in order
+  clip: Clip;                   // the takes, the keep range, and what was trimmed away —
+                                // everything else asks this object what the clip is
 
-  duration: number;             // seconds of the whole joined clip
-  trimStart: number;            // 0..1
-  trimEnd: number;              // 0..1
-
-  marks: number[];              // 0..1, up to two pending marks bounding the region to cut
-  cuts: Span[];                 // 0..1, regions removed from the clip (skipped on play + export)
-  // Trimming, in short: trimStart/trimEnd above are what is KEPT; `cuts` are the
-  // extra regions DROPPED inside it, and `marks` is the half-made selection
-  // (one mark placed, or two bounding a region to drop). See domain/timeline.ts.
+  marks: number[];              // 0..1, up to two pending marks bounding the region to cut —
+                                // the half-made selection, which the view owns
 
   timerIv: number | null;       // record-clock interval id
   startAt: number | null;       // recording start timestamp
@@ -72,14 +62,9 @@ export const app: AppState = {
   stream: null,
   rec: null,
   chunks: [],
-  parts: [],
-
-  duration: 0,
-  trimStart: 0,
-  trimEnd: 1,
+  clip: Clip.empty(new InMemoryTakeRepository()),
 
   marks: [],
-  cuts: [],
 
   timerIv: null,
   startAt: null,

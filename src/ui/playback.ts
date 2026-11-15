@@ -17,8 +17,7 @@
 import { app } from '../state.js';
 import { el } from './dom.js';
 import { drawClipFrame } from './preview.js';
-import { clampToClip } from '../domain/timeline.js';
-import { TimelineMap } from '../domain/clip/TimelineMap.js';
+import { clampToClip } from '../util.js';
 import { clipNext, clipSeek, clipSeekAndDraw, clipTime, hasNextPart, keptLengthNow, keptOf, partEnded, partLeft } from './clip.js';
 import { FADE_S, fadeIn, fadeOut, fadeReset } from './fade.js';
 import { clearFrame, holdFrame } from './dissolve.js';
@@ -30,8 +29,8 @@ const STALL_MS  = 2500;   // how long the playhead may stand still before we sto
 const SEEK_MS   = 12000;  // ...but a seek gets longer: jumping a trim means seeking
 const NUDGE_MS  = 600;    // ...and a seek that left the clip paused gets a moment
 
-const clipStart = () => app.trimStart * app.duration;
-const clipEnd   = () => app.trimEnd * app.duration;
+const clipStart = () => app.clip.trim.start * app.clip.total();
+const clipEnd   = () => app.clip.trim.end * app.clip.total();
 
 let askedSkip = 0;       // cut end already seeked to, so it is asked for once
 let seekSince = 0;       // when the seek in flight started (0 = none)
@@ -44,10 +43,10 @@ let joinFaded = false;   // the sound is down for a join that is coming
 // The end of the removed region the playhead sits in, in seconds, or null when
 // it is not inside one. The cuts are stored as fractions of the clip.
 function cutEndFor(t: number): number | null {
-  if (!(app.duration > 0)) return null;
+  if (!(app.clip.total() > 0)) return null;
   // Asked in seconds: the map holds the regions in the recording's own time, so
   // the fraction-of-the-clip the app stores never reaches this question.
-  return TimelineMap.forClip(app.cuts, app.duration).endAt(t);
+  return app.clip.timeline().endAt(t);
 }
 
 // While a bar is dragged the clip is played from wherever it is, including the
