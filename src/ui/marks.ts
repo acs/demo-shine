@@ -73,10 +73,10 @@ export function initTimelineMarks(): void {
   el.timeline.addEventListener('click', onTimelineClick);
   el.tlMarks.addEventListener('click', onActionClick);     // the check and the cross
   el.trimUndo.addEventListener('click', undoTrim);
-  el.tlMarks.addEventListener('pointerdown', onBarDown);
-  window.addEventListener('pointermove', onBarMove);
-  window.addEventListener('pointerup', onBarUp);
-  window.addEventListener('pointercancel', onBarUp);
+  el.tlMarks.addEventListener('pointerdown', evt => drag.down(evt));
+  window.addEventListener('pointermove', evt => drag.move(evt));
+  window.addEventListener('pointerup', () => drag.up());
+  window.addEventListener('pointercancel', () => drag.up());
 }
 
 // Paint the marks and the selected section over the timeline, and the actions
@@ -180,7 +180,7 @@ function afterEdits(at: number): void {
 // ── Clicking the timeline ────────────────────────────────────────────────────
 
 function onTimelineClick(evt: MouseEvent): void {
-  if (swallowNextClick) { swallowNextClick = false; return; }   // that press was a drag
+  if (drag.takesTheClick()) return;                             // that press was a drag
   if (!canEdit()) return;
 
   const target = evt.target as HTMLElement | null;
@@ -217,73 +217,105 @@ interface Press {
   lastSeek: number;  // when the clip was last moved to follow the bar
 }
 
-let press: Press | null = null;
-let swallowNextClick = false;   // the click that follows a drag must not re-trim
+// The gesture in flight: which bar the pointer took hold of, and whether the click
+// that follows it belongs to the drag rather than being a new mark. It is the
+// interaction's own state and nothing else can see it, so it lives on an object
+// with a lifetime — and the session ends that lifetime, because a drag must not
+// outlive the clip it was trimming.
+class MarkDrag {
+  private press: Press | null = null;
+  private swallow = false;
 
-function onBarDown(evt: PointerEvent): void {
-  swallowNextClick = false;
-  if (!canEdit()) return;
-  const bar = (evt.target as HTMLElement | null)?.closest<HTMLElement>('.tl-mark, .tl-sel');
-  if (!bar) return;
-
-  const rect = bar.getBoundingClientRect();
-  const kind: GrabKind = bar.classList.contains('tl-mark') ? 'mark'
-    : evt.clientX - rect.left <= EDGE_GRIP ? 'left'
-    : rect.right - evt.clientX <= EDGE_GRIP ? 'right'
-    : 'move';
-
-  press = {
-    kind,
-    index: Number(bar.dataset.i),
-    offset: kind === 'move' ? fractionAt(evt.clientX) - (pendingSection()?.s ?? 0) : 0,
-    fromX: evt.clientX,
-    moved: false,
-    lastSeek: 0,
-  };
-  el.timeline.classList.add('dragging');
-}
-
-function onBarMove(evt: PointerEvent): void {
-  if (!press) return;
-  if (!press.moved) {
-    if (Math.abs(evt.clientX - press.fromX) < DRAG_MIN) return;
-    press.moved = true;
-    playback.setScrubbing(true);      // a section plays while it is being positioned
+  /** Is a bar being held? */
+  get active(): boolean {
+    return this.press !== null;
   }
 
-  const f = fractionAt(evt.clientX);
-  dragTo(f);
-  renderMarks();
-  // Play where the bar now is, so its sound and picture come with it.
-  const now = Date.now();
-  if (now - press.lastSeek >= SEEK_EVERY) { press.lastSeek = now; playback.playFrom(f * app.clip.total()); }
-}
+  /** The pointer went down on a bar: this is the gesture until it comes up. */
+  down(evt: PointerEvent): void {
+    this.swallow = false;
+    if (!canEdit()) return;
+    const bar = (evt.target as HTMLElement | null)?.closest<HTMLElement>('.tl-mark, .tl-sel');
+    if (!bar) return;
 
-function onBarUp(): void {
-  if (!press) return;
-  swallowNextClick = press.moved;    // the click that follows a drag must not re-trim
-  press = null;
-  el.timeline.classList.remove('dragging');
-  playback.setScrubbing(false);
-}
+    const rect = bar.getBoundingClientRect();
+    const kind: GrabKind = bar.classList.contains('tl-mark') ? 'mark'
+      : evt.clientX - rect.left <= EDGE_GRIP ? 'left'
+      : rect.right - evt.clientX <= EDGE_GRIP ? 'right'
+      : 'move';
 
-function dragTo(f: number): void {
-  const p = press;
-  if (!p) return;
-  if (p.kind === 'mark') {
-    app.marks[p.index] = f;
-    return;
+    this.press = {
+      kind,
+      index: Number(bar.dataset.i),
+      offset: kind === 'move' ? fractionAt(evt.clientX) - (pendingSection()?.s ?? 0) : 0,
+      fromX: evt.clientX,
+      moved: false,
+      lastSeek: 0,
+    };
+    el.timeline.classList.add('dragging');
   }
-  // the section between the marks, moved or resized by an edge
-  const section = pendingSection();
-  if (!section) return;
-  const f0 = section.s, f1 = section.e;        // already fractions of the recording
-  const span = Span.of(f0, f1);
-  const moved = p.kind === 'move' ? span.movedTo(f - p.offset)
-              : p.kind === 'left' ? span.resized('s', f, MIN_SECTION)
-              : span.resized('e', f, MIN_SECTION);
-  app.marks = [moved.s, moved.e];
+
+  /** The pointer moved: the bar follows it, and the clip plays under it. */
+  move(evt: PointerEvent): void {
+    const press = this.press;
+    if (!press) return;
+    if (!press.moved) {
+      if (Math.abs(evt.clientX - press.fromX) < DRAG_MIN) return;
+      press.moved = true;
+      playback.setScrubbing(true);      // a section plays while it is being positioned
+    }
+
+    const f = fractionAt(evt.clientX);
+    this.dragTo(f);
+    renderMarks();
+    // Play where the bar now is, so its sound and picture come with it.
+    const now = Date.now();
+    if (now - press.lastSeek >= SEEK_EVERY) { press.lastSeek = now; playback.playFrom(f * app.clip.total()); }
+  }
+
+  /** The pointer came up. */
+  up(): void {
+    const press = this.press;
+    if (!press) return;
+    this.cancel();
+    this.swallow = press.moved;    // the click that follows a drag must not re-trim
+  }
+
+  /** Is the click that follows the drag the drag's own, rather than a new mark? */
+  takesTheClick(): boolean {
+    const was = this.swallow;
+    this.swallow = false;
+    return was;
+  }
+
+  /** The session is over: nothing is being held, and the next click is a click. */
+  cancel(): void {
+    this.press = null;
+    this.swallow = false;
+    el.timeline.classList.remove('dragging');
+    playback.setScrubbing(false);
+  }
+
+  private dragTo(f: number): void {
+    const p = this.press;
+    if (!p) return;
+    if (p.kind === 'mark') {
+      app.marks[p.index] = f;
+      return;
+    }
+    // the section between the marks, moved or resized by an edge
+    const section = pendingSection();
+    if (!section) return;
+    const f0 = section.s, f1 = section.e;        // already fractions of the recording
+    const span = Span.of(f0, f1);
+    const moved = p.kind === 'move' ? span.movedTo(f - p.offset)
+                : p.kind === 'left' ? span.resized('s', f, MIN_SECTION)
+                : span.resized('e', f, MIN_SECTION);
+    app.marks = [moved.s, moved.e];
+  }
 }
+
+export const drag = new MarkDrag();
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
