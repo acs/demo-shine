@@ -3,9 +3,11 @@
 
 import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
-import { drawFrame, drawGrid } from './ui/preview.js';
+import { drawClipFrame, drawGrid } from './ui/preview.js';
 import { setTimerMs } from './ui/timer.js';
 import { beginEncoding, encodingAt, endEncoding, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
+import { FADE_S, elementAudio, fadeIn, fadeOut, fadeReset } from './ui/fade.js';
+import { clearFrame, drawDissolve, holdFrame } from './ui/dissolve.js';
 import { resetMarks } from './ui/marks.js';
 import { clipSeek, clipTime, releaseParts } from './ui/clip.js';
 import { getBestMime } from './infra/codecs.js';
@@ -49,25 +51,19 @@ export async function doExport(): Promise<void> {
 function attachExportAudio(stream: MediaStream): void {
   let tracks: MediaStreamTrack[] = [];
   try {
-    if (!app.audioCtx) {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (Ctx) {
-        app.audioCtx  = new Ctx();
-        const src = app.audioCtx.createMediaElementSource(el.rv);
-        app.audioDest = app.audioCtx.createMediaStreamDestination();
-        src.connect(app.audioDest);
-        src.connect(app.audioCtx.destination); // keep the review clip audible
-        // Autoplay policy can leave the context suspended; resume on replay.
-        el.rv.addEventListener('play', () => {
-          if (app.audioCtx && app.audioCtx.state === 'suspended') app.audioCtx.resume().catch(() => {});
-        });
-      }
+    // The element's sound is already routed through the fade's gain node (or is
+    // put through it here); the recorder listens behind it, so the fades at the
+    // joins between takes end up in the file.
+    const audio = elementAudio();
+    if (audio) {
+      if (!app.audioDest) app.audioDest = audio.ctx.createMediaStreamDestination();
+      audio.gain.connect(app.audioDest);
+      if (audio.ctx.state === 'suspended') audio.ctx.resume().catch(() => {});
     }
-    if (app.audioCtx && app.audioCtx.state === 'suspended') app.audioCtx.resume().catch(() => {});
     if (app.audioDest) tracks = app.audioDest.stream.getAudioTracks();
   } catch (err) {
     console.warn('DemoShine: Web Audio passthrough failed —', err);
-    app.audioCtx = null; app.audioDest = null; tracks = [];
+    app.audioCtx = null; app.audioGain = null; app.audioDest = null; tracks = [];
   }
   // Fallback: pull the audio track straight from the media element.
   if (!tracks.length && typeof el.rv.captureStream === 'function') {
@@ -117,6 +113,8 @@ function exportWebM(): Promise<void> {
       el.rv.pause();
       if (rec.state !== 'inactive') rec.stop();
       encodingAt(e, e);                        // the range is written right through
+      fadeReset();                             // a fade must never outlive the export
+      clearFrame();                            // ...nor a dissolve
     };
 
     rec.ondataavailable = ev => { if (ev.data.size > 0) out.push(ev.data); };
@@ -126,17 +124,24 @@ function exportWebM(): Promise<void> {
 
     // Draw the kept range into the recorder. It may span several recordings, so
     // they are played one after another into the same recorder: the file that
-    // comes out is one clip, however many presses of Record it took.
-    function drawTo(limit: number): Promise<void> {
+    // comes out is one clip, however many presses of Record it took. A short
+    // fade either side of a join softens it — the sound goes down as one take
+    // runs out and comes back up as the next begins, and the picture dissolves
+    // from the last frame of one into the first frames of the next.
+    function drawTo(limit: number, joinAhead: boolean): Promise<void> {
       return new Promise(done => {
         let asked = 0;          // cut end already seeked to, so it is asked for once
         let stuckAt = 0;        // when the playhead last failed to get out of a cut
+        let faded = false;      // the fade out before this join has been asked for
         let lastT = -1, movedAt = Date.now();
         (function frame() {
           const t = clipTime();
           if (t !== lastT) { lastT = t; movedAt = Date.now(); }
           else if (Date.now() - movedAt > STEP_MS) { stalled = true; done(); return; }
-          if (t >= limit - 0.01 || el.rv.ended || el.rv.paused) { done(); return; }
+          if (t >= limit - 0.01 || el.rv.ended || el.rv.paused) {
+            if (joinAhead) holdFrame();          // the frame to dissolve away from
+            done(); return;
+          }
           const cutEnd = cutEndAt(cuts, t);
           if (cutEnd !== null) {
             // Trimmed away: jump past it, without pausing, so the capture and its
@@ -150,8 +155,16 @@ function exportWebM(): Promise<void> {
             return;
           }
           asked = 0; stuckAt = 0;
-          ectx?.drawImage(el.rv, 0, 0, ec.width, ec.height);
-          try { drawFrame(el.rv); } catch { /* a frame not ready: the next one will do */ }
+          // Another take follows: bring the sound down over the last FADE_S of
+          // this one, so the join does not arrive at full level.
+          if (joinAhead && !faded && t >= limit - FADE_S) { faded = true; fadeOut(); }
+          // `el.rv.currentTime` is how long this take has been running, which is
+          // what the dissolve is measured against.
+          const since = el.rv.currentTime;
+          if (ectx && !drawDissolve(ectx, el.rv, ec.width, ec.height, since)) {
+            ectx.drawImage(el.rv, 0, 0, ec.width, ec.height);
+          }
+          try { drawClipFrame(el.rv); } catch { /* a frame not ready: the next one will do */ }
           encodingAt(t, e);                      // where it has got to, and what is left
           requestAnimationFrame(frame);
         })();
@@ -160,12 +173,17 @@ function exportWebM(): Promise<void> {
 
     void (async () => {
       let at = s;
+      let first = true;
       while (at < e - 0.01) {
         const index = partAt(app.parts, at);
         const limit = Math.min(partStart(app.parts, index) + app.parts[index].duration, e);
+        const joinAhead = limit < e - 0.01;    // this take ends inside the export
         await within(clipSeek(at), STEP_MS, 'the clip would not seek');
         await within(el.rv.play(), STEP_MS, 'the clip would not play');
-        await drawTo(limit);
+        // The first take is faithful at its start; past a join the sound comes
+        // back up from the fade out, so the join is heard as one clip.
+        if (first) first = false; else fadeIn();
+        await drawTo(limit, joinAhead);
         if (stalled) throw new Error('the clip stopped playing');
         at = limit;
       }
