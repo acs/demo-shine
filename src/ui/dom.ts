@@ -49,6 +49,8 @@ export const el = {
   helpBtn:   byId<HTMLButtonElement>('help-btn'),
   helpClose: byId<HTMLButtonElement>('help-close'),
   compatWarn: byId<HTMLElement>('compat-warn'),
+  webcamBtn: byId<HTMLButtonElement>('webcam-btn'),
+  wcv:       byId<HTMLVideoElement>('wcv'),
   metaTheme: byId<HTMLMetaElement>('meta-theme'),
   themeIco:  byId<SVGElement>('theme-ico'),
   themeBtn:  byId<HTMLButtonElement>('theme-btn'),
