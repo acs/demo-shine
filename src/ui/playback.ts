@@ -23,7 +23,7 @@ import { app } from '../state.js';
 import { el } from './dom.js';
 import { drawClipFrame } from './preview.js';
 import { clampToClip } from '../util.js';
-import { clipNext, clipSeek, clipSeekAndDraw, clipTime, hasNextTake, keptLengthNow, keptOf, takeEnded, takeLeft } from './clip.js';
+import { keptLengthNow, keptOf, player } from './clip.js';
 import { FADE_S, fadeIn, fadeOut, fadeReset } from './fade.js';
 import { dissolve } from './dissolve.js';
 
@@ -60,7 +60,7 @@ export class Playback {
   setScrubbing(on: boolean): void {
     this.scrubbing = on;
     this.askedSkip = 0;
-    this.seenAt = clipTime();
+    this.seenAt = player.time();
     this.seenTime = Date.now();
   }
 
@@ -79,8 +79,8 @@ export class Playback {
     const start = clipStart();
     const end   = clipEnd();
     // (Re)start from IN when the playhead sits outside the trimmed range.
-    const t = clipTime();
-    if (t < start || t >= end - 0.02) void clipSeek(start);
+    const t = player.time();
+    if (t < start || t >= end - 0.02) void player.seek(start);
     this.beginPlayback();
   }
 
@@ -100,7 +100,7 @@ export class Playback {
     }
     this.updatePlayhead(t);
     this.askedSkip = 0;
-    void clipSeek(t);
+    void player.seek(t);
     if (!app.playing) this.beginPlayback();
   }
 
@@ -110,7 +110,7 @@ export class Playback {
     this.joinFaded = false;
     fadeReset();               // starting again at full, whatever a pause left behind
     dissolve.clear();              // ...and with no dissolve owed from an earlier join
-    this.seenAt = clipTime();
+    this.seenAt = player.time();
     this.seenTime = Date.now();
     this.updateTransport();
     el.rv.play().then(() => this.loop()).catch(() => {
@@ -150,13 +150,13 @@ export class Playback {
     const end   = clipEnd();
     if (app.playing) {
       // Keep playing, but never outside the new range.
-      const t = clampToClip(clipTime(), start, end);
-      if (t !== clipTime()) { this.askedSkip = 0; void clipSeek(t); }
+      const t = clampToClip(player.time(), start, end);
+      if (t !== player.time()) { this.askedSkip = 0; void player.seek(t); }
       this.updatePlayhead(t);
     } else {
       // Preview the frame at the handle the user just moved.
       const t = moved === 'start' ? start : end;
-      void clipSeekAndDraw(t);
+      void player.seekAndDraw(t);
       this.updatePlayhead(t);
     }
   }
@@ -167,14 +167,14 @@ export class Playback {
     const t = clampToClip(time, clipStart(), clipEnd());
     this.askedSkip = 0;
     this.updatePlayhead(t);
-    if (app.playing) void clipSeek(t);
-    else             void clipSeekAndDraw(t);
+    if (app.playing) void player.seek(t);
+    else             void player.seekAndDraw(t);
   }
 
   // The playhead is shown in timeline time: a trimmed-away stretch has no width on
   // screen, so the head must not sit over it.
   private updatePlayhead(time?: number): void {
-    const source = time ?? clipTime();
+    const source = time ?? player.time();
     const kept = keptOf(source);
     const total = keptLengthNow();
     const pct = total > 0 ? (kept / total) * 100 : 0;
@@ -204,12 +204,12 @@ export class Playback {
         app.playRaf = requestAnimationFrame(() => this.loop());
         return;
       }
-      this.seenAt = clipTime(); this.seenTime = now;      // the stall clock starts fresh
+      this.seenAt = player.time(); this.seenTime = now;      // the stall clock starts fresh
     }
 
     // Watchdog: a playhead that stops moving means a stalled decode, so stop rather
     // than leaving the transport claiming to play.
-    if (clipTime() !== this.seenAt) { this.seenAt = clipTime(); this.seenTime = now; }
+    if (player.time() !== this.seenAt) { this.seenAt = player.time(); this.seenTime = now; }
     else if (this.seenTime && now - this.seenTime > STALL_MS) { this.pause(); return; }
 
     if (el.rv.paused && !el.rv.ended) {
@@ -221,18 +221,18 @@ export class Playback {
     // A trimmed-away stretch is jumped over without pausing, so playback carries
     // straight on. The seek is asked for once and the playhead is left alone until
     // the element comes out of the seek, so the browser is not re-asked every frame.
-    const cutEnd = this.scrubbing ? null : cutEndFor(clipTime());
+    const cutEnd = this.scrubbing ? null : cutEndFor(player.time());
     if (cutEnd !== null) {
       const to = Math.min(cutEnd, clipEnd());
-      if (!el.rv.seeking && this.askedSkip !== to) { this.askedSkip = to; void clipSeek(to); }
+      if (!el.rv.seeking && this.askedSkip !== to) { this.askedSkip = to; void player.seek(to); }
       this.updatePlayhead(to);
       app.playRaf = requestAnimationFrame(() => this.loop());
       return;
     }
     this.askedSkip = 0;
 
-    if (clipTime() >= clipEnd()) {
-      void clipSeek(clipEnd());
+    if (player.time() >= clipEnd()) {
+      void player.seek(clipEnd());
       this.pause();
       return;
     }
@@ -240,7 +240,7 @@ export class Playback {
     // Another recording follows this one, and the video is nearly at its end:
     // bring the sound down over the last FADE_S, so the join is not abrupt. The
     // sound comes back up as the next recording starts.
-    if (hasNextTake() && takeLeft() <= FADE_S) {
+    if (player.hasNext() && player.takeLeft() <= FADE_S) {
       if (!this.joinFaded) { this.joinFaded = true; fadeOut(); }
     } else {
       this.joinFaded = false;
@@ -248,9 +248,9 @@ export class Playback {
 
     // The recording in the video has run out: carry on into the next one, so the
     // joined clip plays as a whole. Its last frame is held, to dissolve away from.
-    if (takeEnded()) {
+    if (player.ended()) {
       dissolve.holdFrame();
-      void clipNext().then(joined => {
+      void player.next().then(joined => {
         if (!app.playing) return;
         if (!joined) { this.pause(); return; }
         fadeIn(); this.joinFaded = false;      // up from the join's silence

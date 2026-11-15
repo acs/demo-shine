@@ -27,7 +27,7 @@ import { el } from './dom.js';
 import { Span } from '../domain/clip/Span.js';
 import { Trim } from '../domain/clip/Trim.js';
 import { updateSizeUI } from './timeline-ui.js';
-import { clipTime, keptLengthNow, keptOf, sourceOf } from './clip.js';
+import { keptLengthNow, keptOf, player, sourceOf } from './clip.js';
 import { playback } from './playback.js';
 
 const MIN_SECTION = Trim.MIN_GAP;   // a hundredth of the clip: the shortest section worth trimming
@@ -168,7 +168,7 @@ function dismissSelection(): void {
 // Put the last approved trim back.
 function undoTrim(): void {
   if (!app.clip.undo()) return;                   // the clip puts the section back
-  afterEdits(clipTime());
+  afterEdits(player.time());
 }
 
 // The marks and the timeline redraw because the clip told them to; all that is
