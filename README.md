@@ -94,7 +94,7 @@ demoshine/
 ├── VERSIONING.md         # How the version is bumped, tagged and shown
 ├── GLOSSARY.md           # The words this project uses — the ubiquitous language
 ├── THIRD-PARTY-NOTICES.template.txt  # Licences of what we bundle; the build fills in the versions
-├── .opencode/skills/     # How work is done here: verifying a change, the domain model, the workflow
+├── .agents/skills/       # How work is done here: verifying a change, the domain model, the workflow
 └── .husky/pre-commit     # Runs lint-staged on commit
 ```
 
@@ -139,10 +139,10 @@ request.
 
 **How the project is worked on is written down**, so it does not have to be
 rediscovered: [`GLOSSARY.md`](GLOSSARY.md) holds the words — a *take* is not a
-*mark*, a *section* is not yet a *cut* — and `.opencode/skills/` holds
-[verification](.opencode/skills/verification/SKILL.md) (what counts as proving a
-change), the [domain model](.opencode/skills/domain-model/SKILL.md) (where a rule
-belongs) and the [workflow](.opencode/skills/project-workflow/SKILL.md) (branches,
+*mark*, a *section* is not yet a *cut* — and `.agents/skills/` holds
+[verification](.agents/skills/verification/SKILL.md) (what counts as proving a
+change), the [domain model](.agents/skills/domain-model/SKILL.md) (where a rule
+belongs) and the [workflow](.agents/skills/project-workflow/SKILL.md) (branches,
 commits, pull requests).
 
 ---
