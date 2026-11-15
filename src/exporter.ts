@@ -9,7 +9,7 @@ import { resetTrim, updateSizeUI } from './ui/timeline-ui.js';
 import { resetMarks } from './ui/marks.js';
 import { getBestMime } from './infra/codecs.js';
 import { dlBlob, ts } from './infra/download.js';
-import { stopRec, startCapture } from './recorder.js';
+import { stopRec, startCapture, releaseDisplay } from './recorder.js';
 import { pausePlayback, resetPlayback } from './ui/playback.js';
 import { clearWaveform } from './ui/waveform.js';
 import { cutEndAt, cutsInSeconds, keptLength, spanLength } from './domain/timeline.js';
@@ -146,12 +146,17 @@ function exportWebM(): Promise<void> {
 export function resetAll(): void {
   if (app.phase === 'recording') { stopRec(); return; }
   if (app.phase === 'encoding' || app.phase === 'starting') return;
+
+  // A live share has to be let go of before another can be asked for — that is
+  // the point of resetting while waiting to record, where the reason to reset is
+  // usually to go back and tick "share audio".
+  releaseDisplay();
+
   setPhase('idle');
   if (el.rv.src) { URL.revokeObjectURL(el.rv.src); el.rv.src = ''; }
   app.blob = null; app.chunks = []; app.duration = 0; app.recAudio = false;
   el.timeline.classList.remove('on');
   el.idleOv.classList.remove('gone');
-  el.btnReset.style.display = 'none';
   el.btnExp.style.display   = 'none';
   el.encBar.style.width     = '0%';
   el.thumbs.innerHTML       = '';
