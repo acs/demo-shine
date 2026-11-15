@@ -6,11 +6,13 @@ import { el, setStatus, toast } from './ui/dom.js';
 import { seekTo, drawGrid } from './ui/preview.js';
 import { setTimerMs } from './ui/timer.js';
 import { resetTrim, updateSizeUI } from './ui/timeline-ui.js';
+import { cutSeconds, resetMarks } from './ui/marks.js';
 import { getBestMime } from './infra/codecs.js';
 import { dlBlob, ts } from './infra/download.js';
 import { stopRec, startCapture } from './recorder.js';
 import { pausePlayback, resetPlayback } from './ui/playback.js';
 import { clearWaveform } from './ui/waveform.js';
+import { keptLength, spanAt, spanLength } from './domain/timeline.js';
 
 export async function doExport(): Promise<void> {
   if (app.phase !== 'review') return;
@@ -79,7 +81,10 @@ function exportWebM(): Promise<void> {
     const vDur    = (isFinite(el.rv.duration) && el.rv.duration > 0) ? el.rv.duration : app.duration;
     const s       = app.trimStart * app.duration;
     const e       = Math.min(app.trimEnd * app.duration, vDur - 0.05);
-    const clipDur = Math.max(e - s, 0.1);
+    // Cuts (regions trimmed away) are skipped below, so they must not count
+    // towards the progress bar or the clip length.
+    const cuts    = cutSeconds();
+    const keptDur = Math.max(keptLength(cuts, s, e), 0.1);
 
     const ec = document.createElement('canvas');
     ec.width = el.cv.width; ec.height = el.cv.height;
@@ -107,10 +112,27 @@ function exportWebM(): Promise<void> {
     rec.start(100);
 
     seekTo(el.rv, s).then(() => {
+      let asked = 0;          // cut end already seeked to, so it is asked for once
+      let stuckAt = 0;        // when the playhead last failed to get out of a cut
       function frame() {
-        if (el.rv.currentTime >= e || el.rv.ended || el.rv.paused) { finish(); return; }
+        const t = el.rv.currentTime;
+        if (t >= e || el.rv.ended || el.rv.paused) { finish(); return; }
+        const cut = spanAt(cuts, t);
+        if (cut >= 0) {
+          // Trimmed away: jump past it, without pausing, so the capture and its
+          // audio carry straight on. If the element will not come out of the cut,
+          // stop rather than record the whole trimmed region.
+          const to = Math.min(cuts[cut].e, e);
+          if (!el.rv.seeking && asked !== to) { asked = to; el.rv.currentTime = to; }
+          if (!stuckAt) stuckAt = Date.now();
+          if (Date.now() - stuckAt > 5000) { finish(); return; }
+          requestAnimationFrame(frame);
+          return;
+        }
+        asked = 0; stuckAt = 0;
         ectx?.drawImage(el.rv, 0, 0, ec.width, ec.height);
-        el.encBar.style.width = Math.min(((el.rv.currentTime - s) / clipDur) * 100, 99).toFixed(1) + '%';
+        const removed = spanLength(cuts, s, t);
+        el.encBar.style.width = Math.min(((t - s - removed) / keptDur) * 100, 99).toFixed(1) + '%';
         requestAnimationFrame(frame);
       }
       // Add listeners BEFORE play() to avoid race condition
@@ -137,6 +159,7 @@ export function resetAll(): void {
   setTimerMs(0);
   resetPlayback();
   clearWaveform();
+  resetMarks();
   resetTrim();
   updateSizeUI();
   drawGrid();
