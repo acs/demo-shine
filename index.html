@@ -3,6 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  // Always upgrade to HTTPS: screen capture needs a secure context, and some
+  // browsers reject getDisplayMedia even on http://localhost, so there is no
+  // plain-HTTP mode.
+  if (location.protocol === 'http:') {
+    var host = location.hostname + (location.port && location.port !== '80' ? ':' + location.port : '');
+    location.replace('https://' + host + location.pathname + location.search + location.hash);
+  }
+</script>
 <meta name="description" content="Pure browser screen recorder. No extensions. No uploads. WebM screen recording with timeline trimming and audio.">
 <meta property="og:title" content="DemoShine">
 <meta property="og:description" content="Pure browser screen recorder — WebM with trimming and audio. No extensions, no uploads.">
@@ -62,6 +71,18 @@
           <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
         </svg>
       </button>
+      <button class="icon-btn" id="webcam-btn" aria-label="Toggle webcam" aria-pressed="false" title="Webcam" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="mic-btn" aria-label="Toggle microphone" aria-pressed="false" title="Microphone" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </button>
+      <div class="vu" id="vu" aria-hidden="true"><div class="vu-fill" id="vu-fill"></div></div>
       <button class="icon-btn" id="help-btn" aria-label="Show instructions" title="Instructions">?</button>
       <div class="status-chip">
         <div class="s-dot" id="s-dot"></div>
@@ -177,7 +198,7 @@
         <div class="help-num">1</div>
         <div class="help-step-body">
           <div class="help-step-title">Choose what to record</div>
-          <div class="help-step-desc">When the app opens, your browser asks what to share — pick a screen, window or tab (full screen is preselected) and tick Share tab audio for sound. The preview goes live straight away.</div>
+          <div class="help-step-desc">When the app opens, your browser asks what to share — pick a screen, window or tab (full screen is preselected) and tick Share tab audio for sound. The preview goes live straight away. Use the camera button in the header to add a webcam bubble and the microphone button for your voice (both greyed out if there is no device); the mic level shows in the little meter and is mixed with the tab audio.</div>
         </div>
       </div>
       <div class="help-step">
@@ -217,6 +238,7 @@
 <div class="toast" id="toast"></div>
 <video id="sv" style="display:none" autoplay muted playsinline></video>
 <video id="rv" style="display:none" playsinline preload="auto"></video>
+<video id="wcv" style="display:none" autoplay muted playsinline></video>
 
 <script type="module" src="/src/main.ts"></script>
 </body>

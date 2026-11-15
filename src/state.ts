@@ -36,6 +36,12 @@ export interface AppState {
   region: Rect;                 // crop region to record (whole source by default)
   cropRaf: number | null;       // crop render loop id while recording
 
+  webcamStream: MediaStream | null;   // webcam capture (video only)
+  webcamOn: boolean;            // webcam overlay shown/baked into the recording
+
+  micStream: MediaStream | null;      // microphone capture (audio only)
+  micOn: boolean;               // microphone mixed into the recording
+
   captureW: number;
   captureH: number;
 
@@ -67,6 +73,12 @@ export const app: AppState = {
 
   region: { x: 0, y: 0, w: 1, h: 1 },
   cropRaf: null,
+
+  webcamStream: null,
+  webcamOn: false,
+
+  micStream: null,
+  micOn: false,
 
   captureW: 1280,
   captureH: 720,

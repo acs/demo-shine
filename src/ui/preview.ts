@@ -4,6 +4,7 @@
 import { el, ctx } from './dom.js';
 import { app } from '../state.js';
 import { drawRegion } from './region.js';
+import { drawWebcamOverlay } from './webcam.js';
 
 export function drawGrid(): void {
   const light = document.documentElement.dataset.theme === 'light';
@@ -45,7 +46,13 @@ export function startMirror(): void {
   app.mirroring = true;
   (function loop() {
     if (!app.mirroring) return;
-    if (el.sv.readyState >= 2) { drawFrame(el.sv); drawRegion(); }
+    if (el.sv.readyState >= 2) {
+      drawFrame(el.sv);
+      drawRegion();
+      // Webcam overlay, inside the recording region (what will be recorded).
+      drawWebcamOverlay(ctx, app.region.x * el.cv.width, app.region.y * el.cv.height,
+                             app.region.w * el.cv.width, app.region.h * el.cv.height);
+    }
     app.rafId = requestAnimationFrame(loop);
   })();
 }

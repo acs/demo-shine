@@ -12,6 +12,8 @@ import { doExport, resetAll } from './exporter.js';
 import { togglePlayback } from './ui/playback.js';
 import { drawWaveform } from './ui/waveform.js';
 import { initRegion } from './ui/region.js';
+import { initWebcam, toggleWebcam } from './ui/webcam.js';
+import { initMic, toggleMic } from './ui/mic.js';
 
 function init(): void {
   const supported = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
@@ -56,6 +58,14 @@ function init(): void {
 
   // Drag on the preview to crop the recording to a region.
   initRegion();
+
+  // Webcam picture-in-picture toggle (disabled when no camera is present).
+  el.webcamBtn.addEventListener('click', toggleWebcam);
+  initWebcam();
+
+  // Microphone toggle + level meter (disabled when no mic is present).
+  el.micBtn.addEventListener('click', toggleMic);
+  initMic();
 
   // Go live as early as the browser allows. getDisplayMedia is gated behind a
   // user gesture + picker, so we (a) try on load, and (b) start on the first
