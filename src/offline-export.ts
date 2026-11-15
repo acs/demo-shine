@@ -78,10 +78,10 @@ async function renderAudio(segments: Segment[], offsets: number[], total: number
   const decoded = new Map<number, AudioBuffer>();
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
-    let buffer = decoded.get(seg.part);
+    let buffer = decoded.get(seg.takeIndex);
     if (!buffer) {
-      buffer = await ctx.decodeAudioData(await takes[seg.part].blob.arrayBuffer());
-      decoded.set(seg.part, buffer);
+      buffer = await ctx.decodeAudioData(await takes[seg.takeIndex].blob.arrayBuffer());
+      decoded.set(seg.takeIndex, buffer);
     }
     const src = ctx.createBufferSource();
     src.buffer = buffer;
@@ -90,8 +90,8 @@ async function renderAudio(segments: Segment[], offsets: number[], total: number
     const start = offsets[i];
     const length = seg.to - seg.from;
     // Down as this take runs out, up as the next begins — only at a real join.
-    const joinsNext = segments[i + 1] && segments[i + 1].part !== seg.part;
-    const joinsPrev = segments[i - 1] && segments[i - 1].part !== seg.part;
+    const joinsNext = segments[i + 1] && segments[i + 1].takeIndex !== seg.takeIndex;
+    const joinsPrev = segments[i - 1] && segments[i - 1].takeIndex !== seg.takeIndex;
     if (joinsPrev) {
       gain.gain.setValueAtTime(0, start);
       gain.gain.linearRampToValueAtTime(1, start + Math.min(FADE_S, length));
@@ -102,7 +102,7 @@ async function renderAudio(segments: Segment[], offsets: number[], total: number
     }
     src.connect(gain).connect(ctx.destination);
     // The stretch of the take, placed where it belongs on the output timeline.
-    src.start(start, seg.from - app.clip.takes.startOf(seg.part), length);
+    src.start(start, seg.from - app.clip.takes.startOf(seg.takeIndex), length);
   }
   return ctx.startRendering();
 }
@@ -122,10 +122,10 @@ export async function exportOffline(onProgress?: (source: number) => void): Prom
 
   // Where each take first appears on the output timeline: that is where a join
   // is, and so where a dissolve has to start.
-  const partFirstOffset = new Map<number, number>();
-  segments.forEach((seg, i) => { if (!partFirstOffset.has(seg.part)) partFirstOffset.set(seg.part, offsets[i]); });
-  const parts = [...partFirstOffset.keys()];
-  if (!parts.length) throw new Error('nothing to export');
+  const takeFirstOffset = new Map<number, number>();
+  segments.forEach((seg, i) => { if (!takeFirstOffset.has(seg.takeIndex)) takeFirstOffset.set(seg.takeIndex, offsets[i]); });
+  const takeOrder = [...takeFirstOffset.keys()];
+  if (!takeOrder.length) throw new Error('nothing to export');
 
   const ec = document.createElement('canvas');
   ec.width = el.cv.width || 1280;
@@ -153,16 +153,16 @@ export async function exportOffline(onProgress?: (source: number) => void): Prom
   let frames = 0;
 
   try {
-    for (let p = 0; p < parts.length; p++) {
-      const part = parts[p];
+    for (let p = 0; p < takeOrder.length; p++) {
+      const takeIndex = takeOrder[p];
       // Entering a take that follows another: the frame left behind is the one to
       // dissolve away from, and this is where the dissolve starts.
-      const joinAt = partFirstOffset.get(part) ?? 0;
+      const joinAt = takeFirstOffset.get(takeIndex) ?? 0;
       const followsAnother = p > 0;
       if (followsAnother) holdFrom(ec);
 
       const input = new Input({
-        source: new BufferSource(await takes[part].blob.arrayBuffer()),
+        source: new BufferSource(await takes[takeIndex].blob.arrayBuffer()),
         formats: [WEBM],   // WebM only: Mediabunny's other demuxers stay out of the bundle
       });
       try {
@@ -170,12 +170,12 @@ export async function exportOffline(onProgress?: (source: number) => void): Prom
         if (!track) throw new Error('a take has no video track');
         if (!(await track.canDecode())) throw new Error('a take cannot be decoded');
         const first = await input.getFirstTimestamp();
-        const from = Math.max(s, app.clip.takes.startOf(part)) - app.clip.takes.startOf(part) + first;
-        const to   = Math.min(e, app.clip.takes.startOf(part) + takes[part].duration) - app.clip.takes.startOf(part) + first;
+        const from = Math.max(s, app.clip.takes.startOf(takeIndex)) - app.clip.takes.startOf(takeIndex) + first;
+        const to   = Math.min(e, app.clip.takes.startOf(takeIndex) + takes[takeIndex].duration) - app.clip.takes.startOf(takeIndex) + first;
 
         for await (const frame of new VideoSampleSink(track).samples(from, to)) {
           try {
-            const source = app.clip.takes.startOf(part) + (frame.timestamp - first);
+            const source = app.clip.takes.startOf(takeIndex) + (frame.timestamp - first);
             const at = map.keptOf(source) - base;          // the output timeline
             if (at < -0.001 || at > total + 0.001) continue;   // trimmed away, or outside
 

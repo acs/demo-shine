@@ -18,7 +18,7 @@ import { app } from '../state.js';
 import { el } from './dom.js';
 import { drawClipFrame } from './preview.js';
 import { clampToClip } from '../util.js';
-import { clipNext, clipSeek, clipSeekAndDraw, clipTime, hasNextPart, keptLengthNow, keptOf, partEnded, partLeft } from './clip.js';
+import { clipNext, clipSeek, clipSeekAndDraw, clipTime, hasNextTake, keptLengthNow, keptOf, takeEnded, takeLeft } from './clip.js';
 import { FADE_S, fadeIn, fadeOut, fadeReset } from './fade.js';
 import { clearFrame, holdFrame } from './dissolve.js';
 
@@ -234,7 +234,7 @@ function loop(): void {
   // Another recording follows this one, and the video is nearly at its end:
   // bring the sound down over the last FADE_S, so the join is not abrupt. The
   // sound comes back up as the next recording starts.
-  if (hasNextPart() && partLeft() <= FADE_S) {
+  if (hasNextTake() && takeLeft() <= FADE_S) {
     if (!joinFaded) { joinFaded = true; fadeOut(); }
   } else {
     joinFaded = false;
@@ -242,7 +242,7 @@ function loop(): void {
 
   // The recording in the video has run out: carry on into the next one, so the
   // joined clip plays as a whole. Its last frame is held, to dissolve away from.
-  if (partEnded()) {
+  if (takeEnded()) {
     holdFrame();
     void clipNext().then(joined => {
       if (!app.playing) return;

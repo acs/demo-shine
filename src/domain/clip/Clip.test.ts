@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { Clip } from './Clip.js';
+import { Clip, type ClipEvent } from './Clip.js';
 import { Span } from './Span.js';
 import { Trim } from './Trim.js';
 import { Take } from './Take.js';
@@ -82,14 +82,14 @@ describe('Clip', () => {
   });
 
   it('says what an export is made of: the kept stretches, take by take', () => {
-    expect(clipOf(3, 3).segmentsIn(0, 6).map(s => [s.part, s.from, s.to]))
+    expect(clipOf(3, 3).segmentsIn(0, 6).map(s => [s.takeIndex, s.from, s.to]))
       .toEqual([[0, 0, 3], [1, 3, 6]]);
   });
 
   it('and leaves the trimmed stretches out of them, closing the gap', () => {
     const clip = clipOf(3, 3);
     clip.approve(Span.of(0.7, 0.8));            // 4.2s-4.8s of the 6s clip
-    expect(clip.segmentsIn(0, 6).map(s => [s.part, +s.from.toFixed(2), +s.to.toFixed(2)]))
+    expect(clip.segmentsIn(0, 6).map(s => [s.takeIndex, +s.from.toFixed(2), +s.to.toFixed(2)]))
       .toEqual([[0, 0, 3], [1, 3, 4.2], [1, 4.8, 6]]);
   });
 
@@ -103,5 +103,50 @@ describe('Clip', () => {
     expect(clip.cuts.isEmpty).toBe(true);
     expect(clip.trim.start).toBe(0);
     expect(clip.canUndo()).toBe(false);
+  });
+});
+
+describe('Clip, announcing what changed', () => {
+  it('says a take arrived, with where it landed and how long the clip was before', () => {
+    const clip = Clip.empty(new FakeTakes());
+    const seen: ClipEvent[] = [];
+    clip.onChange(event => seen.push(event));
+    clip.addTake(new Blob(['x']), 3);
+    clip.addTake(new Blob(['x']), 4);
+    expect(seen).toEqual([
+      { type: 'take-added', take: clip.takes.at(0), index: 0, previousTotal: 0 },
+      { type: 'take-added', take: clip.takes.at(1), index: 1, previousTotal: 3 },
+    ]);
+  });
+
+  it('says a region was approved, what it was worth, and that it went back', () => {
+    const clip = clipOf(10);
+    const seen: ClipEvent[] = [];
+    clip.onChange(event => seen.push(event));
+    clip.approve(Span.of(0.2, 0.3));
+    clip.undo();
+    expect(seen.map(e => e.type)).toEqual(['trim-approved', 'trim-undone']);
+    expect(seen[0]).toMatchObject({ removed: 1 });
+    const undone = seen[1] as { region: Span };
+    expect(undone.region.equals(Span.of(0.2, 0.3))).toBe(true);
+  });
+
+  it('says the handles moved, and that the session was dropped', () => {
+    const clip = clipOf(4);
+    const seen: string[] = [];
+    clip.onChange(event => seen.push(event.type));
+    clip.keepRange(Trim.of(0.2, 0.8));
+    clip.clear();
+    expect(seen).toEqual(['keep-range', 'cleared']);
+  });
+
+  it('lets a listener stop listening', () => {
+    const clip = clipOf(4);
+    const seen: string[] = [];
+    const stop = clip.onChange(event => seen.push(event.type));
+    clip.approve(Span.of(0.1, 0.2));
+    stop();
+    clip.approve(Span.of(0.3, 0.4));
+    expect(seen).toEqual(['trim-approved']);
   });
 });

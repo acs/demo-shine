@@ -8,7 +8,7 @@ import { applyTheme, toggleTheme } from './ui/theme.js';
 import { toggleHelp, helpBdClick } from './ui/help.js';
 import { startStarfield } from './ui/starfield.js';
 import { drawGrid } from './ui/preview.js';
-import { onTrim, updateTrimUI, updateSizeUI } from './ui/timeline-ui.js';
+import { initTimeline, onTrim, updateTrimUI, updateSizeUI } from './ui/timeline-ui.js';
 import { initTimelineMarks } from './ui/marks.js';
 import { toggleRec, startCapture } from './recorder.js';
 import { doExport, resetAll } from './exporter.js';
@@ -62,6 +62,7 @@ function init(): void {
 
   // Click the timeline to play from that point, mark a region and trim it.
   initTimelineMarks();
+  initTimeline();   // the timeline listens to the clip
 
   // PWA install prompt
   window.addEventListener('beforeinstallprompt', e => {
