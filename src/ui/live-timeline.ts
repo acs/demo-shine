@@ -15,11 +15,10 @@
 
 import { app } from '../state.js';
 import { clock, el } from './dom.js';
-import { estimateWebmText } from '../domain/timeline.js';
+import { estimateWebmText } from './size-estimate.js';
 import { drawWebcamOverlay } from './webcam.js';
 import { keptLengthNow, keptOf } from './clip.js';
 import { currentPeaks } from './waveform.js';
-import { SpanSet } from '../domain/clip/SpanSet.js';
 
 const CELLS     = 22;     // the same strip the review builds
 const CELL_W    = 80;
@@ -162,8 +161,8 @@ function paintWave(span: number): void {
 
   if (echo && echo.length) {
     // every bar of the clip so far, over the recording's own time
-    const gone = SpanSet.of(app.cuts).scaled(app.duration);
-    const step = app.duration / echo.length;
+    const gone = app.clip.cuts.scaled(app.clip.total());
+    const step = app.clip.total() / echo.length;
     const bw = Math.max(0.7, (w / span) * step);
     for (let i = 0; i < echo.length; i++) {
       const at = (i + 0.5) * step;

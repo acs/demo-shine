@@ -3,7 +3,7 @@
 // Every press of Record produces a "part". They are played in order in the same
 // <video>, so that everything else in the app — the playhead, the trim handles,
 // the removed regions, the thumbnails, the export — can go on thinking in terms
-// of a single clip of `app.duration` seconds. This module is the only place that
+// of a single clip of `app.clip.total()` seconds. This module is the only place that
 // knows where a time in that clip falls: which part holds it, and where in that
 // part.
 //
@@ -15,14 +15,13 @@
 
 import { app } from '../state.js';
 import { el } from './dom.js';
-import { Span, partAt, partStart, keptLength, keptTime, sourceTime } from '../domain/timeline.js';
 import { drawFrame, seekTo } from './preview.js';
 
 // Object URLs for the parts, created on first use and released with the session.
 let loaded = -1;                 // index of the part currently in the video
 
 export function totalDuration(): number {
-  return app.takes.totalDuration();
+  return app.clip.takes.totalDuration();
 }
 
 // ── the timeline the user sees ───────────────────────────────────────────────
@@ -31,35 +30,30 @@ export function totalDuration(): number {
 // shows what the export will hold. Everything the user sees and points at goes
 // through these; the recording itself is still addressed in its own time.
 
-function cutsSeconds(): Span[] {
-  const d = app.duration;
-  return app.cuts.map(c => Span.of(c.s * d, c.e * d));
-}
-
 export function keptLengthNow(): number {
-  return keptLength(cutsSeconds(), 0, app.duration);
+  return app.clip.keptLength();
 }
 
 // A time in the recording, as the timeline shows it.
 export function keptOf(source: number): number {
-  return keptTime(cutsSeconds(), source);
+  return app.clip.timeline().keptOf(source);
 }
 
 // A time on the timeline, as the recording holds it.
 export function sourceOf(kept: number): number {
-  return sourceTime(cutsSeconds(), kept);
+  return app.clip.timeline().sourceOf(kept);
 }
 
 // The time on the joined clip, where the video currently sits.
 export function clipTime(): number {
-  return partStart(app.takes.all(), loaded) + el.rv.currentTime;
+  return app.clip.takes.startOf(loaded) + el.rv.currentTime;
 }
 
 // Bring the video to a time on the joined clip, loading the part that holds it.
 export function clipSeek(time: number): Promise<void> {
-  if (app.takes.isEmpty()) return seekTo(el.rv, Math.max(0, time));
-  const index = partAt(app.takes.all(), time);
-  const local = Math.max(0, time - partStart(app.takes.all(), index));
+  if (app.clip.takes.isEmpty()) return seekTo(el.rv, Math.max(0, time));
+  const index = app.clip.takes.indexAt(time);
+  const local = Math.max(0, time - app.clip.takes.startOf(index));
   if (index === loaded) return seekTo(el.rv, local);
   return loadPart(index).then(() => seekTo(el.rv, local));
 }
@@ -76,7 +70,7 @@ export function clipLoad(index: number): Promise<void> {
 
 // Move to the next part, keeping the video playing. False when there is none.
 export async function clipNext(): Promise<boolean> {
-  if (loaded < 0 || loaded + 1 >= app.takes.count()) return false;
+  if (loaded < 0 || loaded + 1 >= app.clip.takes.count()) return false;
   const wasPlaying = app.playing;
   await loadPart(loaded + 1);
   if (wasPlaying) await el.rv.play().catch(() => {});
@@ -85,21 +79,21 @@ export async function clipNext(): Promise<boolean> {
 
 // How much of the recording in hand is left to play.
 export function partLeft(): number {
-  const part = app.takes.at(loaded);
+  const part = app.clip.takes.at(loaded);
   return part ? Math.max(0, part.duration - el.rv.currentTime) : 0;
 }
 
 // Is there another take after the one in hand? A join is only a join if there
 // is something on the other side of it.
 export function hasNextPart(): boolean {
-  return loaded >= 0 && loaded + 1 < app.takes.count();
+  return loaded >= 0 && loaded + 1 < app.clip.takes.count();
 }
 
 // Is the video sitting at the end of the part it holds? Only the end of a part
 // that has another one after it matters — the last one just stops.
 export function partEnded(): boolean {
   if (el.rv.ended) return true;
-  const part = app.takes.at(loaded);
+  const part = app.clip.takes.at(loaded);
   return !!part && hasNextPart() && el.rv.currentTime >= part.duration - 0.05;
 }
 
@@ -110,7 +104,7 @@ export function forgetLoaded(): void {
 }
 
 function loadPart(index: number): Promise<void> {
-  const take = app.takes.at(index);
+  const take = app.clip.takes.at(index);
   if (!take) return Promise.resolve();
   loaded = index;
   el.rv.src = take.url;      // made once, by the repository, revoked with the session
