@@ -1,0 +1,25 @@
+DemoShine — third-party notices
+==============================
+
+DemoShine itself is MIT licensed (see LICENSE.md). The built app bundles the
+library below, unmodified.
+
+This is the template: the build fills in the version from what is actually
+installed (see the `demoshine-notices` plugin in vite.config.ts) and ships the
+result as THIRD-PARTY-NOTICES.txt beside the app, and inside the JavaScript
+bundle as well.
+
+-------------------------------------------------------------------------------
+
+Mediabunny {{mediabunny}}
+  https://github.com/Vanilagy/mediabunny
+  Mozilla Public License 2.0 (MPL-2.0)
+  Copyright (c) 2026-present, Vanilagy and contributors
+
+  What it does here: reads the recorded takes back for the offline export —
+  demultiplexing them and decoding their frames — and writes the exported file,
+  container, duration and cue points included.
+
+  The MPL is file-level: it covers Mediabunny's own files and not the rest of
+  this application, so DemoShine remains MIT. Its full text sits with the source
+  (LICENSE in the package) and at https://mozilla.org/MPL/2.0/.
