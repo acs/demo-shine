@@ -2,6 +2,9 @@
 // clip, visible only when the recording has audio. It is drawn in timeline time,
 // so a trimmed-away stretch takes up no width and what is left closes up over
 // it, and the part outside the IN/OUT range is dimmed.
+//
+// The bars come from a decode of the recording, which is read-only: the file, the
+// playback and the export are untouched by it. See PEAK_RATE below.
 
 import { app, type Part } from '../state.js';
 import { el } from './dom.js';
@@ -9,6 +12,15 @@ import { spanAt } from '../domain/timeline.js';
 import { keptLengthNow, keptOf } from './clip.js';
 
 const BUCKETS = 600;          // horizontal resolution of the waveform
+
+// The rate the audio is decoded at, to draw it. The bars only need the envelope,
+// and 4 kHz of it reads the same as full bandwidth for anything anyone records —
+// music and speech keep their shape, only the very top end flattens a little.
+// Worth keeping low: it is the difference between ~345 KB and ~63 KB for every
+// second of recording held in the tab while a strip is drawn. Raise it to 16000
+// if a strip ever looks too flat.
+const PEAK_RATE = 8000;
+
 let peaks: Float32Array | null = null;
 
 export function clearWaveform(): void {
@@ -20,20 +32,29 @@ export function clearWaveform(): void {
 export async function buildWaveform(parts: Part[]): Promise<void> {
   if (!parts.length || !app.recAudio) { clearWaveform(); return; }
   const Ctx = window.AudioContext || window.webkitAudioContext;
-  const ctx = new Ctx();
-  try {
-    // One recording per press of Record: decode each and give it as many bars as
-    // its share of the sound, so the strip lines up with the whole joined clip.
-    const decoded: AudioBuffer[] = [];
-    for (const part of parts) decoded.push(await ctx.decodeAudioData(await part.blob.arrayBuffer()));
-    const audible = decoded.reduce((n, audio) => n + audio.duration, 0);
-    if (!audible) { clearWaveform(); return; }
+  if (!Ctx) { clearWaveform(); return; }
 
+  // Decoding is an extra copy of the audio in memory — about 345 KB for every
+  // second of it at the context's own rate — and it is only ever used to draw
+  // 600 bars. So it is decoded slowly and one take at a time: each take's copy is
+  // dropped before the next is decoded, into the memory the last one gave back.
+  let ctx: AudioContext;
+  try { ctx = new Ctx({ sampleRate: PEAK_RATE }); }
+  catch { ctx = new Ctx(); }                    // a rate it will not take: its own
+
+  const total = parts.reduce((n, p) => n + p.duration, 0);
+  if (!(total > 0)) { void ctx.close(); clearWaveform(); return; }
+
+  try {
+    // One recording per press of Record: each gets as many bars as its share of
+    // the clip, so the strip lines up with the whole of it.
     const out: number[] = [];
-    for (const audio of decoded) {
-      const bars = Math.max(1, Math.round(BUCKETS * (audio.duration / audible)));
+    for (const part of parts) {
+      const audio = await ctx.decodeAudioData(await part.blob.arrayBuffer());
+      const bars = Math.max(1, Math.round(BUCKETS * (part.duration / total)));
       out.push(...computePeaks(audio, bars));
     }
+    if (!out.length) { clearWaveform(); return; }
     peaks = Float32Array.from(out);
     el.waveform.style.display = '';
     drawWaveform();
