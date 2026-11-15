@@ -42,7 +42,10 @@ let countdownAborted = false;
 // Acquire the display and show it live on the preview. Called on load; also the
 // fallback when the browser blocked the gesture-less attempt.
 export async function startCapture(): Promise<void> {
-  if (app.stream || app.phase === 'starting' || app.phase === 'recording') return;
+  // Never while a recording is being reviewed or encoded: a fresh capture would
+  // clobber it. Reset leaves 'review' before it restarts the capture.
+  if (app.stream || app.phase === 'starting' || app.phase === 'recording'
+      || app.phase === 'review' || app.phase === 'encoding') return;
   try {
     setPhase('starting');
     el.recBtn.disabled = true;
