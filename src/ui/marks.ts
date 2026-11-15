@@ -37,7 +37,7 @@ const DRAG_MIN   = 3;     // px of travel before a press counts as a drag
 const EDGE_GRIP  = 7;     // px near a section's edge that resizes instead of moves
 const SEEK_EVERY = 70;    // ms between seeks while dragging
 
-let lastTrim: { marks: number[]; cuts: Span[]; at: number; removed: number } | null = null;
+let lastTrim: { marks: number[]; cuts: Span[]; removed: number } | null = null;
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -148,12 +148,11 @@ function approveTrim(): void {
   const region = pendingRegion();
   if (!region) return;
   const wasKept = keptLengthNow();
-  const at = keptOf(region.s * app.duration);
-  lastTrim = { marks: app.marks, cuts: app.cuts, at, removed: 0 };
+  lastTrim = { marks: app.marks, cuts: app.cuts, removed: 0 };
   app.cuts = addSpan(app.cuts, region);
   app.marks = [];
   lastTrim.removed = wasKept - keptLengthNow();   // how much left the timeline
-  afterEdits(at);
+  afterEdits(region.s * app.duration);            // a time in the recording
 }
 
 // The red cross: leave the section in and drop the selection.
