@@ -92,7 +92,9 @@ demoshine/
 ├── eslint.config.js      # ESLint (flat config)
 ├── vitest.config.ts      # Test runner config
 ├── VERSIONING.md         # How the version is bumped, tagged and shown
+├── GLOSSARY.md           # The words this project uses — the ubiquitous language
 ├── THIRD-PARTY-NOTICES.template.txt  # Licences of what we bundle; the build fills in the versions
+├── .agents/skills/       # How work is done here: verifying a change, the domain model, the workflow
 └── .husky/pre-commit     # Runs lint-staged on commit
 ```
 
@@ -134,6 +136,14 @@ because screen capture needs a secure context — so there is no plain-HTTP mode
 Linting runs on every commit through a Husky pre-commit hook, and the CI
 workflow runs lint, type-check, tests and the build on every push and pull
 request.
+
+**How the project is worked on is written down**, so it does not have to be
+rediscovered: [`GLOSSARY.md`](GLOSSARY.md) holds the words — a *take* is not a
+*mark*, a *section* is not yet a *cut* — and `.agents/skills/` holds
+[verification](.agents/skills/verification/SKILL.md) (what counts as proving a
+change), the [domain model](.agents/skills/domain-model/SKILL.md) (where a rule
+belongs) and the [workflow](.agents/skills/project-workflow/SKILL.md) (branches,
+commits, pull requests).
 
 ---
 
