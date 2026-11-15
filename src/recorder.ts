@@ -14,6 +14,7 @@ import { buildThumbs, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
 import { resetPlayback } from './ui/playback.js';
 import { buildWaveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
+import { drawWebcamOverlay, stopWebcam } from './ui/webcam.js';
 import { getBestMime } from './infra/codecs.js';
 
 export async function toggleRec(): Promise<void> {
@@ -96,13 +97,13 @@ export async function startCapture(): Promise<void> {
 
 let crop: { ctx: CanvasRenderingContext2D; rx: number; ry: number; rw: number; rh: number } | null = null;
 
-// When a region is set, record a canvas mirrored from just that region (plus the
-// capture's audio); otherwise record the raw display stream.
+// When a region is set or the webcam is on, record a canvas mirrored from just
+// that region (plus the capture's audio); otherwise record the raw display stream.
 function buildRecordingStream(): MediaStream {
   const src = app.stream!;
   crop = null;
   const region = app.region;
-  if (isFullRegion(region)) return src;
+  if (isFullRegion(region) && !app.webcamOn) return src;
 
   const rx = Math.round(region.x * app.captureW);
   const ry = Math.round(region.y * app.captureH);
@@ -125,6 +126,7 @@ function startCropLoop(): void {
   (function loop() {
     if (app.phase !== 'recording' || !crop) return;
     crop.ctx.drawImage(el.sv, crop.rx, crop.ry, crop.rw, crop.rh, 0, 0, crop.rw, crop.rh);
+    drawWebcamOverlay(crop.ctx, 0, 0, crop.rw, crop.rh);
     app.cropRaf = requestAnimationFrame(loop);
   })();
 }
@@ -198,6 +200,7 @@ function onCaptureEnded(): void {
   if (app.phase === 'recording') { stopRec(); return; }
   if (app.phase === 'countdown') cancelCountdown();
   if (app.phase !== 'live' && app.phase !== 'countdown') return;
+  stopWebcam();
   app.stream = null;
   el.sv.srcObject = null;
   stopMirror();

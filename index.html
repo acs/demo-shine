@@ -71,6 +71,11 @@
           <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
         </svg>
       </button>
+      <button class="icon-btn" id="webcam-btn" aria-label="Toggle webcam" aria-pressed="false" title="Webcam" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+        </svg>
+      </button>
       <button class="icon-btn" id="help-btn" aria-label="Show instructions" title="Instructions">?</button>
       <div class="status-chip">
         <div class="s-dot" id="s-dot"></div>
@@ -186,7 +191,7 @@
         <div class="help-num">1</div>
         <div class="help-step-body">
           <div class="help-step-title">Choose what to record</div>
-          <div class="help-step-desc">When the app opens, your browser asks what to share — pick a screen, window or tab (full screen is preselected) and tick Share tab audio for sound. The preview goes live straight away.</div>
+          <div class="help-step-desc">When the app opens, your browser asks what to share — pick a screen, window or tab (full screen is preselected) and tick Share tab audio for sound. The preview goes live straight away. Use the camera button in the header to add a webcam bubble (it's greyed out if there is no camera).</div>
         </div>
       </div>
       <div class="help-step">
@@ -226,6 +231,7 @@
 <div class="toast" id="toast"></div>
 <video id="sv" style="display:none" autoplay muted playsinline></video>
 <video id="rv" style="display:none" playsinline preload="auto"></video>
+<video id="wcv" style="display:none" autoplay muted playsinline></video>
 
 <script type="module" src="/src/main.ts"></script>
 </body>

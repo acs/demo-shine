@@ -70,6 +70,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .icon-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--glass-b);background:var(--glass);color:var(--text-mid);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-family:var(--font-mono);font-size:13px;font-weight:600;line-height:1;flex-shrink:0;}
 .icon-btn:hover{background:var(--glass-b);color:var(--text);border-color:var(--glass-b2);}
 .icon-btn:active{transform:scale(.92);}
+.icon-btn:disabled{opacity:.35;cursor:not-allowed;}
+.icon-btn:disabled:hover{background:var(--glass);color:var(--text-mid);border-color:var(--glass-b);}
+.icon-btn.active{color:var(--crimson);border-color:rgba(229,62,62,.42);background:rgba(229,62,62,.1);}
 .icon-btn svg{pointer-events:none;}
 
 .status-chip{display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:100px;background:var(--glass);border:1px solid var(--glass-b);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--text-mid);user-select:none;flex-shrink:0;}
