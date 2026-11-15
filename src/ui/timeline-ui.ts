@@ -3,9 +3,9 @@
 
 import { el } from './dom.js';
 import { app } from '../state.js';
-import { clipSeconds, normalizeTrim, estimateWebmText } from '../domain/timeline.js';
+import { keptLength, normalizeTrim, estimateWebmText } from '../domain/timeline.js';
 import { seekTo } from './preview.js';
-import { syncToTrim, playFrom } from './playback.js';
+import { syncToTrim } from './playback.js';
 import { drawWaveform } from './waveform.js';
 
 export function resetTrim(): void {
@@ -41,7 +41,8 @@ export function updateTrimUI(): void {
 
 export function updateSizeUI(): void {
   if (!app.duration || app.phase === 'idle') { el.tSize.textContent = '—'; return; }
-  const clip = clipSeconds(app.duration, app.trimStart, app.trimEnd);
+  // Cuts are trimmed away, so they shrink the estimate too.
+  const clip = keptLength(app.cuts, app.trimStart, app.trimEnd) * app.duration;
   el.tSize.textContent = estimateWebmText(clip);
 }
 
@@ -62,22 +63,4 @@ export async function buildThumbs(): Promise<void> {
     await seekTo(el.rv, (i / COUNT) * app.duration);
     frames[i].tc.getContext('2d')?.drawImage(el.rv, 0, 0, 80, 45);
   }
-}
-
-// Click anywhere on the timeline track to start playing from that point. The
-// header (labels, transport) and the trim handles keep their own behaviour.
-export function initTimelineSeek(): void {
-  el.timeline.addEventListener('click', evt => {
-    if (app.phase !== 'review' || el.rv.readyState < 2) return;
-    const target = evt.target as HTMLElement | null;
-    if (target?.closest('.tl-header')) return;          // labels + play button
-    if (target && (target.tagName === 'INPUT' || target.tagName === 'BUTTON')) return;
-
-    const rect = el.thumbs.getBoundingClientRect();
-    if (rect.width <= 0) return;
-    const pct = Math.max(0, Math.min(1, (evt.clientX - rect.left) / rect.width));
-    // A click on the last couple of pixels means the OUT point: start over.
-    const time = pct >= 1 - 2 / rect.width ? app.duration : pct * app.duration;
-    playFrom(time);
-  });
 }

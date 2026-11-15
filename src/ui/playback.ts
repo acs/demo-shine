@@ -6,7 +6,7 @@
 import { app } from '../state.js';
 import { el } from './dom.js';
 import { drawFrame, seekAndDraw } from './preview.js';
-import { clampToClip } from '../domain/timeline.js';
+import { clampToClip, type Span } from '../domain/timeline.js';
 
 const PLAY_ICON  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
 const PAUSE_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
@@ -38,12 +38,26 @@ export function playFrom(time: number): void {
   if (app.phase !== 'review' || el.rv.readyState < 2) return;
   const start = clipStart();
   const end   = clipEnd();
-  const t = clampToClip(time, start, end);
-  // Clicking at (or past) the OUT point leaves nothing to play, so loop from IN.
-  el.rv.currentTime = t >= end - 0.02 ? start : t;
-  updatePlayhead(el.rv.currentTime);
-  if (app.playing) void seekAndDraw(el.rv, el.rv.currentTime);
+  let t = clampToClip(time, start, end);
+  // Land outside anything trimmed away, then off the OUT point, which restarts.
+  const cut = cutAt(t);
+  if (cut) t = Math.min(cut.e, end);
+  if (t >= end - 0.02) t = start;
+  el.rv.currentTime = t;
+  updatePlayhead(t);
+  if (app.playing) void seekAndDraw(el.rv, t);
   else             beginPlayback();
+}
+
+// The cut region containing an absolute time, in seconds.
+function cutAt(t: number): Span | null {
+  const d = app.duration;
+  for (const c of app.cuts) {
+    const s = c.s * d;
+    const e = c.e * d;
+    if (t >= s && t < e) return { s, e };
+  }
+  return null;
 }
 
 function beginPlayback(): void {
@@ -100,6 +114,14 @@ export function seekPlayback(time: number): void {
 function loop(): void {
   if (!app.playing) return;
   if (el.rv.paused || el.rv.ended) { pausePlayback(); return; }
+  const cut = cutAt(el.rv.currentTime);
+  if (cut) {
+    // This stretch was trimmed away: hop over it and carry on.
+    el.rv.currentTime = Math.min(cut.e, clipEnd());
+    updatePlayhead(el.rv.currentTime);
+    app.playRaf = requestAnimationFrame(loop);
+    return;
+  }
   if (el.rv.currentTime >= clipEnd()) {
     el.rv.currentTime = clipEnd();
     drawFrame(el.rv);
