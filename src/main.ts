@@ -6,7 +6,7 @@ import { applyTheme, toggleTheme } from './ui/theme.js';
 import { toggleHelp, helpBdClick } from './ui/help.js';
 import { startStarfield } from './ui/starfield.js';
 import { drawGrid } from './ui/preview.js';
-import { onTrim, updateTrimUI, updateSizeUI } from './ui/timeline-ui.js';
+import { onTrim, updateTrimUI, updateSizeUI, initTimelineSeek } from './ui/timeline-ui.js';
 import { toggleRec, startCapture } from './recorder.js';
 import { doExport, resetAll } from './exporter.js';
 import { togglePlayback } from './ui/playback.js';
@@ -46,6 +46,9 @@ function init(): void {
   el.btnReset.addEventListener('click', resetAll);
   el.btnExp.addEventListener('click', doExport);
   el.playBtn.addEventListener('click', togglePlayback);
+
+  // Click the timeline to play from that point.
+  initTimelineSeek();
 
   // PWA install prompt
   window.addEventListener('beforeinstallprompt', e => {
