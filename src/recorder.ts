@@ -7,11 +7,11 @@
 
 import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
-import { startMirror, stopMirror, seekAndDraw } from './ui/preview.js';
+import { startMirror, stopMirror } from './ui/preview.js';
 import { runCountdown, cancelCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { buildThumbs, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
-import { resetPlayback } from './ui/playback.js';
+import { resetPlayback, seekPlayback } from './ui/playback.js';
 import { buildWaveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
 import { drawWebcamOverlay, stopWebcam } from './ui/webcam.js';
@@ -284,10 +284,11 @@ function onRecStop(): void {
     if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
     resetPlayback();
     void buildWaveform(app.blob);
-    void buildThumbs();
-    void seekAndDraw(el.rv, 0);
     setTimerMs(app.duration * 1000);
     resetTrim();
+    // Building the thumbnails seeks the video to the last frame; once it's done,
+    // put the playhead back at the trim IN so the first Play starts from the top.
+    void buildThumbs().then(() => seekPlayback(app.trimStart * app.duration));
     el.timeline.classList.add('on');
     el.btnReset.style.display = '';
     el.btnExp.style.display   = '';
