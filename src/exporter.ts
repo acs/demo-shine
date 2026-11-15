@@ -16,6 +16,27 @@ import { stopRec, startCapture, releaseDisplay } from './recorder.js';
 import { pausePlayback, resetPlayback } from './ui/playback.js';
 import { clearWaveform } from './ui/waveform.js';
 import { cutEndAt, cutsInSeconds, partAt, partStart } from './domain/timeline.js';
+import { exportOffline, offlineAvailable, type OfflineStats } from './offline-export.js';
+
+// How this export is written. Offline is the default wherever the browser can do
+// it — it is ~10x faster, runs with the tab in the background, and writes a file
+// that seeks. The real-time path stays for browsers without WebCodecs (Firefox
+// below 130), and `?export=realtime` forces it, which is how the two are compared.
+function exportMode(): 'offline' | 'realtime' {
+  if (new URLSearchParams(location.search).get('export') === 'realtime') return 'realtime';
+  return offlineAvailable() ? 'offline' : 'realtime';
+}
+
+// The offline export writes the whole file itself, so there is nothing to feed a
+// recorder and nothing to play: it reports how far it has got as it goes, and
+// hands back what it managed so the caller can say it.
+async function exportOfflineHere(): Promise<OfflineStats> {
+  const end = Math.min(app.trimEnd * app.duration, app.duration - 0.05);
+  const { blob, stats } = await exportOffline(source => encodingAt(source, end));
+  dlBlob(blob, 'demoshine-' + ts() + '.webm');
+  console.info('DemoShine offline export', stats);
+  return stats;
+}
 
 export async function doExport(): Promise<void> {
   if (app.phase !== 'review') return;
@@ -27,10 +48,27 @@ export async function doExport(): Promise<void> {
   el.playBtn.disabled  = true;
   setStatus('proc', 'Encoding…');
   beginEncoding();
+  const mode = exportMode();
   try {
-    await exportWebM();
-    setStatus('ready', 'Export complete ✓');
-    toast('File downloaded successfully.', 3000);
+    if (mode === 'offline') {
+      try {
+        const stats = await exportOfflineHere();
+        setStatus('ready', 'Export complete ✓');
+        toast(`File downloaded successfully — written at ${stats.realtime.toFixed(1)}× real time.`, 4000);
+      } catch (err) {
+        // A take the decoder cannot read, or an encoder that refused. The slow
+        // path still works, and a slow export beats no export — but say so.
+        console.warn('DemoShine: the offline export failed, exporting the slow way —', err);
+        toast('Offline export failed — writing it the slower way instead.', 5000);
+        await exportWebM();
+        setStatus('ready', 'Export complete ✓');
+        toast('File downloaded successfully.', 3000);
+      }
+    } else {
+      await exportWebM();
+      setStatus('ready', 'Export complete ✓');
+      toast('File downloaded successfully.', 3000);
+    }
   } catch (err) {
     console.error(err);
     setStatus('ready', 'Export failed');
