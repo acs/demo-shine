@@ -1,0 +1,25 @@
+# Updates arrive as pull requests rather than as a surprise, so a bump can be
+# accepted or rejected with its size and licence delta visible in the same place.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+    groups:
+      # Minor and patch updates arrive together, so an ordinary week is one pull
+      # request. Majors come on their own, to be looked at.
+      npm-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

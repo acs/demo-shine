@@ -86,13 +86,13 @@ demoshine/
 ├── public/               # Copied verbatim into the build
 │   ├── manifest.json       # PWA manifest
 │   ├── sw.js               # Service worker — cache-first offline support
-│   ├── THIRD-PARTY-NOTICES.txt  # Licences of the libraries the app bundles
 │   └── icon.svg            # App icon
 ├── vite.config.ts        # Dev server + build config
 ├── tsconfig.json         # TypeScript config (type-check / editor)
 ├── eslint.config.js      # ESLint (flat config)
 ├── vitest.config.ts      # Test runner config
 ├── VERSIONING.md         # How the version is bumped, tagged and shown
+├── THIRD-PARTY-NOTICES.template.txt  # Licences of what we bundle; the build fills in the versions
 └── .husky/pre-commit     # Runs lint-staged on commit
 ```
 
@@ -176,7 +176,7 @@ To deploy elsewhere, run `npm run build` and publish the `dist/` folder.
 - [WebCodecs](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API) — `VideoEncoder`/`AudioEncoder` for the offline export
 - [Mediabunny](https://mediabunny.dev/) — reads the takes back, frame by frame, for that export
 - [webm-muxer](https://github.com/Vanilagy/webm-muxer) — writes the exported container, duration and cue points included
-- Bundled licences — [THIRD-PARTY-NOTICES.txt](public/THIRD-PARTY-NOTICES.txt), carried inside the JS bundle and served beside the app
+- Bundled licences — filled at build time from `THIRD-PARTY-NOTICES.template.txt`, carried inside the JS bundle and served beside the app as `THIRD-PARTY-NOTICES.txt`
 - [Syne](https://fonts.google.com/specimen/Syne) + [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono) — typefaces
 - Service Worker + Web App Manifest — PWA support
 
