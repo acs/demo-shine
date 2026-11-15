@@ -68,6 +68,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 /* The build's version, beside the logo: the one number that says which deployed
    build this window is running. */
 .logo-ver{font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;color:var(--text-dim);border:1px solid var(--glass-b);border-radius:5px;padding:3px 6px;line-height:1;align-self:center;}
+/* Offered when the deployment is serving a newer build than the one running. It
+   is only a offer: reloading by itself would take a recording in progress. */
+.ver-new{display:none;font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;color:var(--amber);border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.08);border-radius:5px;padding:3px 7px;line-height:1;align-self:center;cursor:pointer;}
+.ver-new.on{display:inline-flex;}
+.ver-new:hover{border-color:rgba(245,158,11,.6);}
 
 #compat-warn{display:none;font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;color:var(--amber);padding:4px 10px;border:1px solid rgba(245,158,11,.25);border-radius:6px;background:rgba(245,158,11,.06);}
 .hdr-actions{display:flex;align-items:center;gap:7px;margin-left:auto;}
@@ -257,6 +262,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .help-bd.on .help-panel{transform:translateY(0);}
 .help-title{font-size:17px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text);margin-bottom:3px;}
 .help-sub{font-family:var(--font-mono);font-size:9px;letter-spacing:.2em;color:var(--text-dim);text-transform:uppercase;margin-bottom:22px;}
+.help-ver{color:var(--text-mid);}
 .help-steps{display:flex;flex-direction:column;gap:14px;}
 .help-step{display:flex;gap:12px;align-items:flex-start;}
 .help-num{width:21px;height:21px;border-radius:50%;border:1px solid rgba(229,62,62,.35);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;color:var(--crimson);flex-shrink:0;margin-top:2px;}

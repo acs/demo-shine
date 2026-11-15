@@ -18,7 +18,20 @@ export default defineConfig(({ mode }) => ({
   base: './',
   // Baked into the bundle so the app can show which build it is (src/ui/version.ts).
   define: { __APP_VERSION__: JSON.stringify(version) },
-  plugins: mode === 'http' ? [] : [basicSsl()],
+  plugins: [
+    ...(mode === 'http' ? [] : [basicSsl()]),
+    {
+      // `version.json` says which version the deployment is serving, for the app
+      // to compare its own against and offer a reload when a newer build is out
+      // (see src/ui/version.ts). Written for the build only: under the dev
+      // server there is no deployment that could be newer.
+      name: 'demoshine-version',
+      apply: 'build',
+      generateBundle() {
+        this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ version }) });
+      },
+    },
+  ],
   server: { port: 5173 },
   preview: { port: 5173 },
   build: { outDir: 'dist', emptyOutDir: true },

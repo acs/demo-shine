@@ -27,6 +27,13 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
 
+  // `version.json` is how the app learns a newer build has been deployed, so it
+  // must never come from a cache — not the browser's, and not this one.
+  if (url.pathname.endsWith('/version.json')) {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+
   const put = res => { if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone())); return res; };
 
   if (e.request.mode === 'navigate' || e.request.destination === 'document') {
