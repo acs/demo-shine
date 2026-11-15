@@ -1,6 +1,7 @@
 // Composition root: wires the UI to the use cases and boots the app.
 
 import { el, setStatus, toast } from './ui/dom.js';
+import { onPhaseChange, app, type Phase } from './state.js';
 import { loadPrefs } from './prefs.js';
 import { applyTheme, toggleTheme } from './ui/theme.js';
 import { toggleHelp, helpBdClick } from './ui/help.js';
@@ -47,6 +48,15 @@ function init(): void {
   el.btnReset.addEventListener('click', resetAll);
   el.btnExp.addEventListener('click', doExport);
   el.playBtn.addEventListener('click', togglePlayback);
+
+  // Reset is the way back to the share picker — it is how you re-share after
+  // forgetting to tick "share audio" — so it is offered while a capture is live
+  // ("waiting to record") as well as while a clip is being reviewed. It stays
+  // hidden during the countdown and the recording, where a press would be read
+  // as "stop" instead.
+  const showReset = (phase: Phase) => { el.btnReset.style.display = phase === 'live' || phase === 'review' ? '' : 'none'; };
+  onPhaseChange(showReset);
+  showReset(app.phase);
 
   // Click the timeline to play from that point, mark a region and trim it.
   initTimelineMarks();

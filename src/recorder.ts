@@ -54,13 +54,20 @@ export async function startCapture(): Promise<void> {
     // `cursor` and `displaySurface` are display-capture constraints; they are
     // not in lib.dom's MediaTrackConstraints, hence the assertion. Preferring
     // 'monitor' preselects the entire screen in the picker (the browser still
-    // asks the user to confirm — a page can never capture silently). Audio is
-    // always requested: the browser only yields a track when the source has sound.
+    // asks the user to confirm — a page can never capture silently).
+    //
+    // Audio is always requested: the browser only offers an audio option at all
+    // when `audio` is true. `systemAudio: 'include'` asks for the sound of what
+    // is shared as well as the tab's, and it is only a hint — Chrome decides
+    // whether the option appears and whether its box starts ticked, and the user
+    // still has to agree, so a share without audio is possible and is reported
+    // below.
     const video = { frameRate: { ideal: 30, max: 60 }, cursor: 'always', displaySurface: 'monitor' } as MediaTrackConstraints;
-    app.stream = await navigator.mediaDevices.getDisplayMedia({ video, audio: true });
+    const options = { video, audio: true, systemAudio: 'include' } as unknown as DisplayMediaStreamOptions;
+    app.stream = await navigator.mediaDevices.getDisplayMedia(options);
 
     app.recAudio = app.stream.getAudioTracks().length > 0;
-    if (!app.recAudio) toast('No audio was shared — the recording will be silent.', 4000);
+    if (!app.recAudio) toast('No audio was shared — the recording will be silent. Press Reset to share again with audio.', 6000);
 
     app.region = { ...FULL };   // a fresh capture records the whole source
 
@@ -239,12 +246,7 @@ export function stopRec(): void {
   if (app.rec && app.rec.state !== 'inactive') app.rec.stop();
   stopCropLoop();
   stopMix();
-  if (app.stream) {
-    // Detach first, so releasing the tracks doesn't re-enter onCaptureEnded.
-    app.stream.getVideoTracks()[0]?.removeEventListener('ended', onCaptureEnded);
-    app.stream.getTracks().forEach(t => t.stop());
-    app.stream = null;
-  }
+  releaseDisplay();
   stopTimer();
   stopMirror();
   el.recBtn.classList.remove('recording');
@@ -253,6 +255,18 @@ export function stopRec(): void {
   el.badge.classList.remove('on');
   el.recLbl.textContent = 'Record';
   setStatus('proc', 'Processing…');
+}
+
+// Let go of the shared screen (and the preview showing it). Reset uses this to
+// go back to the picker, so a share without audio can be redone.
+export function releaseDisplay(): void {
+  if (!app.stream) return;
+  // Detach first, so releasing the tracks doesn't re-enter onCaptureEnded.
+  app.stream.getVideoTracks()[0]?.removeEventListener('ended', onCaptureEnded);
+  app.stream.getTracks().forEach(t => t.stop());
+  app.stream = null;
+  el.sv.srcObject = null;
+  stopMirror();
 }
 
 // The user clicked the browser's "Stop sharing" chip.
@@ -296,7 +310,6 @@ function onRecStop(): void {
       // put the playhead back at the trim IN so the first Play starts from the top.
       void buildThumbs().then(() => seekPlayback(app.trimStart * app.duration));
       el.timeline.classList.add('on');
-      el.btnReset.style.display = '';
       el.btnExp.style.display   = '';
       updateSizeUI();
     })();

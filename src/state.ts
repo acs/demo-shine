@@ -101,4 +101,13 @@ export const app: AppState = {
 
 export function setPhase(phase: Phase): void {
   app.phase = phase;
+  phaseWatchers.forEach(fn => fn(phase));
+}
+
+// Views that must follow the phase (which buttons are available in which state)
+// subscribe here instead of writing the same condition at every call site.
+const phaseWatchers: Array<(phase: Phase) => void> = [];
+
+export function onPhaseChange(fn: (phase: Phase) => void): void {
+  phaseWatchers.push(fn);
 }
