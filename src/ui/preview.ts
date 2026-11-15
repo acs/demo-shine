@@ -56,13 +56,9 @@ export function seekWithin(vid: HTMLVideoElement, t: number, ms = 2500): Promise
   });
 }
 
-export async function seekAndDraw(vid: HTMLVideoElement, t: number): Promise<void> {
-  await seekTo(vid, t);
-  drawFrame(vid);
-}
-
 // Live mirror: show the captured screen on the preview canvas during countdown.
 export function startMirror(): void {
+  if (app.mirroring) return;             // already showing the live screen
   app.mirroring = true;
   (function loop() {
     if (!app.mirroring) return;

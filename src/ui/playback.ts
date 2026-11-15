@@ -16,8 +16,9 @@
 
 import { app } from '../state.js';
 import { el } from './dom.js';
-import { drawFrame, seekAndDraw } from './preview.js';
+import { drawFrame } from './preview.js';
 import { clampToClip, cutEndAt } from '../domain/timeline.js';
+import { clipNext, clipSeek, clipSeekAndDraw, clipTime, partEnded } from './clip.js';
 
 const PLAY_ICON  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
 const PAUSE_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
@@ -45,7 +46,7 @@ function cutEndFor(t: number): number | null {
 export function setScrubbing(on: boolean): void {
   scrubbing = on;
   askedSkip = 0;
-  seenAt = el.rv.currentTime;
+  seenAt = clipTime();
   seenTime = Date.now();
 }
 
@@ -64,7 +65,8 @@ export function startPlayback(): void {
   const start = clipStart();
   const end   = clipEnd();
   // (Re)start from IN when the playhead sits outside the trimmed range.
-  if (el.rv.currentTime < start || el.rv.currentTime >= end - 0.02) el.rv.currentTime = start;
+  const t = clipTime();
+  if (t < start || t >= end - 0.02) void clipSeek(start);
   beginPlayback();
 }
 
@@ -84,14 +86,14 @@ export function playFrom(time: number): void {
   }
   updatePlayhead(t);
   askedSkip = 0;
-  el.rv.currentTime = t;
+  void clipSeek(t);
   if (!app.playing) beginPlayback();
 }
 
 function beginPlayback(): void {
   app.playing = true;
   askedSkip = 0;
-  seenAt = el.rv.currentTime;
+  seenAt = clipTime();
   seenTime = Date.now();
   updateTransport();
   el.rv.play().then(loop).catch(() => {
@@ -124,13 +126,13 @@ export function syncToTrim(moved: 'start' | 'end'): void {
   const end   = clipEnd();
   if (app.playing) {
     // Keep playing, but never outside the new range.
-    const t = clampToClip(el.rv.currentTime, start, end);
-    if (t !== el.rv.currentTime) { askedSkip = 0; el.rv.currentTime = t; }
+    const t = clampToClip(clipTime(), start, end);
+    if (t !== clipTime()) { askedSkip = 0; void clipSeek(t); }
     updatePlayhead(t);
   } else {
     // Preview the frame at the handle the user just moved.
     const t = moved === 'start' ? start : end;
-    void seekAndDraw(el.rv, t);
+    void clipSeekAndDraw(t);
     updatePlayhead(t);
   }
 }
@@ -140,9 +142,9 @@ export function seekPlayback(time: number): void {
   if (app.phase !== 'review' || el.rv.readyState < 2) return;
   const t = clampToClip(time, clipStart(), clipEnd());
   askedSkip = 0;
-  el.rv.currentTime = t;
   updatePlayhead(t);
-  if (!app.playing) void seekAndDraw(el.rv, t);
+  if (app.playing) void clipSeek(t);
+  else             void clipSeekAndDraw(t);
 }
 
 function loop(): void {
@@ -151,28 +153,38 @@ function loop(): void {
 
   // Watchdog: a playhead that stops moving means a stalled decode or seek, so
   // stop rather than leaving the transport claiming to play.
-  if (el.rv.currentTime !== seenAt) { seenAt = el.rv.currentTime; seenTime = now; }
+  if (clipTime() !== seenAt) { seenAt = clipTime(); seenTime = now; }
   else if (seenTime && now - seenTime > STALL_MS) { pausePlayback(); return; }
 
-  if (el.rv.paused || el.rv.ended) { pausePlayback(); return; }
+  if (el.rv.paused && !el.rv.ended) { pausePlayback(); return; }
 
   // A trimmed-away stretch is jumped over without pausing, so playback carries
   // straight on. The seek is asked for once and the playhead is left alone until
   // the element comes out of the seek, so the browser is not re-asked every frame.
-  const cutEnd = scrubbing ? null : cutEndFor(el.rv.currentTime);
+  const cutEnd = scrubbing ? null : cutEndFor(clipTime());
   if (cutEnd !== null) {
     const to = Math.min(cutEnd, clipEnd());
-    if (!el.rv.seeking && askedSkip !== to) { askedSkip = to; el.rv.currentTime = to; }
+    if (!el.rv.seeking && askedSkip !== to) { askedSkip = to; void clipSeek(to); }
     updatePlayhead(to);
     app.playRaf = requestAnimationFrame(loop);
     return;
   }
   askedSkip = 0;
 
-  if (el.rv.currentTime >= clipEnd()) {
-    el.rv.currentTime = clipEnd();
-    drawFrame(el.rv);
+  if (clipTime() >= clipEnd()) {
+    void clipSeek(clipEnd());
     pausePlayback();
+    return;
+  }
+
+  // The recording in the video has run out: carry on into the next one, so the
+  // joined clip plays as a whole.
+  if (partEnded()) {
+    void clipNext().then(joined => {
+      if (!app.playing) return;
+      if (!joined) { pausePlayback(); return; }
+      app.playRaf = requestAnimationFrame(loop);
+    });
     return;
   }
 
@@ -192,7 +204,7 @@ function updateTransport(): void {
 }
 
 function updatePlayhead(time?: number): void {
-  const t   = time ?? el.rv.currentTime;
+  const t   = time ?? clipTime();
   const pct = app.duration > 0 ? (t / app.duration) * 100 : 0;
   el.playhead.style.left = Math.max(0, Math.min(pct, 100)).toFixed(2) + '%';
   el.tNow.textContent = t.toFixed(2) + 's';

@@ -11,6 +11,8 @@ import {
   keptLength,
   moveSpan,
   normalizeTrim,
+  partAt,
+  partStart,
   resizeSpan,
   spanAt,
   spanBetween,
@@ -202,5 +204,39 @@ describe('resizeSpan', () => {
   it('stays inside the clip', () => {
     expect(resizeSpan(span, 's', -1, 0.01)).toEqual({ s: 0, e: 0.4 });
     expect(resizeSpan(span, 'e', 2, 0.01)).toEqual({ s: 0.2, e: 1 });
+  });
+});
+
+describe('several recordings as one clip', () => {
+  const parts = [{ duration: 10 }, { duration: 5 }, { duration: 7 }];
+
+  it('says where each recording begins', () => {
+    expect(partStart(parts, 0)).toBe(0);
+    expect(partStart(parts, 1)).toBe(10);
+    expect(partStart(parts, 2)).toBe(15);
+  });
+
+  it('treats the total as the end of the last one', () => {
+    expect(partStart(parts, 3)).toBe(22);
+  });
+
+  it('is 0 before the first', () => {
+    expect(partStart(parts, -1)).toBe(0);
+  });
+
+  it('says which recording holds a time', () => {
+    expect(partAt(parts, 0)).toBe(0);
+    expect(partAt(parts, 9.99)).toBe(0);
+    expect(partAt(parts, 10)).toBe(1);
+    expect(partAt(parts, 14.99)).toBe(1);
+    expect(partAt(parts, 15)).toBe(2);
+  });
+
+  it('keeps the last one for a time past the end', () => {
+    expect(partAt(parts, 100)).toBe(2);
+  });
+
+  it('has no part to point at when there are none', () => {
+    expect(partAt([], 5)).toBe(0);
   });
 });

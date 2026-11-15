@@ -16,6 +16,8 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 - **Region crop** — a red box over the preview always shows what will be recorded: the whole screen by default, drag to record just part of it, click to reset; while recording the box breathes (red ↔ background)
 - **Webcam overlay** — a header toggle adds a mirrored webcam bubble in the corner of the recording (disabled when no camera is present)
 - **Microphone** — a header toggle (disabled when no mic) with a live level meter; its audio is **mixed with the tab/system audio** in the recording
+- **Add more takes** — pressing Record after a recording appends the new one to the end of the clip; the share is kept between takes, so there is no second picker and **every take in a clip comes from the same source** (the same tab, window or screen). Reset starts a new clip; if the share ends, Record asks for another one and the next take still adds on
+- **Live timeline** — the timeline is there while a take records, filling in with the picture and the sound as they are captured (drawn from the live preview and the recorded stream's own levels, never by decoding the half-written file), and it becomes the trim timeline on stop
 - **Timeline trimmer** — drag IN/OUT handles to keep a range, **click twice to mark a region and click it to trim it away**, and **drag any bar** (a mark, or a removed region — whole or by an edge) to reposition it, with the clip playing under the bar as it moves
 - **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
 - **Audio track** — a waveform of the recording under the thumbnails, shown when the clip has sound
@@ -32,9 +34,10 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 1. Open [DemoShine](https://acs.github.io/demo-shine/) in Chrome or Edge — the picker opens straight away and the screen goes live in the preview (full screen is preselected; tick **Share tab audio** / **Share system audio** for sound, and press **Reset** to go back to the picker if you forget)
 2. The red box over the preview shows what will be recorded — the whole screen by default; drag to record only a region, and click to go back to the full screen
 3. Press the red button to record — a 3-second countdown runs, and pressing the button again during it cancels; press it again to stop
-4. The timeline then appears with a playback control and an audio track
-5. Play it back, drag the **blue IN** and **red OUT** handles to keep a range, or click anywhere on the timeline to play from that moment. To cut a part out, click where it starts and where it ends, then click inside the shaded region; click that region again to put it back. Marks and trimmed regions can be dragged to reposition them
-6. Click **Export ↓** to encode and download
+4. Press Record again to add another take to the end of the clip — the timeline then holds every take, and the trims you already made are kept
+5. The timeline holds a playback control and an audio track
+6. Play it back, drag the **blue IN** and **red OUT** handles to keep a range, or click anywhere on the timeline to play from that moment. To cut a part out, click where it starts and where it ends, then click inside the shaded region; click that region again to put it back. Marks and trimmed regions can be dragged to reposition them
+7. Click **Export ↓** to encode and download
 
 ---
 
@@ -64,6 +67,7 @@ demoshine/
 │       ├── preview.ts      # Preview canvas, seeking, live mirror
 │       ├── region.ts       # Crop-region selection + overlay
 │       ├── timeline-ui.ts  # IN/OUT handles, thumbnails, size estimate
+│       ├── clip.ts         # The recordings of a session, played as one timeline
 │       ├── marks.ts        # Marks + removed regions: click, drag, overlay
 │       ├── playback.ts     # Clip playback on the preview, skipping removed regions
 │       ├── waveform.ts     # Audio waveform track
