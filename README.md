@@ -20,7 +20,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 - **Live timeline** — the timeline is there while a take records, filling in with the picture and the sound as they are captured (drawn from the live preview and the recorded stream's own levels, never by decoding the half-written file), and it becomes the trim timeline on stop
 - **Timeline trimmer** — drag IN/OUT handles to keep a range, then **click twice to select a section and approve it with the green check** (or by clicking inside it), with a **red cross** to leave it in and an **undo** to put it back. **An approved trim leaves the timeline**, which closes up over it, so the timeline always shows what the export will hold — the strip, the waveform, the handles and the playhead all follow. **Drag a mark or the selected section** (whole, or by an edge) to reposition it, with the clip playing under it as it moves
 - **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
-- **Export progress on the timeline** — the playhead travels across the clip as it is written, with the frames shown on the preview and the time left counted down; nothing runs off a bottom bar
+- **Export progress on the timeline** — the playhead travels across the clip as it is written, with the frames shown on the preview and how much of the clip is left to write counted down; nothing runs off a bottom bar
 - **Audio track** — a waveform of the recording under the thumbnails, shown when the clip has sound
 - **3-second countdown** — the live preview stays visible behind it, and pressing record again during it cancels
 - **Tab / system audio** — requested on every capture (`audio: true` plus Chrome's `systemAudio: 'include'` hint, so the audio option is offered); the browser owns that checkbox, so the app says so when a share comes back silent, and **Reset** returns to the picker to redo it
@@ -38,8 +38,8 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 3. Press the red button to record — a 3-second countdown runs, and pressing the button again during it cancels; press it again to stop
 4. Press Record again to add another take to the end of the clip — the timeline then holds every take, and the trims you already made are kept
 5. The timeline holds a playback control and an audio track
-6. Play it back, drag the **blue IN** and **red OUT** handles to keep a range, or click anywhere on the timeline to play from that moment. To cut a part out, click where it starts and where it ends, then press the **green check** (or click inside the shaded section): it leaves the timeline and the rest closes up. The **red cross** leaves the section in, and the small **undo** arrow brings back what you just trimmed. Marks and the selected section can be dragged to reposition them
-7. Click **Export ↓** to encode and download — the timeline fills as it writes and counts down what is left of it (the export runs at the clip's own speed, over the kept range only)
+6. Play it back, drag the **blue IN** and **red OUT** handles to keep a range, or click anywhere on the timeline to play from that moment. To cut a section out, click where it starts and where it ends, then press the **green check** (or click inside the shaded section): it leaves the timeline and the rest closes up. The **red cross** leaves the section in, and the small **undo** arrow brings back what you just trimmed. Marks and the selected section can be dragged to reposition them
+7. Click **Export ↓** to encode and download — the timeline fills as it writes and counts down how much of the clip is left to write (it is encoded offline, over the kept range only, roughly ten times faster than the clip)
 
 ---
 
@@ -50,38 +50,51 @@ demoshine/
 ├── index.html            # Entry HTML — links the stylesheet and src/main.ts
 ├── styles.css            # All styling (theme variables, layout, components)
 ├── src/                  # TypeScript source
-│   ├── main.ts           # Composition root — wires the UI to the use cases
-│   ├── state.ts          # Shared application state (the mutable model)
+│   ├── main.ts           # Composition root — wires the UI to the flows
+│   ├── session.ts        # The session: the clip and the view state, and the one place that lets go of it
+│   ├── state.ts          # Shared mutable state — deliberately small; the model lives in domain/
 │   ├── prefs.ts          # User preferences (localStorage)
-│   ├── recorder.ts       # Recording use case (getDisplayMedia + MediaRecorder)
-│   ├── exporter.ts       # Export + reset use cases (WebM)
-│   ├── offline-export.ts # The export, encoded offline with WebCodecs
+│   ├── recorder.ts       # The recording flow (getDisplayMedia + MediaRecorder) — needs a real picker
+│   ├── exporter.ts       # The export and reset flows: buttons, status line, phase
+│   ├── offline-export.ts # The export's browser half: decode, draw, encode, mux
+│   ├── util.ts           # Tiny shared helpers (sleep)
 │   ├── globals.d.ts      # Ambient types (prefixed AudioContext, captureStream)
 │   ├── vite-env.d.ts     # Vite client types
-│   ├── domain/           # Pure logic — no DOM, no browser APIs
-│   │   ├── timeline.ts     # Trim math (keep range + removed spans) + size estimates
-│   │   └── timeline.test.ts
+│   ├── domain/clip/      # Pure logic — no DOM, no browser APIs; a test beside every rule
+│   │   ├── Clip.ts         # The aggregate: takes + keep range + cuts + the kept segments
+│   │   ├── Take.ts         # One press of Record: id, blob, url, duration
+│   │   ├── TakeRepository.ts # The port the clip takes its takes from
+│   │   ├── Span.ts         # A half-open range: [s, e)
+│   │   ├── SpanSet.ts      # Ranges that cannot overlap — what was cut
+│   │   ├── TimelineMap.ts  # Recording time ↔ kept time, in one place
+│   │   ├── Trim.ts         # The keep range, and the slider view of it
+│   │   └── ExportPlan.ts   # What the file will hold, decided before a frame is encoded
+│   ├── application/      # Use cases: the thinking, without a browser
+│   │   └── export-clip.ts  # planExport(clip, settings) → an ExportPlan
 │   ├── infra/            # Browser boundary adapters
+│   │   ├── takes.ts        # InMemoryTakeRepository — owns the takes' object URLs
 │   │   ├── codecs.ts       # WebM mime / codec selection
 │   │   └── download.ts     # Blob download trigger
-│   ├── util.ts           # Tiny shared helpers (sleep)
-│   └── ui/               # View layer (DOM) — one module per widget
+│   └── ui/               # View layer (DOM) — one module per widget, each exporting the object its state lives on
 │       ├── dom.ts          # Central element registry + status/toast helpers
 │       ├── preview.ts      # Preview canvas, seeking, live mirror
-│       ├── region.ts       # Crop-region selection + overlay
-│       ├── timeline-ui.ts  # IN/OUT handles, thumbnails, size estimate
-│       ├── clip.ts         # The recordings of a session, played as one timeline
-│       ├── marks.ts        # Marks + removed regions: click, drag, overlay
-│       ├── playback.ts     # Clip playback on the preview, skipping removed regions
+│       ├── region.ts       # Crop-region selection + overlay (CropDrag)
+│       ├── timeline-ui.ts  # IN/OUT handles, size estimate, the thumbnail strip (Strip)
+│       ├── live-timeline.ts # The strip and the levels while a take records (LiveTimeline)
+│       ├── clip.ts         # The joined clip, played as one timeline (Player)
+│       ├── marks.ts        # Marks and sections: click, drag (MarkDrag), overlay
+│       ├── playback.ts     # Playback on the preview, skipping the cuts (Playback)
 │       ├── fade.ts         # Short fades at the joins between takes
-│       ├── dissolve.ts     # Short dissolves at the joins between takes
-│       ├── waveform.ts     # Audio waveform track
-│       ├── theme.ts        # Light / dark theme
-│       ├── countdown.ts    # 3-2-1 overlay (cancellable)
+│       ├── dissolve.ts     # Short dissolves at the joins between takes (Dissolve)
+│       ├── waveform.ts     # The audio track under the strip (Waveform)
+│       ├── size-estimate.ts # What the export will weigh
 │       ├── timer.ts        # Recording clock
-│       ├── help.ts         # Instructions modal
+│       ├── countdown.ts    # The 3-2-1 overlay, cancellable (Countdown)
+│       ├── mic.ts          # Microphone capture + level meter (Meter)
 │       ├── webcam.ts       # Webcam bubble overlay
-│       ├── mic.ts          # Microphone capture + level meter
+│       ├── theme.ts        # Light / dark theme
+│       ├── help.ts         # Instructions modal
+│       ├── version.ts      # The version badge, and the newer-build offer
 │       └── starfield.ts    # Background animation
 ├── public/               # Copied verbatim into the build
 │   ├── manifest.json       # PWA manifest
@@ -98,10 +111,15 @@ demoshine/
 └── .husky/pre-commit     # Runs lint-staged on commit
 ```
 
-The split leans toward a hexagonal shape: `domain/` is pure, `infra/` and `ui/`
-are adapters, and `recorder.ts` / `exporter.ts` are the use cases that
-`main.ts` composes. It is written in TypeScript and served and bundled by
-[Vite](https://vite.dev/).
+The split is a hexagonal one: `domain/` is pure and `application/` holds the
+use cases (both run in node, with tests beside them), `infra/` and `ui/` are the
+adapters that reach the browser and the DOM, and `recorder.ts` / `exporter.ts` are
+the flows that `main.ts` composes. Each `ui/` module exports the object its state
+lives on, and `session.ts` is what ends those lifetimes — the vocabulary is in
+[GLOSSARY.md](GLOSSARY.md), and where a rule belongs is in
+[`.agents/skills/domain-model`](.agents/skills/domain-model/SKILL.md). It is
+written in TypeScript and served and bundled by [Vite](https://vite.dev/).
+
 
 ---
 
@@ -136,6 +154,11 @@ because screen capture needs a secure context — so there is no plain-HTTP mode
 Linting runs on every commit through a Husky pre-commit hook, and the CI
 workflow runs lint, type-check, tests and the build on every push and pull
 request.
+
+Unit tests live beside the rules they prove (`src/domain/`, `src/application/`);
+anything drawn, played or encoded is proven by a temporary browser harness on the
+dev server instead. What counts as proof, and what to say about what you could not
+check, is in [`.agents/skills/verification`](.agents/skills/verification/SKILL.md).
 
 **How the project is worked on is written down**, so it does not have to be
 rediscovered: [`GLOSSARY.md`](GLOSSARY.md) holds the words — a *take* is not a
