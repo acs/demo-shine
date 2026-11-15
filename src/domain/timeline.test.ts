@@ -5,9 +5,13 @@ import {
   addSpan,
   clampToClip,
   clipSeconds,
+  cutEndAt,
+  cutsInSeconds,
   estimateWebmText,
   keptLength,
+  moveSpan,
   normalizeTrim,
+  resizeSpan,
   spanAt,
   spanBetween,
   spanLength,
@@ -131,5 +135,72 @@ describe('spanLength / keptLength', () => {
 
   it('never goes negative when a span covers the whole range', () => {
     expect(keptLength([{ s: 0, e: 1 }], 0.2, 0.8)).toBe(0);
+  });
+});
+
+describe('cutEndAt', () => {
+  const cuts = [{ s: 0.2, e: 0.5 }, { s: 0.7, e: 0.9 }];
+
+  it('is where the playhead has to land to leave a removed region', () => {
+    expect(cutEndAt(cuts, 0.3)).toBe(0.5);
+    expect(cutEndAt(cuts, 0.8)).toBe(0.9);
+  });
+
+  it('treats the start as inside and the end as outside', () => {
+    expect(cutEndAt(cuts, 0.2)).toBe(0.5);
+    expect(cutEndAt(cuts, 0.5)).toBeNull();
+  });
+
+  it('is null outside every cut', () => {
+    expect(cutEndAt(cuts, 0.6)).toBeNull();
+    expect(cutEndAt([], 0.5)).toBeNull();
+  });
+});
+
+describe('cutsInSeconds', () => {
+  it('scales the fractions by the duration', () => {
+    expect(cutsInSeconds([{ s: 0.25, e: 0.5 }], 20)).toEqual([{ s: 5, e: 10 }]);
+  });
+
+  it('is empty for no cuts', () => {
+    expect(cutsInSeconds([], 20)).toEqual([]);
+  });
+});
+
+describe('moveSpan', () => {
+  it('slides the span, keeping its length', () => {
+    expect(moveSpan({ s: 0.2, e: 0.4 }, 0.6)).toEqual({ s: 0.6, e: 0.8 });
+  });
+
+  it('stops at the end of the clip', () => {
+    expect(moveSpan({ s: 0.2, e: 0.4 }, 0.95)).toEqual({ s: 0.8, e: 1 });
+  });
+
+  it('stops at the start of the clip', () => {
+    expect(moveSpan({ s: 0.2, e: 0.4 }, -0.5)).toEqual({ s: 0, e: 0.2 });
+  });
+});
+
+describe('resizeSpan', () => {
+  const span = { s: 0.2, e: 0.4 };
+
+  it('moves the start edge', () => {
+    expect(resizeSpan(span, 's', 0.35)).toEqual({ s: 0.35, e: 0.4 });
+  });
+
+  it('moves the end edge', () => {
+    expect(resizeSpan(span, 'e', 0.6)).toEqual({ s: 0.2, e: 0.6 });
+  });
+
+  it('keeps a minimum region', () => {
+    expect(resizeSpan(span, 's', 0.399, 0.01)).toEqual({ s: 0.39, e: 0.4 });
+    const held = resizeSpan(span, 'e', 0.201, 0.01);
+    expect(held.s).toBe(0.2);
+    expect(held.e).toBeCloseTo(0.21);
+  });
+
+  it('stays inside the clip', () => {
+    expect(resizeSpan(span, 's', -1, 0.01)).toEqual({ s: 0, e: 0.4 });
+    expect(resizeSpan(span, 'e', 2, 0.01)).toEqual({ s: 0.2, e: 1 });
   });
 });

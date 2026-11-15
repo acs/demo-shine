@@ -16,7 +16,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 - **Region crop** — a red box over the preview always shows what will be recorded: the whole screen by default, drag to record just part of it, click to reset; while recording the box breathes (red ↔ background)
 - **Webcam overlay** — a header toggle adds a mirrored webcam bubble in the corner of the recording (disabled when no camera is present)
 - **Microphone** — a header toggle (disabled when no mic) with a live level meter; its audio is **mixed with the tab/system audio** in the recording
-- **Timeline trimmer** — drag IN/OUT handles to keep a range, and **click twice to mark a region, then click it to trim it away**, live size estimate
+- **Timeline trimmer** — drag IN/OUT handles to keep a range, **click twice to mark a region and click it to trim it away**, and **drag any bar** (a mark, or a removed region — whole or by an edge) to reposition it, with the clip playing under the bar as it moves
 - **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
 - **Audio track** — a waveform of the recording under the thumbnails, shown when the clip has sound
 - **3-second countdown** — the live preview stays visible behind it, and pressing record again during it cancels
@@ -33,7 +33,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 2. The red box over the preview shows what will be recorded — the whole screen by default; drag to record only a region, and click to go back to the full screen
 3. Press the red button to record — a 3-second countdown runs, and pressing the button again during it cancels; press it again to stop
 4. The timeline then appears with a playback control and an audio track
-5. Play it back, drag the **blue IN** and **red OUT** handles to keep a range, or click anywhere on the timeline to play from that moment. To cut a part out, click where it starts and where it ends, then click inside the shaded region; click that region again to put it back
+5. Play it back, drag the **blue IN** and **red OUT** handles to keep a range, or click anywhere on the timeline to play from that moment. To cut a part out, click where it starts and where it ends, then click inside the shaded region; click that region again to put it back. Marks and trimmed regions can be dragged to reposition them
 6. Click **Export ↓** to encode and download
 
 ---
@@ -53,22 +53,26 @@ demoshine/
 │   ├── globals.d.ts      # Ambient types (prefixed AudioContext, captureStream)
 │   ├── vite-env.d.ts     # Vite client types
 │   ├── domain/           # Pure logic — no DOM, no browser APIs
-│   │   ├── timeline.ts     # Trim math + file-size estimates
+│   │   ├── timeline.ts     # Trim math (keep range + removed spans) + size estimates
 │   │   └── timeline.test.ts
 │   ├── infra/            # Browser boundary adapters
 │   │   ├── codecs.ts       # WebM mime / codec selection
 │   │   └── download.ts     # Blob download trigger
+│   ├── util.ts           # Tiny shared helpers (sleep)
 │   └── ui/               # View layer (DOM) — one module per widget
 │       ├── dom.ts          # Central element registry + status/toast helpers
 │       ├── preview.ts      # Preview canvas, seeking, live mirror
 │       ├── region.ts       # Crop-region selection + overlay
-│       ├── timeline-ui.ts  # Trim handles, thumbnails, size estimate
-│       ├── playback.ts     # Clip playback on the preview
+│       ├── timeline-ui.ts  # IN/OUT handles, thumbnails, size estimate
+│       ├── marks.ts        # Marks + removed regions: click, drag, overlay
+│       ├── playback.ts     # Clip playback on the preview, skipping removed regions
 │       ├── waveform.ts     # Audio waveform track
 │       ├── theme.ts        # Light / dark theme
 │       ├── countdown.ts    # 3-2-1 overlay (cancellable)
 │       ├── timer.ts        # Recording clock
 │       ├── help.ts         # Instructions modal
+│       ├── webcam.ts       # Webcam bubble overlay
+│       ├── mic.ts          # Microphone capture + level meter
 │       └── starfield.ts    # Background animation
 ├── public/               # Copied verbatim into the build
 │   ├── manifest.json       # PWA manifest

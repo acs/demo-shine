@@ -6,13 +6,13 @@ import { el, setStatus, toast } from './ui/dom.js';
 import { seekTo, drawGrid } from './ui/preview.js';
 import { setTimerMs } from './ui/timer.js';
 import { resetTrim, updateSizeUI } from './ui/timeline-ui.js';
-import { cutSeconds, resetMarks } from './ui/marks.js';
+import { resetMarks } from './ui/marks.js';
 import { getBestMime } from './infra/codecs.js';
 import { dlBlob, ts } from './infra/download.js';
 import { stopRec, startCapture } from './recorder.js';
 import { pausePlayback, resetPlayback } from './ui/playback.js';
 import { clearWaveform } from './ui/waveform.js';
-import { keptLength, spanAt, spanLength } from './domain/timeline.js';
+import { cutEndAt, cutsInSeconds, keptLength, spanLength } from './domain/timeline.js';
 
 export async function doExport(): Promise<void> {
   if (app.phase !== 'review') return;
@@ -83,7 +83,7 @@ function exportWebM(): Promise<void> {
     const e       = Math.min(app.trimEnd * app.duration, vDur - 0.05);
     // Cuts (regions trimmed away) are skipped below, so they must not count
     // towards the progress bar or the clip length.
-    const cuts    = cutSeconds();
+    const cuts    = cutsInSeconds(app.cuts, app.duration);
     const keptDur = Math.max(keptLength(cuts, s, e), 0.1);
 
     const ec = document.createElement('canvas');
@@ -117,12 +117,12 @@ function exportWebM(): Promise<void> {
       function frame() {
         const t = el.rv.currentTime;
         if (t >= e || el.rv.ended || el.rv.paused) { finish(); return; }
-        const cut = spanAt(cuts, t);
-        if (cut >= 0) {
+        const cutEnd = cutEndAt(cuts, t);
+        if (cutEnd !== null) {
           // Trimmed away: jump past it, without pausing, so the capture and its
           // audio carry straight on. If the element will not come out of the cut,
           // stop rather than record the whole trimmed region.
-          const to = Math.min(cuts[cut].e, e);
+          const to = Math.min(cutEnd, e);
           if (!el.rv.seeking && asked !== to) { asked = to; el.rv.currentTime = to; }
           if (!stuckAt) stuckAt = Date.now();
           if (Date.now() - stuckAt > 5000) { finish(); return; }

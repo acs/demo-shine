@@ -30,6 +30,9 @@ export interface AppState {
 
   marks: number[];              // 0..1, up to two pending marks bounding the region to cut
   cuts: Span[];                 // 0..1, regions removed from the clip (skipped on play + export)
+  // Trimming, in short: trimStart/trimEnd above are what is KEPT; `cuts` are the
+  // extra regions DROPPED inside it, and `marks` is the half-made selection
+  // (one mark placed, or two bounding a region to drop). See domain/timeline.ts.
 
   timerIv: number | null;       // record-clock interval id
   startAt: number | null;       // recording start timestamp
