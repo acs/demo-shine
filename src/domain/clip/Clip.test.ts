@@ -82,14 +82,14 @@ describe('Clip', () => {
   });
 
   it('says what an export is made of: the kept stretches, take by take', () => {
-    expect(clipOf(3, 3).segmentsIn(0, 6).map(s => [s.part, s.from, s.to]))
+    expect(clipOf(3, 3).segmentsIn(0, 6).map(s => [s.takeIndex, s.from, s.to]))
       .toEqual([[0, 0, 3], [1, 3, 6]]);
   });
 
   it('and leaves the trimmed stretches out of them, closing the gap', () => {
     const clip = clipOf(3, 3);
     clip.approve(Span.of(0.7, 0.8));            // 4.2s-4.8s of the 6s clip
-    expect(clip.segmentsIn(0, 6).map(s => [s.part, +s.from.toFixed(2), +s.to.toFixed(2)]))
+    expect(clip.segmentsIn(0, 6).map(s => [s.takeIndex, +s.from.toFixed(2), +s.to.toFixed(2)]))
       .toEqual([[0, 0, 3], [1, 3, 4.2], [1, 4.8, 6]]);
   });
 
