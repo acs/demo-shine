@@ -7,11 +7,11 @@
 
 import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
-import { startMirror, stopMirror, seekAndDraw } from './ui/preview.js';
+import { startMirror, stopMirror } from './ui/preview.js';
 import { runCountdown, cancelCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { buildThumbs, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
-import { resetPlayback } from './ui/playback.js';
+import { resetPlayback, seekPlayback } from './ui/playback.js';
 import { buildWaveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
 import { drawWebcamOverlay, stopWebcam } from './ui/webcam.js';
@@ -133,6 +133,13 @@ function buildRecordingStream(): MediaStream {
 
 // The recording's audio: the capture's system audio, plus the microphone when it
 // is on, mixed through a Web Audio graph. Without a mic we pass the raw track.
+//
+// Tab/system audio (music, a video…) is usually mastered loud, while a mic voice
+// is quiet, so the mix trims the system feed and lifts the mic — and compresses
+// the mic so the boost can't clip. Tune these two to taste.
+const SYSTEM_GAIN = 0.4;
+const MIC_GAIN = 3;
+
 let mixCtx: AudioContext | null = null;
 
 function buildAudioTracks(): MediaStreamTrack[] {
@@ -143,8 +150,23 @@ function buildAudioTracks(): MediaStreamTrack[] {
   const Ctx = window.AudioContext || window.webkitAudioContext;
   mixCtx = new Ctx();
   const dest = mixCtx.createMediaStreamDestination();
-  if (sys.length) mixCtx.createMediaStreamSource(new MediaStream(sys)).connect(dest);
-  mixCtx.createMediaStreamSource(app.micStream!).connect(dest);
+
+  if (sys.length) {
+    const sysGain = mixCtx.createGain();
+    sysGain.gain.value = SYSTEM_GAIN;
+    mixCtx.createMediaStreamSource(new MediaStream(sys)).connect(sysGain).connect(dest);
+  }
+
+  const micGain = mixCtx.createGain();
+  micGain.gain.value = MIC_GAIN;
+  const comp = mixCtx.createDynamicsCompressor();
+  comp.threshold.value = -10;
+  comp.knee.value = 10;
+  comp.ratio.value = 4;
+  comp.attack.value = 0.003;
+  comp.release.value = 0.25;
+  mixCtx.createMediaStreamSource(app.micStream!).connect(micGain).connect(comp).connect(dest);
+
   void mixCtx.resume();
   return dest.stream.getAudioTracks();
 }
@@ -262,10 +284,11 @@ function onRecStop(): void {
     if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
     resetPlayback();
     void buildWaveform(app.blob);
-    void buildThumbs();
-    void seekAndDraw(el.rv, 0);
     setTimerMs(app.duration * 1000);
     resetTrim();
+    // Building the thumbnails seeks the video to the last frame; once it's done,
+    // put the playhead back at the trim IN so the first Play starts from the top.
+    void buildThumbs().then(() => seekPlayback(app.trimStart * app.duration));
     el.timeline.classList.add('on');
     el.btnReset.style.display = '';
     el.btnExp.style.display   = '';
