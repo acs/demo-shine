@@ -20,7 +20,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 - **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
 - **Audio track** — a waveform of the recording under the thumbnails, shown when the clip has sound
 - **3-second countdown** — the live preview stays visible behind it, and pressing record again during it cancels
-- **Tab / system audio** — captured automatically whenever the shared tab or window has sound
+- **Tab / system audio** — requested on every capture (`audio: true` plus Chrome's `systemAudio: 'include'` hint, so the audio option is offered); the browser owns that checkbox, so the app says so when a share comes back silent, and **Reset** returns to the picker to redo it
 - **Light / dark mode** — full CSS variable theming, persisted to `localStorage`
 - **PWA** — installable as a desktop app, offline-capable for core recording and WebM export
 - **No data leaves your browser** — nothing is uploaded or stored remotely
@@ -29,7 +29,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 
 ## Usage
 
-1. Open [DemoShine](https://acs.github.io/demo-shine/) in Chrome or Edge — the picker opens straight away and the screen goes live in the preview (full screen is preselected; tick **Share tab audio** to capture sound)
+1. Open [DemoShine](https://acs.github.io/demo-shine/) in Chrome or Edge — the picker opens straight away and the screen goes live in the preview (full screen is preselected; tick **Share tab audio** / **Share system audio** for sound, and press **Reset** to go back to the picker if you forget)
 2. The red box over the preview shows what will be recorded — the whole screen by default; drag to record only a region, and click to go back to the full screen
 3. Press the red button to record — a 3-second countdown runs, and pressing the button again during it cancels; press it again to stop
 4. The timeline then appears with a playback control and an audio track
