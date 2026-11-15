@@ -30,6 +30,23 @@ export function startPlayback(): void {
   const end   = clipEnd();
   // (Re)start from IN when the playhead sits outside the trimmed range.
   if (el.rv.currentTime < start || el.rv.currentTime >= end - 0.02) el.rv.currentTime = start;
+  beginPlayback();
+}
+
+// Start (or keep) playing from an absolute time — a click on the timeline.
+export function playFrom(time: number): void {
+  if (app.phase !== 'review' || el.rv.readyState < 2) return;
+  const start = clipStart();
+  const end   = clipEnd();
+  const t = clampToClip(time, start, end);
+  // Clicking at (or past) the OUT point leaves nothing to play, so loop from IN.
+  el.rv.currentTime = t >= end - 0.02 ? start : t;
+  updatePlayhead(el.rv.currentTime);
+  if (app.playing) void seekAndDraw(el.rv, el.rv.currentTime);
+  else             beginPlayback();
+}
+
+function beginPlayback(): void {
   app.playing = true;
   updateTransport();
   el.rv.play().then(loop).catch(() => {
