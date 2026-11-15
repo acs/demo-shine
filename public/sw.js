@@ -17,17 +17,27 @@ self.addEventListener('activate', e =>
   )
 );
 
+// The page itself is fetched from the network first. It is the one file that
+// names the current hashed bundle, so serving it from the cache would keep an
+// installed app on an old build for good; the cache is only the offline
+// fallback. The hashed assets never change under a given name, so they stay
+// cache-first.
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  const url = new URL(e.request.url);
+  if (url.origin !== self.location.origin) return;
+
+  const put = res => { if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone())); return res; };
+
+  if (e.request.mode === 'navigate' || e.request.destination === 'document') {
+    e.respondWith(
+      fetch(e.request).then(put).catch(() => caches.match(e.request).then(h => h || caches.match('./index.html')))
+    );
+    return;
+  }
+
   e.respondWith(
-    caches.match(e.request).then(hit => {
-      if (hit) return hit;
-      return fetch(e.request).then(res => {
-        if (res.ok && new URL(e.request.url).origin === self.location.origin) {
-          caches.open(CACHE).then(c => c.put(e.request, res.clone()));
-        }
-        return res;
-      }).catch(() => hit);
-    })
+    caches.match(e.request).then(hit => hit || fetch(e.request).then(put))
   );
 });
+

@@ -5,17 +5,19 @@
 // If the browser requires a user gesture first, the red button falls back to
 // acquiring the capture.
 
-import { app, setPhase } from './state.js';
+import { app, setPhase, type Phase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
 import { startMirror, stopMirror, seekWithin } from './ui/preview.js';
 import { runCountdown, cancelCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
-import { buildThumbs, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
-import { resetMarks } from './ui/marks.js';
-import { resetPlayback, seekPlayback } from './ui/playback.js';
+import { buildThumbs, resetTrim, updateSizeUI, updateTrimUI } from './ui/timeline-ui.js';
+import { resetMarks, rescaleMarks } from './ui/marks.js';
+import { clipLoad, clipTime, totalDuration } from './ui/clip.js';
+import { pausePlayback, resetPlayback, seekPlayback } from './ui/playback.js';
 import { buildWaveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
 import { drawWebcamOverlay, stopWebcam } from './ui/webcam.js';
+import { startLiveTimeline, stopLiveTimeline } from './ui/live-timeline.js';
 import { stopMic } from './ui/mic.js';
 import { getBestMime } from './infra/codecs.js';
 
@@ -25,6 +27,15 @@ export async function toggleRec(): Promise<void> {
   if (app.phase === 'idle')      return startCapture();
   if (app.phase === 'live')      return startRecording();
   if (app.phase === 'recording') return stopRec();
+  if (app.phase === 'review') {
+    // Recording again adds to the end of what is already there. The share is
+    // kept while reviewing, so this usually needs no picker. When it is gone —
+    // the shared window was closed, or Chrome's "Stop sharing" was pressed —
+    // ask for another one; the next press records and adds to the end.
+    if (app.stream) return startRecording();
+    toast('The share ended — choose a screen to keep recording', 4000);
+    return startCapture(true);
+  }
 }
 
 // Pressing record during the countdown aborts it and the pending recording,
@@ -32,20 +43,31 @@ export async function toggleRec(): Promise<void> {
 function cancelRecordingCountdown(): void {
   countdownAborted = true;
   cancelCountdown();
-  setPhase('live');
+  // Back to whatever was on screen before the countdown: the clip being
+  // reviewed, not the live screen (its timeline is only live in 'review').
+  setPhase(phaseBeforeCountdown);
+  el.recBtn.disabled = false;
   el.recLbl.textContent = 'Record';
-  setStatus('ready', `Live · ${app.captureW}×${app.captureH}`);
+  if (phaseBeforeCountdown === 'review') {
+    stopMirror();
+    seekPlayback(clipTime());
+    setStatus('ready', 'Ready to export');
+  } else {
+    setStatus('ready', `Live · ${app.captureW}×${app.captureH}`);
+  }
 }
 
 let countdownAborted = false;
+let phaseBeforeCountdown: Phase = 'live';   // where a cancelled countdown returns to
 
 // Acquire the display and show it live on the preview. Called on load; also the
 // fallback when the browser blocked the gesture-less attempt.
-export async function startCapture(): Promise<void> {
-  // Never while a recording is being reviewed or encoded: a fresh capture would
-  // clobber it. Reset leaves 'review' before it restarts the capture.
-  if (app.stream || app.phase === 'starting' || app.phase === 'recording'
-      || app.phase === 'review' || app.phase === 'encoding') return;
+export async function startCapture(force = false): Promise<void> {
+  // Never while a recording is being reviewed or encoded unless it is asked for
+  // explicitly: a fresh capture would clobber it. Reset leaves 'review' first,
+  // and Record while reviewing asks for one on purpose when the share is gone.
+  if (app.stream || app.phase === 'starting' || app.phase === 'recording') return;
+  if (!force && (app.phase === 'review' || app.phase === 'encoding')) return;
   try {
     setPhase('starting');
     el.recBtn.disabled = true;
@@ -202,20 +224,36 @@ function stopCropLoop(): void {
 }
 
 async function startRecording(): Promise<void> {
-  if (!app.stream || app.phase !== 'live') return;
+  if (!app.stream || (app.phase !== 'live' && app.phase !== 'review')) return;
+  const appending = app.parts.length > 0;
   countdownAborted = false;
+  phaseBeforeCountdown = app.phase;
   setPhase('countdown');
   el.recBtn.disabled = false;          // stays clickable: a press cancels
   el.recLbl.textContent = 'Cancel';
-  setStatus('proc', 'Get ready…');
+  setStatus('proc', appending ? 'Get ready to add…' : 'Get ready…');
+  if (appending) toast('Recording will be added to the end', 3000);
+
+  // Show what is about to be recorded. When this take follows another one, the
+  // preview was showing the clip being reviewed and the live mirror that draws
+  // the screen — and the crop box over it — has to come back for the take.
+  if (appending) {
+    pausePlayback();                   // the clip was not being recorded
+    el.cv.width  = app.captureW;
+    el.cv.height = app.captureH;
+    startMirror();
+  }
   await runCountdown();
 
   if (countdownAborted) return;                           // cancelled by a press
   if (!app.stream || !app.stream.active) {                // capture ended meanwhile
     el.recBtn.disabled = false;
     el.recLbl.textContent = 'Record';
-    setPhase('idle');
-    setStatus('ready', 'Ready');
+    // A finished clip is kept, so land back on it rather than on an empty app.
+    const keepClip = app.parts.length > 0;
+    setPhase(keepClip ? 'review' : 'idle');
+    setStatus('ready', keepClip ? 'Ready to export · press Record to share again' : 'Ready');
+    toast('The share ended — press Record to share again', 4000);
     return;
   }
 
@@ -231,6 +269,8 @@ async function startRecording(): Promise<void> {
   app.startAt = Date.now();
   setPhase('recording');
   startCropLoop();
+  // Show the timeline filling in as the take records.
+  startLiveTimeline(recStream);
   el.recBtn.disabled = false;
 
   el.recBtn.classList.add('recording');
@@ -246,7 +286,9 @@ export function stopRec(): void {
   if (app.rec && app.rec.state !== 'inactive') app.rec.stop();
   stopCropLoop();
   stopMix();
-  releaseDisplay();
+  stopLiveTimeline();          // the review rebuilds the timeline from the file
+  // The share is kept: reviewing a clip and then pressing Record again adds to
+  // it, which should not cost another trip through the picker.
   stopTimer();
   stopMirror();
   el.recBtn.classList.remove('recording');
@@ -269,51 +311,78 @@ export function releaseDisplay(): void {
   stopMirror();
 }
 
-// The user clicked the browser's "Stop sharing" chip.
+// The user clicked the browser's "Stop sharing" chip, or the shared surface went
+// away (a closed window, a tab that was closed).
 function onCaptureEnded(): void {
   if (app.phase === 'recording') { stopRec(); return; }
-  if (app.phase === 'countdown') cancelCountdown();
-  if (app.phase !== 'live' && app.phase !== 'countdown') return;
+  const inReview = app.phase === 'review';
+  const counting = app.phase === 'countdown';
+  if (!inReview && app.phase !== 'live' && !counting) return;
+
+  if (counting) { countdownAborted = true; cancelCountdown(); }
+  releaseDisplay();
   stopWebcam();
   stopMic();
-  app.stream = null;
-  el.sv.srcObject = null;
-  stopMirror();
-  el.idleOv.classList.remove('gone');
   el.resBadge.style.display = 'none';
   el.recLbl.textContent = 'Record';
-  setPhase('idle');
-  setStatus('ready', 'Ready');
+  // A finished clip is kept: recording more just needs a share again.
+  const keepClip = inReview || app.parts.length > 0;
+  if (!keepClip) el.idleOv.classList.remove('gone');
+  setPhase(keepClip ? 'review' : 'idle');
+  setStatus('ready', keepClip ? 'Ready to export · press Record to share again' : 'Ready');
 }
 
-function onRecStop(): void {
-  app.blob = new Blob(app.chunks, { type: 'video/webm' });
+// A recording just finished: keep it as a part, then open the review on the
+// whole joined clip. A second recording is added to the end, so the trims made
+// before it stay put (only the removed regions are re-based, to keep them over
+// the same moments of the recording).
+async function onRecStop(): Promise<void> {
+  const blob = new Blob(app.chunks, { type: 'video/webm' });
   const wallClock = (Date.now() - (app.startAt ?? Date.now())) / 1000;
+  const appending = app.parts.length > 0;
+  const previous = app.duration;
+
   setPhase('review');
   setStatus('ready', 'Ready to export');
 
-  el.rv.src = URL.createObjectURL(app.blob);
-  el.rv.load();
-  el.rv.addEventListener('loadeddata', () => {
-    void (async () => {
-      // Use the real file duration: the wall clock is always slightly longer
-      // than the encoded video, which causes exportWebM to hang.
-      app.duration = (await resolveDuration(el.rv)) ?? wallClock;
-      // The clip may be a cropped region, so size the preview canvas to it.
-      if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
-      resetPlayback();
-      void buildWaveform(app.blob);
-      setTimerMs(app.duration * 1000);
-      resetTrim();
-      resetMarks();
-      // Building the thumbnails seeks the video to the last frame; once it's done,
-      // put the playhead back at the trim IN so the first Play starts from the top.
-      void buildThumbs().then(() => seekPlayback(app.trimStart * app.duration));
-      el.timeline.classList.add('on');
-      el.btnExp.style.display   = '';
-      updateSizeUI();
-    })();
-  }, { once: true });
+  // Measure this part before it joins the others: its length is where the next
+  // part will start, and the total drives the whole timeline.
+  const duration = (await measurePart(blob)) ?? wallClock;
+  app.parts.push({ blob, duration });
+  app.duration = totalDuration();
+
+  resetPlayback();
+  await clipLoad(appending ? app.parts.length - 1 : 0);
+  if (appending) rescaleMarks(previous, app.duration);   // keep cuts over their moments
+  else           { resetTrim(); resetMarks(); }
+  updateTrimUI();          // the handles come back from the live progress bar
+
+  // The clip may be a cropped region, so size the preview canvas to it.
+  if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
+  void buildWaveform(app.parts);
+  setTimerMs(app.duration * 1000);
+  // Building the thumbnails seeks through the clip; once that is done, park the
+  // playhead at the trim IN, or at the join when a recording was just added.
+  const park = appending ? previous : app.trimStart * app.duration;
+  void buildThumbs().then(() => seekPlayback(park));
+  el.timeline.classList.add('on');
+  el.btnExp.style.display   = '';
+  updateSizeUI();
+}
+
+// The real length of a recorded blob, or null if the browser will not say.
+async function measurePart(blob: Blob): Promise<number | null> {
+  const vid = document.createElement('video');
+  vid.preload = 'auto';
+  const url = URL.createObjectURL(blob);
+  vid.src = url;
+  const ok = await new Promise<boolean>(resolve => {
+    vid.addEventListener('loadedmetadata', () => resolve(true), { once: true });
+    setTimeout(() => resolve(false), 1500);
+  });
+  const duration = ok ? await resolveDuration(vid) : null;
+  URL.revokeObjectURL(url);
+  return duration;
 }
 
 // The clip's real duration, or null if the browser will not give one.
