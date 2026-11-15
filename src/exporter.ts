@@ -17,14 +17,11 @@
 
 import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
-import { drawGrid } from './ui/preview.js';
-import { setTimerMs } from './ui/timer.js';
-import { beginEncoding, encodingAt, endEncoding, updateSizeUI } from './ui/timeline-ui.js';
-import { forgetLoaded } from './ui/clip.js';
+import { beginEncoding, encodingAt, endEncoding } from './ui/timeline-ui.js';
 import { dlBlob, ts } from './infra/download.js';
 import { stopRec, startCapture, releaseDisplay } from './recorder.js';
-import { pausePlayback, resetPlayback } from './ui/playback.js';
-import { clearWaveform } from './ui/waveform.js';
+import { pausePlayback } from './ui/playback.js';
+import { session } from './session.js';
 import { exportOffline, offlineAvailable, type OfflineStats } from './offline-export.js';
 import { planExport } from './application/export-clip.js';
 import { FADE_S } from './ui/fade.js';
@@ -86,19 +83,11 @@ export function resetAll(): void {
   // usually to go back and tick "share audio".
   releaseDisplay();
 
+  // The session lets go of everything it holds — the clip, the timeline, the
+  // playhead, the strip — and the flow around it goes on being the flow: the
+  // phase, the status line, and going back for a screen.
   setPhase('idle');
-  if (el.rv.src) { URL.revokeObjectURL(el.rv.src); el.rv.src = ''; }
-  app.clip.clear(); forgetLoaded(); app.chunks = []; app.recAudio = false;
-  el.timeline.classList.remove('on');
-  el.idleOv.classList.remove('gone');
-  el.btnExp.style.display   = 'none';
-  el.thumbs.innerHTML       = '';
-  el.resBadge.style.display = 'none';
-  setTimerMs(0);
-  resetPlayback();
-  clearWaveform();
-  updateSizeUI();
-  drawGrid();
+  session.reset();
   setStatus('ready', 'Ready');
   // Same as the app start: go straight back to a live capture. Reset is a click,
   // so the gesture is available for getDisplayMedia.
