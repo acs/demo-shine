@@ -5,10 +5,10 @@
 // If the browser requires a user gesture first, the red button falls back to
 // acquiring the capture.
 
-import { app, setPhase, type Phase } from './state.js';
+import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
 import { startMirror, stopMirror, seekWithin } from './ui/preview.js';
-import { runCountdown, cancelCountdown } from './ui/countdown.js';
+import { countdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { strip } from './ui/timeline-ui.js';
 import { keptLengthNow, player } from './ui/clip.js';
@@ -40,14 +40,14 @@ export async function toggleRec(): Promise<void> {
 // Pressing record during the countdown aborts it and the pending recording,
 // returning to the live preview.
 function cancelRecordingCountdown(): void {
-  countdownAborted = true;
-  cancelCountdown();
+  countdown.cancel();
   // Back to whatever was on screen before the countdown: the clip being
   // reviewed, not the live screen (its timeline is only live in 'review').
-  setPhase(phaseBeforeCountdown);
+  const back = countdown.returnsTo;
+  setPhase(back);
   el.recBtn.disabled = false;
   el.recLbl.textContent = 'Record';
-  if (phaseBeforeCountdown === 'review') {
+  if (back === 'review') {
     stopMirror();
     playback.seek(player.time());
     setStatus('ready', 'Ready to export');
@@ -55,9 +55,6 @@ function cancelRecordingCountdown(): void {
     setStatus('ready', `Live · ${app.captureW}×${app.captureH}`);
   }
 }
-
-let countdownAborted = false;
-let phaseBeforeCountdown: Phase = 'live';   // where a cancelled countdown returns to
 
 // Acquire the display and show it live on the preview. Called on load; also the
 // fallback when the browser blocked the gesture-less attempt.
@@ -128,13 +125,51 @@ export async function startCapture(force = false): Promise<void> {
 
 // --- Crop region ---------------------------------------------------------
 
-let crop: { ctx: CanvasRenderingContext2D; rx: number; ry: number; rw: number; rh: number } | null = null;
+// The canvas a recording is drawn on when the recording is not simply the shared
+// screen: a crop of it, with the webcam bubble over it. The recorder is fed a
+// stream captured from this canvas, and the loop below keeps it current frame by
+// frame. It belongs to the take — attached when the take is built, started while
+// it runs, stopped when it is over — so it lives on one object.
+class Output {
+  private ctx: CanvasRenderingContext2D | null = null;
+  private from = { x: 0, y: 0, w: 0, h: 0 };   // the part of the screen that goes in
+  private frame = 0;
+
+  /** The canvas to draw into, and the part of the screen that goes into it. */
+  attach(ctx: CanvasRenderingContext2D, from: { x: number; y: number; w: number; h: number }): void {
+    this.ctx = ctx;
+    this.from = from;
+  }
+
+  /** Keep it current while the take runs. */
+  start(): void {
+    const paint = () => {
+      const ctx = this.ctx;
+      if (app.phase !== 'recording' || !ctx) return;
+      const { x, y, w, h } = this.from;
+      ctx.drawImage(el.sv, x, y, w, h, 0, 0, w, h);
+      drawWebcamOverlay(ctx, 0, 0, w, h);
+      this.frame = requestAnimationFrame(paint);
+    };
+    paint();
+  }
+
+  /** The take is over: nothing more is drawn, and the canvas is let go of. */
+  stop(): void {
+    if (this.frame) { cancelAnimationFrame(this.frame); this.frame = 0; }
+    this.ctx = null;
+  }
+}
+
+// Both are the module's own objects, as the view modules' are: exported so a
+// harness can drive a take's canvas and its audio graph without a screen share.
+export const output = new Output();
 
 // When a region is set, the webcam is on, or the mic is on, record a stream we
 // build ourselves (canvas video + mixed audio); otherwise record the raw stream.
 function buildRecordingStream(): MediaStream {
   const src = app.stream!;
-  crop = null;
+  output.stop();                 // a fresh take: nothing of the last canvas is left
   const region = app.region;
   const needCanvas = !isFullRegion(region) || app.webcamOn;
   const audio = buildAudioTracks();
@@ -159,7 +194,7 @@ function buildRecordingStream(): MediaStream {
 
   const stream = canvas.captureStream(30);
   audio.forEach(t => stream.addTrack(t));
-  crop = { ctx: cctx, rx, ry, rw, rh };
+  output.attach(cctx, { x: rx, y: ry, w: rw, h: rh });
   return stream;
 }
 
@@ -172,61 +207,58 @@ function buildRecordingStream(): MediaStream {
 const SYSTEM_GAIN = 0.4;
 const MIC_GAIN = 3;
 
-let mixCtx: AudioContext | null = null;
+// The graph belongs to the take it was built for, so it lives on one object and
+// the take that ends closes it.
+class Mixer {
+  private ctx: AudioContext | null = null;
+
+  /** What a take should record: the system audio, and the mic over it when there is one. */
+  mix(system: MediaStreamTrack[], mic: MediaStreamTrack[]): MediaStreamTrack[] {
+    if (!mic.length) return system;
+
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    this.ctx = ctx;
+    const dest = ctx.createMediaStreamDestination();
+
+    if (system.length) {
+      const sysGain = ctx.createGain();
+      sysGain.gain.value = SYSTEM_GAIN;
+      ctx.createMediaStreamSource(new MediaStream(system)).connect(sysGain).connect(dest);
+    }
+
+    const micGain = ctx.createGain();
+    micGain.gain.value = MIC_GAIN;
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -10;
+    comp.knee.value = 10;
+    comp.ratio.value = 4;
+    comp.attack.value = 0.003;
+    comp.release.value = 0.25;
+    ctx.createMediaStreamSource(new MediaStream(mic)).connect(micGain).connect(comp).connect(dest);
+
+    void ctx.resume();
+    return dest.stream.getAudioTracks();
+  }
+
+  /** The take is over: the graph goes with it. */
+  stop(): void {
+    if (this.ctx) { void this.ctx.close(); this.ctx = null; }
+  }
+}
+
+export const mixer = new Mixer();
 
 function buildAudioTracks(): MediaStreamTrack[] {
   const sys = app.stream ? app.stream.getAudioTracks() : [];
   const mic = app.micOn && app.micStream ? app.micStream.getAudioTracks() : [];
-  if (!mic.length) return sys;
-
-  const Ctx = window.AudioContext || window.webkitAudioContext;
-  mixCtx = new Ctx();
-  const dest = mixCtx.createMediaStreamDestination();
-
-  if (sys.length) {
-    const sysGain = mixCtx.createGain();
-    sysGain.gain.value = SYSTEM_GAIN;
-    mixCtx.createMediaStreamSource(new MediaStream(sys)).connect(sysGain).connect(dest);
-  }
-
-  const micGain = mixCtx.createGain();
-  micGain.gain.value = MIC_GAIN;
-  const comp = mixCtx.createDynamicsCompressor();
-  comp.threshold.value = -10;
-  comp.knee.value = 10;
-  comp.ratio.value = 4;
-  comp.attack.value = 0.003;
-  comp.release.value = 0.25;
-  mixCtx.createMediaStreamSource(app.micStream!).connect(micGain).connect(comp).connect(dest);
-
-  void mixCtx.resume();
-  return dest.stream.getAudioTracks();
-}
-
-function stopMix(): void {
-  if (mixCtx) { void mixCtx.close(); mixCtx = null; }
-}
-
-function startCropLoop(): void {
-  if (!crop) return;
-  (function loop() {
-    if (app.phase !== 'recording' || !crop) return;
-    crop.ctx.drawImage(el.sv, crop.rx, crop.ry, crop.rw, crop.rh, 0, 0, crop.rw, crop.rh);
-    drawWebcamOverlay(crop.ctx, 0, 0, crop.rw, crop.rh);
-    app.cropRaf = requestAnimationFrame(loop);
-  })();
-}
-
-function stopCropLoop(): void {
-  if (app.cropRaf !== null) { cancelAnimationFrame(app.cropRaf); app.cropRaf = null; }
-  crop = null;
+  return mixer.mix(sys, mic);
 }
 
 async function startRecording(): Promise<void> {
   if (!app.stream || (app.phase !== 'live' && app.phase !== 'review')) return;
   const appending = !app.clip.takes.isEmpty();
-  countdownAborted = false;
-  phaseBeforeCountdown = app.phase;
+  const was = app.phase;               // where a cancelled countdown returns to
   setPhase('countdown');
   el.recBtn.disabled = false;          // stays clickable: a press cancels
   el.recLbl.textContent = 'Cancel';
@@ -242,9 +274,9 @@ async function startRecording(): Promise<void> {
     el.cv.height = app.captureH;
     startMirror();
   }
-  await runCountdown();
+  const ready = await countdown.run(was);
 
-  if (countdownAborted) return;                           // cancelled by a press
+  if (!ready) return;                                     // cancelled by a press
   if (!app.stream || !app.stream.active) {                // capture ended meanwhile
     el.recBtn.disabled = false;
     el.recLbl.textContent = 'Record';
@@ -267,7 +299,7 @@ async function startRecording(): Promise<void> {
 
   app.startAt = Date.now();
   setPhase('recording');
-  startCropLoop();
+  output.start();
   // Show the timeline filling in as the take records.
   liveTimeline.start(recStream);
   el.recBtn.disabled = false;
@@ -283,8 +315,8 @@ async function startRecording(): Promise<void> {
 
 export function stopRec(): void {
   if (app.rec && app.rec.state !== 'inactive') app.rec.stop();
-  stopCropLoop();
-  stopMix();
+  output.stop();
+  mixer.stop();
   liveTimeline.stop();         // the review rebuilds the timeline from the file
   // The share is kept: reviewing a clip and then pressing Record again adds to
   // it, which should not cost another trip through the picker.
@@ -318,7 +350,7 @@ function onCaptureEnded(): void {
   const counting = app.phase === 'countdown';
   if (!inReview && app.phase !== 'live' && !counting) return;
 
-  if (counting) { countdownAborted = true; cancelCountdown(); }
+  if (counting) countdown.cancel();
   releaseDisplay();
   stopWebcam();
   stopMic();
