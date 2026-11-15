@@ -16,7 +16,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 - **Region crop** — a red box over the preview always shows what will be recorded: the whole screen by default, drag to record just part of it, click to reset; while recording the box breathes (red ↔ background)
 - **Webcam overlay** — a header toggle adds a mirrored webcam bubble in the corner of the recording (disabled when no camera is present)
 - **Microphone** — a header toggle (disabled when no mic) with a live level meter; its audio is **mixed with the tab/system audio** in the recording
-- **Add more takes** — pressing Record after a recording appends the new one to the end of the clip; the share is kept between takes, so there is no second picker, and the result reviews, trims and exports as one clip
+- **Add more takes** — pressing Record after a recording appends the new one to the end of the clip; the share is kept between takes, so there is no second picker and **every take in a clip comes from the same source** (the same tab, window or screen). Reset starts a new clip; if the share ends, Record asks for another one and the next take still adds on
 - **Timeline trimmer** — drag IN/OUT handles to keep a range, **click twice to mark a region and click it to trim it away**, and **drag any bar** (a mark, or a removed region — whole or by an edge) to reposition it, with the clip playing under the bar as it moves
 - **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
 - **Audio track** — a waveform of the recording under the thumbnails, shown when the clip has sound
