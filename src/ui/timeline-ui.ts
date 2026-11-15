@@ -6,7 +6,7 @@
 // through the kept regions (clip.ts). The recording's own time is what playback
 // and the export use.
 
-import { el } from './dom.js';
+import { clock, el } from './dom.js';
 import { app } from '../state.js';
 import { estimateWebmText, keptLength, normalizeTrim } from '../domain/timeline.js';
 import { clipSeek, keptLengthNow, keptOf, sourceOf } from './clip.js';
@@ -55,6 +55,43 @@ export function updateSizeUI(): void {
   // Cuts are trimmed away, so they shrink the estimate too.
   const clip = keptLength(app.cuts, app.trimStart, app.trimEnd) * app.duration;
   el.tSize.textContent = estimateWebmText(clip);
+}
+
+// ── the export's progress ────────────────────────────────────────────────────
+//
+// The export plays the kept range into a canvas in real time, so the timeline
+// shows it the way playback does: the playhead travels across the clip while the
+// header counts down. `from` and `to` are times in the recording; the export runs
+// at the clip's own speed, so what is left of the range is what is left to wait.
+
+let wasCut = '';
+
+export function beginEncoding(): void {
+  wasCut = el.tCut.textContent;
+  el.timeline.classList.add('encoding');
+  el.tlLabel.textContent = 'Timeline · Export';
+  el.tCut.textContent = 'ENCODING';
+  el.tLive.classList.remove('on');
+}
+
+// The range is left as the review drew it: the export is shown the way playback
+// is, by the playhead travelling across the clip, with the time left in the
+// header. `to` is where the export ends; the export runs at the clip's own speed,
+// so what is left of the range is what is left to wait.
+export function encodingAt(source: number, to: number): void {
+  const kept = Math.max(0.001, keptLengthNow());
+  const head = keptOf(source), end = keptOf(to);
+  el.playhead.style.left = ((head / kept) * 100).toFixed(2) + '%';
+  el.tNow.textContent = head.toFixed(2) + 's';
+  el.tCut.textContent = 'ENCODING · ' + clock(Math.max(0, end - head)) + ' left';
+}
+
+export function endEncoding(): void {
+  el.timeline.classList.remove('encoding');
+  el.tlLabel.textContent = 'Timeline · Trim';
+  el.tCut.textContent = wasCut;
+  wasCut = '';
+  updateTrimUI();              // the range and the head come back
 }
 
 // Everything that shows how long the clip is: the timeline changes length when a

@@ -196,6 +196,12 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .timeline.recording .range-wrap input[type=range]{display:none;}
 .timeline.recording .tl-marks{display:none;}
 .timeline.recording .range-playhead{top:0;bottom:0;height:auto;}
+
+/* While the export is being written the timeline shows the playhead travelling
+   across the clip, as playback does, with the time left in the header. */
+.timeline.encoding .tl-play{display:none;}
+.timeline.encoding .range-wrap input[type=range]{display:none;}
+.timeline.encoding .tl-marks{display:none;}
 .timeline.recording .thumb-frame{background:var(--glass);}
 
 /* ── CONTROLLER ── */
@@ -204,7 +210,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .ctrl-glow{position:absolute;top:0;left:20%;right:20%;height:1px;background:linear-gradient(90deg,transparent,var(--crimson),transparent);opacity:0;transition:opacity .5s;}
 .ctrl.recording .ctrl-glow{opacity:1;}
 .ctrl.recording{border-color:rgba(229,62,62,.2);}
-.enc-bar{position:absolute;bottom:0;left:0;height:2px;background:linear-gradient(90deg,var(--blue),var(--crimson));border-radius:0 2px 2px 0;width:0%;transition:width .12s;}
 
 /* LEFT — empty spacer, so the grid's centre column stays centred */
 .ctrl-spacer{min-width:0;}

@@ -20,6 +20,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 - **Live timeline** — the timeline is there while a take records, filling in with the picture and the sound as they are captured (drawn from the live preview and the recorded stream's own levels, never by decoding the half-written file), and it becomes the trim timeline on stop
 - **Timeline trimmer** — drag IN/OUT handles to keep a range, then **click twice to select a section and approve it with the green check** (or by clicking inside it), with a **red cross** to leave it in and an **undo** to put it back. **An approved trim leaves the timeline**, which closes up over it, so the timeline always shows what the export will hold — the strip, the waveform, the handles and the playhead all follow. **Drag a mark or the selected section** (whole, or by an edge) to reposition it, with the clip playing under it as it moves
 - **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
+- **Export progress on the timeline** — the kept range fills as it is written, with the frames shown on the preview and the time left counted down; nothing runs off a bottom bar
 - **Audio track** — a waveform of the recording under the thumbnails, shown when the clip has sound
 - **3-second countdown** — the live preview stays visible behind it, and pressing record again during it cancels
 - **Tab / system audio** — requested on every capture (`audio: true` plus Chrome's `systemAudio: 'include'` hint, so the audio option is offered); the browser owns that checkbox, so the app says so when a share comes back silent, and **Reset** returns to the picker to redo it
@@ -37,7 +38,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 4. Press Record again to add another take to the end of the clip — the timeline then holds every take, and the trims you already made are kept
 5. The timeline holds a playback control and an audio track
 6. Play it back, drag the **blue IN** and **red OUT** handles to keep a range, or click anywhere on the timeline to play from that moment. To cut a part out, click where it starts and where it ends, then press the **green check** (or click inside the shaded section): it leaves the timeline and the rest closes up. The **red cross** leaves the section in, and the small **undo** arrow brings back what you just trimmed. Marks and the selected section can be dragged to reposition them
-7. Click **Export ↓** to encode and download
+7. Click **Export ↓** to encode and download — the timeline fills as it writes and counts down what is left of it (the export runs at the clip's own speed, over the kept range only)
 
 ---
 
