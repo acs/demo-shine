@@ -116,7 +116,7 @@ function exportWebM(): Promise<void> {
     const finish = () => {
       el.rv.pause();
       if (rec.state !== 'inactive') rec.stop();
-      encodingAt(e, s, e);                     // the range is written right through
+      encodingAt(e, e);                        // the range is written right through
     };
 
     rec.ondataavailable = ev => { if (ev.data.size > 0) out.push(ev.data); };
@@ -152,7 +152,7 @@ function exportWebM(): Promise<void> {
           asked = 0; stuckAt = 0;
           ectx?.drawImage(el.rv, 0, 0, ec.width, ec.height);
           try { drawFrame(el.rv); } catch { /* a frame not ready: the next one will do */ }
-          encodingAt(t, s, e);                   // what is written, and what is left
+          encodingAt(t, e);                      // where it has got to, and what is left
           requestAnimationFrame(frame);
         })();
       });

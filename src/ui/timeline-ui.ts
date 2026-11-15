@@ -59,11 +59,10 @@ export function updateSizeUI(): void {
 
 // ── the export's progress ────────────────────────────────────────────────────
 //
-// The export plays the kept range into a canvas in real time, so the timeline can
-// show it: the range fills from its start, the head follows what is being written,
-// and the header says how much of it is left. `from` and `to` are times in the
-// recording; the export runs at the clip's own speed, so what is left of the
-// range is what is left to wait.
+// The export plays the kept range into a canvas in real time, so the timeline
+// shows it the way playback does: the playhead travels across the clip while the
+// header counts down. `from` and `to` are times in the recording; the export runs
+// at the clip's own speed, so what is left of the range is what is left to wait.
 
 let wasCut = '';
 
@@ -75,11 +74,13 @@ export function beginEncoding(): void {
   el.tLive.classList.remove('on');
 }
 
-export function encodingAt(source: number, from: number, to: number): void {
+// The range is left as the review drew it: the export is shown the way playback
+// is, by the playhead travelling across the clip, with the time left in the
+// header. `to` is where the export ends; the export runs at the clip's own speed,
+// so what is left of the range is what is left to wait.
+export function encodingAt(source: number, to: number): void {
   const kept = Math.max(0.001, keptLengthNow());
-  const head = keptOf(source), start = keptOf(from), end = keptOf(to);
-  el.rFill.style.left  = ((start / kept) * 100).toFixed(2) + '%';
-  el.rFill.style.width = ((Math.max(0, head - start) / kept) * 100).toFixed(2) + '%';
+  const head = keptOf(source), end = keptOf(to);
   el.playhead.style.left = ((head / kept) * 100).toFixed(2) + '%';
   el.tNow.textContent = head.toFixed(2) + 's';
   el.tCut.textContent = 'ENCODING · ' + clock(Math.max(0, end - head)) + ' left';
