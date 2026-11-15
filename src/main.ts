@@ -14,21 +14,10 @@ import { drawWaveform } from './ui/waveform.js';
 import { initRegion } from './ui/region.js';
 
 function init(): void {
-  // Screen capture (getDisplayMedia) lives on navigator.mediaDevices, which only
-  // exists in a secure context. Over plain HTTP on a non-local host it is
-  // undefined — say so plainly instead of claiming the browser is unsupported.
-  const hasCapture = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
-  if (!hasCapture) {
-    // Over plain HTTP on a non-local host, mediaDevices is undefined (insecure
-    // context) — say that plainly instead of claiming the browser is unsupported.
-    const insecure = !window.isSecureContext;
-    el.compatWarn.textContent = insecure ? '⚠ HTTPS required' : '⚠ Browser not supported';
-    el.compatWarn.classList.add('on');
-    el.idleHint.textContent = insecure
-      ? 'Screen capture needs HTTPS — open this page over https://'
-      : 'Screen capture is unavailable in this browser';
-    el.recBtn.disabled = true;
-    setStatus('', insecure ? 'HTTPS required' : 'Not supported');
+  const supported = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
+  if (!supported) {
+    el.compatWarn.style.display = '';
+    setStatus('', 'Not supported');
   } else {
     setStatus('ready', 'Ready');
   }
@@ -71,8 +60,8 @@ function init(): void {
   // Go live as early as the browser allows. getDisplayMedia is gated behind a
   // user gesture + picker, so we (a) try on load, and (b) start on the first
   // interaction anywhere — the capture goes live without the red button.
-  const startOnGesture = () => { if (hasCapture) void startCapture(); };
-  if (hasCapture) void startCapture();
+  const startOnGesture = () => { if (supported) void startCapture(); };
+  if (supported) void startCapture();
   window.addEventListener('pointerdown', startOnGesture, { once: true });
   window.addEventListener('keydown', startOnGesture, { once: true });
 
