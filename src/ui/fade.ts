@@ -5,9 +5,10 @@
 // starts at full level. A fade out just before the join and a fade in just after
 // it takes the edge off — short enough not to be heard as a fade at all.
 //
-// The element's sound is routed through one gain node, and everything that
-// listens sits behind it: the preview hears it, and during an export so does the
-// recorder, so what is heard and what is written carry the same fades.
+// The element's sound is routed through one gain node, which is what the preview
+// hears. The export does not listen behind it — it renders its own sound offline
+// through an OfflineAudioContext — but it applies the same fades to it, so what is
+// heard while reviewing and what ends up in the file still agree.
 
 import { app } from '../state.js';
 import { el } from './dom.js';
