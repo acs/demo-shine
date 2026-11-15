@@ -12,7 +12,7 @@ import { initTimeline, onTrim, updateTrimUI, updateSizeUI } from './ui/timeline-
 import { initTimelineMarks } from './ui/marks.js';
 import { toggleRec, startCapture } from './recorder.js';
 import { doExport, resetAll } from './exporter.js';
-import { togglePlayback } from './ui/playback.js';
+import { playback } from './ui/playback.js';
 import { drawWaveform } from './ui/waveform.js';
 import { initRegion } from './ui/region.js';
 import { initWebcam, toggleWebcam } from './ui/webcam.js';
@@ -49,7 +49,7 @@ function init(): void {
   el.recBtn.addEventListener('click', toggleRec);
   el.btnReset.addEventListener('click', resetAll);
   el.btnExp.addEventListener('click', doExport);
-  el.playBtn.addEventListener('click', togglePlayback);
+  el.playBtn.addEventListener('click', () => playback.toggle());
 
   // Reset is the way back to the share picker — it is how you re-share after
   // forgetting to tick "share audio" — so it is offered while a capture is live

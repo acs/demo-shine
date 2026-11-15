@@ -28,7 +28,7 @@ import { Span } from '../domain/clip/Span.js';
 import { Trim } from '../domain/clip/Trim.js';
 import { updateSizeUI } from './timeline-ui.js';
 import { clipTime, keptLengthNow, keptOf, sourceOf } from './clip.js';
-import { playFrom, seekPlayback, setScrubbing } from './playback.js';
+import { playback } from './playback.js';
 
 const MIN_SECTION = Trim.MIN_GAP;   // a hundredth of the clip: the shortest section worth trimming
 
@@ -174,7 +174,7 @@ function undoTrim(): void {
 // The marks and the timeline redraw because the clip told them to; all that is
 // left to do here is follow the playhead.
 function afterEdits(at: number): void {
-  void seekPlayback(at);
+  void playback.seek(at);
 }
 
 // ── Clicking the timeline ────────────────────────────────────────────────────
@@ -196,12 +196,12 @@ function onTimelineClick(evt: MouseEvent): void {
 
   // Inside the selected section: that is the confirmation — trim it out.
   const section = pendingSection();
-  if (section && f >= section.s && f <= section.e) { approveTrim(); playFrom(time); return; }
+  if (section && f >= section.s && f <= section.e) { approveTrim(); playback.playFrom(time); return; }
 
   // Otherwise drop a mark. A click outside the section starts a new pair.
   app.marks = app.marks.length >= 2 ? [f] : [...app.marks, f].sort((a, b) => a - b);
   renderMarks();
-  playFrom(time);
+  playback.playFrom(time);
 }
 
 // ── Dragging a bar ───────────────────────────────────────────────────────────
@@ -248,7 +248,7 @@ function onBarMove(evt: PointerEvent): void {
   if (!press.moved) {
     if (Math.abs(evt.clientX - press.fromX) < DRAG_MIN) return;
     press.moved = true;
-    setScrubbing(true);      // a section plays while it is being positioned
+    playback.setScrubbing(true);      // a section plays while it is being positioned
   }
 
   const f = fractionAt(evt.clientX);
@@ -256,7 +256,7 @@ function onBarMove(evt: PointerEvent): void {
   renderMarks();
   // Play where the bar now is, so its sound and picture come with it.
   const now = Date.now();
-  if (now - press.lastSeek >= SEEK_EVERY) { press.lastSeek = now; playFrom(f * app.clip.total()); }
+  if (now - press.lastSeek >= SEEK_EVERY) { press.lastSeek = now; playback.playFrom(f * app.clip.total()); }
 }
 
 function onBarUp(): void {
@@ -264,7 +264,7 @@ function onBarUp(): void {
   swallowNextClick = press.moved;    // the click that follows a drag must not re-trim
   press = null;
   el.timeline.classList.remove('dragging');
-  setScrubbing(false);
+  playback.setScrubbing(false);
 }
 
 function dragTo(f: number): void {
