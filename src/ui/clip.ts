@@ -84,12 +84,24 @@ export async function clipNext(): Promise<boolean> {
   return true;
 }
 
+// How much of the recording in hand is left to play.
+export function partLeft(): number {
+  const part = app.parts[loaded];
+  return part ? Math.max(0, part.duration - el.rv.currentTime) : 0;
+}
+
+// Is there another take after the one in hand? A join is only a join if there
+// is something on the other side of it.
+export function hasNextPart(): boolean {
+  return loaded >= 0 && loaded + 1 < app.parts.length;
+}
+
 // Is the video sitting at the end of the part it holds? Only the end of a part
 // that has another one after it matters — the last one just stops.
 export function partEnded(): boolean {
   if (el.rv.ended) return true;
   const part = app.parts[loaded];
-  return !!part && app.parts.length > 1 && el.rv.currentTime >= part.duration - 0.05;
+  return !!part && hasNextPart() && el.rv.currentTime >= part.duration - 0.05;
 }
 
 // Drop the part URLs: the session's recordings are gone.

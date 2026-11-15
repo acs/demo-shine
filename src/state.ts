@@ -63,6 +63,7 @@ export interface AppState {
   // export recorder so trimmed WebM exports keep their audio.
   recAudio: boolean;            // did the last recording capture an audio track?
   audioCtx: AudioContext | null;
+  audioGain: GainNode | null;           // the element's sound, for fades at joins
   audioDest: MediaStreamAudioDestinationNode | null;
 }
 
@@ -102,6 +103,7 @@ export const app: AppState = {
 
   recAudio: false,
   audioCtx: null,
+  audioGain: null,
   audioDest: null,
 };
 
