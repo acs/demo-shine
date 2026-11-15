@@ -32,7 +32,6 @@
     "vitest": "^5.1.0"
   },
   "dependencies": {
-    "mediabunny": "^1.66.0",
-    "webm-muxer": "^5.1.4"
+    "mediabunny": "^1.66.0"
   }
 }
