@@ -11,6 +11,7 @@ import { startMirror, stopMirror } from './ui/preview.js';
 import { runCountdown, cancelCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { buildThumbs, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
+import { resetMarks } from './ui/marks.js';
 import { resetPlayback, seekPlayback } from './ui/playback.js';
 import { buildWaveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
@@ -286,6 +287,7 @@ function onRecStop(): void {
     void buildWaveform(app.blob);
     setTimerMs(app.duration * 1000);
     resetTrim();
+    resetMarks();
     // Building the thumbnails seeks the video to the last frame; once it's done,
     // put the playhead back at the trim IN so the first Play starts from the top.
     void buildThumbs().then(() => seekPlayback(app.trimStart * app.duration));

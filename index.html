@@ -138,16 +138,19 @@
           <span class="tl-out">OUT <span id="t-out">0.00s</span></span>
         </div>
       </div>
-      <span class="tl-est"><span class="tl-est-lbl">Est. </span><span id="t-size">—</span></span>
+      <span class="tl-est"><span class="tl-est-lbl">Est. </span><span id="t-size">—</span><span id="t-cut"></span></span>
     </div>
-    <div class="thumb-strip" id="thumbs"></div>
-    <canvas class="wave-strip" id="waveform" style="display:none"></canvas>
-    <div class="range-wrap">
-      <div class="range-bg"></div>
-      <div class="range-fill" id="r-fill"></div>
-      <div class="range-playhead" id="playhead"></div>
-      <input type="range" id="r-start" min="0" max="1000" value="0" step="1">
-      <input type="range" id="r-end"   min="0" max="1000" value="1000" step="1">
+    <div class="tl-track">
+      <div class="thumb-strip" id="thumbs"></div>
+      <canvas class="wave-strip" id="waveform" style="display:none"></canvas>
+      <div class="range-wrap">
+        <div class="range-bg"></div>
+        <div class="range-fill" id="r-fill"></div>
+        <div class="range-playhead" id="playhead"></div>
+        <input type="range" id="r-start" min="0" max="1000" value="0" step="1">
+        <input type="range" id="r-end"   min="0" max="1000" value="1000" step="1">
+      </div>
+      <div class="tl-marks" id="tl-marks"></div>
     </div>
   </div>
 
@@ -212,7 +215,7 @@
         <div class="help-num">3</div>
         <div class="help-step-body">
           <div class="help-step-title">Stop and trim</div>
-          <div class="help-step-desc">Press ▶ to play the clip back with sound — it plays within your IN/OUT range, and you can still drag the handles while it plays. <strong>Click anywhere on the timeline to start playing from that moment.</strong> Drag the blue IN handle and red OUT handle to define your clip. The estimated file size updates live.</div>
+          <div class="help-step-desc">Press ▶ to play the clip back with sound — it plays within your IN/OUT range, and you can still drag the handles while it plays. <strong>Click anywhere on the timeline to play from that moment.</strong> Drag the blue IN handle and red OUT handle to define your clip. To cut a part out: click where it starts and click where it ends, then click inside the shaded region to trim it away — click the region again to put it back. The estimated file size updates live.</div>
         </div>
       </div>
       <div class="help-step">
