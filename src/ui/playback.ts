@@ -16,10 +16,11 @@
 
 import { app } from '../state.js';
 import { el } from './dom.js';
-import { drawFrame } from './preview.js';
+import { drawClipFrame } from './preview.js';
 import { clampToClip, cutEndAt } from '../domain/timeline.js';
 import { clipNext, clipSeek, clipSeekAndDraw, clipTime, hasNextPart, keptLengthNow, keptOf, partEnded, partLeft } from './clip.js';
 import { FADE_S, fadeIn, fadeOut, fadeReset } from './fade.js';
+import { clearFrame, holdFrame } from './dissolve.js';
 
 const PLAY_ICON  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
 const PAUSE_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
@@ -101,6 +102,7 @@ function beginPlayback(): void {
   askedSkip = 0;
   joinFaded = false;
   fadeReset();               // starting again at full, whatever a pause left behind
+  clearFrame();              // ...and with no dissolve owed from an earlier join
   seenAt = clipTime();
   seenTime = Date.now();
   updateTransport();
@@ -117,6 +119,7 @@ export function pausePlayback(): void {
   joinFaded = false;
   if (!el.rv.paused) el.rv.pause();
   fadeReset();               // a fade must never be left half-applied
+  clearFrame();              // ...nor a dissolve
   cancelLoop();
   updateTransport();
   updatePlayhead();
@@ -128,6 +131,7 @@ export function resetPlayback(): void {
   joinFaded = false;
   cancelLoop();
   fadeReset();
+  clearFrame();
   updateTransport();
   updatePlayhead(0);
 }
@@ -236,8 +240,9 @@ function loop(): void {
   }
 
   // The recording in the video has run out: carry on into the next one, so the
-  // joined clip plays as a whole.
+  // joined clip plays as a whole. Its last frame is held, to dissolve away from.
   if (partEnded()) {
+    holdFrame();
     void clipNext().then(joined => {
       if (!app.playing) return;
       if (!joined) { pausePlayback(); return; }
@@ -247,7 +252,7 @@ function loop(): void {
     return;
   }
 
-  try { drawFrame(el.rv); } catch { /* a frame still decoding — keep the loop alive */ }
+  try { drawClipFrame(el.rv); } catch { /* a frame still decoding — keep the loop alive */ }
   updatePlayhead();          // video frames on the preview canvas
   app.playRaf = requestAnimationFrame(loop);   // audio comes from the (unmuted) element
 }

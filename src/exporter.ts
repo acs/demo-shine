@@ -3,10 +3,11 @@
 
 import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
-import { drawFrame, drawGrid } from './ui/preview.js';
+import { drawClipFrame, drawGrid } from './ui/preview.js';
 import { setTimerMs } from './ui/timer.js';
 import { beginEncoding, encodingAt, endEncoding, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
 import { FADE_S, elementAudio, fadeIn, fadeOut, fadeReset } from './ui/fade.js';
+import { clearFrame, drawDissolve, holdFrame } from './ui/dissolve.js';
 import { resetMarks } from './ui/marks.js';
 import { clipSeek, clipTime, releaseParts } from './ui/clip.js';
 import { getBestMime } from './infra/codecs.js';
@@ -113,6 +114,7 @@ function exportWebM(): Promise<void> {
       if (rec.state !== 'inactive') rec.stop();
       encodingAt(e, e);                        // the range is written right through
       fadeReset();                             // a fade must never outlive the export
+      clearFrame();                            // ...nor a dissolve
     };
 
     rec.ondataavailable = ev => { if (ev.data.size > 0) out.push(ev.data); };
@@ -124,7 +126,8 @@ function exportWebM(): Promise<void> {
     // they are played one after another into the same recorder: the file that
     // comes out is one clip, however many presses of Record it took. A short
     // fade either side of a join softens it — the sound goes down as one take
-    // runs out and comes back up as the next begins.
+    // runs out and comes back up as the next begins, and the picture dissolves
+    // from the last frame of one into the first frames of the next.
     function drawTo(limit: number, joinAhead: boolean): Promise<void> {
       return new Promise(done => {
         let asked = 0;          // cut end already seeked to, so it is asked for once
@@ -135,7 +138,10 @@ function exportWebM(): Promise<void> {
           const t = clipTime();
           if (t !== lastT) { lastT = t; movedAt = Date.now(); }
           else if (Date.now() - movedAt > STEP_MS) { stalled = true; done(); return; }
-          if (t >= limit - 0.01 || el.rv.ended || el.rv.paused) { done(); return; }
+          if (t >= limit - 0.01 || el.rv.ended || el.rv.paused) {
+            if (joinAhead) holdFrame();          // the frame to dissolve away from
+            done(); return;
+          }
           const cutEnd = cutEndAt(cuts, t);
           if (cutEnd !== null) {
             // Trimmed away: jump past it, without pausing, so the capture and its
@@ -152,8 +158,13 @@ function exportWebM(): Promise<void> {
           // Another take follows: bring the sound down over the last FADE_S of
           // this one, so the join does not arrive at full level.
           if (joinAhead && !faded && t >= limit - FADE_S) { faded = true; fadeOut(); }
-          ectx?.drawImage(el.rv, 0, 0, ec.width, ec.height);
-          try { drawFrame(el.rv); } catch { /* a frame not ready: the next one will do */ }
+          // `el.rv.currentTime` is how long this take has been running, which is
+          // what the dissolve is measured against.
+          const since = el.rv.currentTime;
+          if (ectx && !drawDissolve(ectx, el.rv, ec.width, ec.height, since)) {
+            ectx.drawImage(el.rv, 0, 0, ec.width, ec.height);
+          }
+          try { drawClipFrame(el.rv); } catch { /* a frame not ready: the next one will do */ }
           encodingAt(t, e);                      // where it has got to, and what is left
           requestAnimationFrame(frame);
         })();
