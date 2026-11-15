@@ -50,6 +50,21 @@ git tag -l "v*"        # every version, in order
 git show v1.0.6        # what went into one
 ```
 
+## Knowing a newer build is out
+
+The number on screen says which build you are on; `version.json`, written beside
+the bundle at build time, lets the app say when a **newer** one has been deployed.
+
+On load, whenever the tab is brought back to the front, and every 15 minutes, the
+app fetches `version.json` and compares it with its own version. If they differ it
+offers a reload in the header — `v1.0.5 → v1.0.6 · reload` — which is also how you
+tell the difference between "the deploy has not run yet" and "my window is on a
+cached shell".
+
+It **never reloads on its own**: a recording in progress would go with it. The
+service worker is told never to cache `version.json`, so the offer is always about
+the deployment rather than a stale copy of it.
+
 ## One deliberate difference
 
 The workflow this is modelled on (Graditone's) fetches `main` and **force-pushes**
