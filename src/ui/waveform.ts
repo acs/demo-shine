@@ -29,6 +29,12 @@ export function clearWaveform(): void {
   el.waveform.getContext('2d')?.clearRect(0, 0, el.waveform.width, el.waveform.height);
 }
 
+// The bars as they stand. The live timeline carries them into a new take, so the
+// clip's sound stays on screen under the one being recorded.
+export function currentPeaks(): Float32Array | null {
+  return peaks;
+}
+
 export async function buildWaveform(parts: Part[]): Promise<void> {
   if (!parts.length || !app.recAudio) { clearWaveform(); return; }
   const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -68,8 +74,7 @@ export async function buildWaveform(parts: Part[]): Promise<void> {
 
 export function drawWaveform(): void {
   const cv = el.waveform;
-  if (!peaks || cv.style.display === 'none') return;
-  const ctx = cv.getContext('2d');
+  if (!peaks || cv.style.display === 'none') return;  const ctx = cv.getContext('2d');
   if (!ctx) return;
 
   const dpr = window.devicePixelRatio || 1;

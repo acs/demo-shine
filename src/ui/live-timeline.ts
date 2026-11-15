@@ -17,7 +17,9 @@ import { app } from '../state.js';
 import { el } from './dom.js';
 import { estimateWebmText } from '../domain/timeline.js';
 import { drawWebcamOverlay } from './webcam.js';
-import { keptLengthNow } from './clip.js';
+import { keptLengthNow, keptOf } from './clip.js';
+import { currentPeaks } from './waveform.js';
+import { spanAt } from '../domain/timeline.js';
 
 const CELLS     = 22;     // the same strip the review builds
 const CELL_W    = 80;
@@ -33,6 +35,7 @@ let sources: HTMLCanvasElement[] = [];      // what the review strip was showing
 let frames: { t: number; c: HTMLCanvasElement }[] = [];   // the take, as it goes
 let lastCapture = -1;
 let prevKept = 0;                           // timeline length of the clip before this take
+let echo: Float32Array | null = null;       // the clip's own waveform, carried over
 let samples: number[] = [];                 // levels heard so far in this take
 let audioCtx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
@@ -42,6 +45,7 @@ let lastDraw = 0;
 export function startLiveTimeline(recStream: MediaStream | null): void {
   stopLiveTimeline();
   prevKept = keptLengthNow();
+  echo = currentPeaks();
   sources = copyStrip();
   frames = [];
   lastCapture = -1;
@@ -133,9 +137,11 @@ function paintStrip(span: number, head: number): void {
   }
 }
 
+// The clip's own waveform before the recording head, then the sound of the take
+// as it is heard — both laid out over the same span, so they compress together.
 function paintWave(span: number): void {
   const cv = el.waveform;
-  if (!samples.length) { cv.style.display = 'none'; return; }
+  if (!echo && !samples.length) { cv.style.display = 'none'; return; }
   cv.style.display = '';
   const ctx = cv.getContext('2d');
   if (!ctx) return;
@@ -149,11 +155,26 @@ function paintWave(span: number): void {
   const light = document.documentElement.dataset.theme === 'light';
   ctx.fillStyle = light ? 'rgba(59,127,255,0.55)' : 'rgba(96,148,255,0.7)';
   const mid = h / 2;
+  const bar = (peak: number, when: number, bw: number) => {
+    const barH = Math.max(1, peak * (h - 4));
+    ctx.fillRect((when / span) * w, mid - barH / 2, bw, barH);
+  };
+
+  if (echo && echo.length) {
+    // every bar of the clip so far, over the recording's own time
+    const cuts = app.cuts.map(c => ({ s: c.s * app.duration, e: c.e * app.duration }));
+    const step = app.duration / echo.length;
+    const bw = Math.max(0.7, (w / span) * step);
+    for (let i = 0; i < echo.length; i++) {
+      const at = (i + 0.5) * step;
+      if (spanAt(cuts, at) >= 0) continue;               // trimmed away: not in the clip
+      bar(echo[i], keptOf(at), bw);
+    }
+  }
+
   const bw = Math.max(1, (w * SAMPLE_MS) / 1000 / span);
   for (let k = 0; k < samples.length; k++) {
-    const when = prevKept + (k * SAMPLE_MS) / 1000;      // when it was heard
-    const barH = Math.max(1, samples[k] * (h - 4));
-    ctx.fillRect((when / span) * w, mid - barH / 2, bw, barH);
+    bar(samples[k], prevKept + (k * SAMPLE_MS) / 1000, bw);   // when it was heard
   }
 }
 
