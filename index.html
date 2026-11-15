@@ -3,6 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  // Force HTTPS for any non-local host; localhost/127.0.0.1 are left alone so
+  // the dev and preview servers keep working over plain HTTP.
+  if (location.protocol === 'http:' && !/^(localhost|127\.0\.0\.1|\[::1\]|::1)$/i.test(location.hostname)) {
+    var host = location.hostname + (location.port && location.port !== '80' ? ':' + location.port : '');
+    location.replace('https://' + host + location.pathname + location.search + location.hash);
+  }
+</script>
 <meta name="description" content="Pure browser screen recorder. No extensions. No uploads. WebM screen recording with timeline trimming and audio.">
 <meta property="og:title" content="DemoShine">
 <meta property="og:description" content="Pure browser screen recorder — WebM with trimming and audio. No extensions, no uploads.">
