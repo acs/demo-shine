@@ -10,13 +10,14 @@ import { el, setStatus, toast } from './ui/dom.js';
 import { startMirror, stopMirror, seekWithin } from './ui/preview.js';
 import { runCountdown, cancelCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
-import { buildThumbs, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
+import { buildThumbs, resetTrim, updateSizeUI, updateTrimUI } from './ui/timeline-ui.js';
 import { resetMarks, rescaleMarks } from './ui/marks.js';
 import { clipLoad, clipTime, totalDuration } from './ui/clip.js';
 import { pausePlayback, resetPlayback, seekPlayback } from './ui/playback.js';
 import { buildWaveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
 import { drawWebcamOverlay, stopWebcam } from './ui/webcam.js';
+import { startLiveTimeline, stopLiveTimeline } from './ui/live-timeline.js';
 import { stopMic } from './ui/mic.js';
 import { getBestMime } from './infra/codecs.js';
 
@@ -268,6 +269,8 @@ async function startRecording(): Promise<void> {
   app.startAt = Date.now();
   setPhase('recording');
   startCropLoop();
+  // Show the timeline filling in as the take records.
+  startLiveTimeline(recStream);
   el.recBtn.disabled = false;
 
   el.recBtn.classList.add('recording');
@@ -283,6 +286,7 @@ export function stopRec(): void {
   if (app.rec && app.rec.state !== 'inactive') app.rec.stop();
   stopCropLoop();
   stopMix();
+  stopLiveTimeline();          // the review rebuilds the timeline from the file
   // The share is kept: reviewing a clip and then pressing Record again adds to
   // it, which should not cost another trip through the picker.
   stopTimer();
@@ -351,6 +355,7 @@ async function onRecStop(): Promise<void> {
   await clipLoad(appending ? app.parts.length - 1 : 0);
   if (appending) rescaleMarks(previous, app.duration);   // keep cuts over their moments
   else           { resetTrim(); resetMarks(); }
+  updateTrimUI();          // the handles come back from the live progress bar
 
   // The clip may be a cropped region, so size the preview canvas to it.
   if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
