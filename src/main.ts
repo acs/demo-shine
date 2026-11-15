@@ -13,7 +13,7 @@ import { initTimelineMarks } from './ui/marks.js';
 import { toggleRec, startCapture } from './recorder.js';
 import { doExport, resetAll } from './exporter.js';
 import { playback } from './ui/playback.js';
-import { drawWaveform } from './ui/waveform.js';
+import { waveform } from './ui/waveform.js';
 import { initRegion } from './ui/region.js';
 import { initWebcam, toggleWebcam } from './ui/webcam.js';
 import { initMic, toggleMic } from './ui/mic.js';
@@ -71,7 +71,7 @@ function init(): void {
   });
 
   // Keep the audio waveform aligned with the strip on resize.
-  window.addEventListener('resize', drawWaveform);
+  window.addEventListener('resize', () => waveform.draw());
 
   // Drag on the preview to crop the recording to a region.
   initRegion();

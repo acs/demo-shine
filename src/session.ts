@@ -27,7 +27,7 @@ import { setTimerMs } from './ui/timer.js';
 import { updateSizeUI } from './ui/timeline-ui.js';
 import { forgetLoaded } from './ui/clip.js';
 import { playback } from './ui/playback.js';
-import { clearWaveform } from './ui/waveform.js';
+import { waveform } from './ui/waveform.js';
 import { liveTimeline } from './ui/live-timeline.js';
 
 export class Session {
@@ -56,7 +56,7 @@ export class Session {
 
     setTimerMs(0);
     playback.reset();
-    clearWaveform();
+    waveform.clear();
     updateSizeUI();
     drawGrid();
   }

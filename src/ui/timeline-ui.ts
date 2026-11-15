@@ -13,7 +13,7 @@ import { Trim } from '../domain/clip/Trim.js';
 import { clipSeek, keptLengthNow, keptOf, sourceOf } from './clip.js';
 import { setTimerMs } from './timer.js';
 import { playback } from './playback.js';
-import { drawWaveform } from './waveform.js';
+import { waveform } from './waveform.js';
 
 const COUNT = 22;         // thumbnail frames across the strip
 
@@ -27,7 +27,7 @@ export function initTimeline(): void {
     }
     updateTrimUI();
     updateSizeUI();
-    drawWaveform();
+    waveform.draw();
   });
 }
 
@@ -40,7 +40,7 @@ export function onTrim(evt: { target: EventTarget | null }): void {
   updateTrimUI(false);       // the handles are the authority while dragging
   updateSizeUI();
   playback.syncToTrim(moved);
-  drawWaveform();
+  waveform.draw();
 }
 
 export function updateTrimUI(syncHandles = true): void {
@@ -73,14 +73,16 @@ export function updateSizeUI(): void {
 // header counts down. `from` and `to` are times in the recording; the export runs
 // at the clip's own speed, so what is left of the range is what is left to wait.
 
-let wasCut = '';
-
-export function beginEncoding(): void {
-  wasCut = el.tCut.textContent;
+// The chip says what the clip holds. The export takes it over while it runs and
+// puts it back afterwards, so what it said is the export's own business and it is
+// handed back to it, rather than kept here for whoever asks next.
+export function beginEncoding(): string {
+  const was = el.tCut.textContent ?? '';
   el.timeline.classList.add('encoding');
   el.tlLabel.textContent = 'Timeline · Export';
   el.tCut.textContent = 'ENCODING';
   el.tLive.classList.remove('on');
+  return was;
 }
 
 // The range is left as the review drew it: the export is shown the way playback
@@ -95,11 +97,10 @@ export function encodingAt(source: number, to: number): void {
   el.tCut.textContent = 'ENCODING · ' + clock(Math.max(0, end - head)) + ' left';
 }
 
-export function endEncoding(): void {
+export function endEncoding(was: string): void {
   el.timeline.classList.remove('encoding');
   el.tlLabel.textContent = 'Timeline · Trim';
-  el.tCut.textContent = wasCut;
-  wasCut = '';
+  el.tCut.textContent = was;
   updateTrimUI();              // the range and the head come back
 }
 
@@ -108,7 +109,7 @@ export function endEncoding(): void {
 export function rebuildTimeline(): void {
   updateTrimUI();
   updateSizeUI();
-  drawWaveform();
+  waveform.draw();
   setTimerMs(keptLengthNow() * 1000);
   void buildThumbs();
 }

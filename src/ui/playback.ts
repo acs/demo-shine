@@ -25,7 +25,7 @@ import { drawClipFrame } from './preview.js';
 import { clampToClip } from '../util.js';
 import { clipNext, clipSeek, clipSeekAndDraw, clipTime, hasNextTake, keptLengthNow, keptOf, takeEnded, takeLeft } from './clip.js';
 import { FADE_S, fadeIn, fadeOut, fadeReset } from './fade.js';
-import { clearFrame, holdFrame } from './dissolve.js';
+import { dissolve } from './dissolve.js';
 
 const PLAY_ICON  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
 const PAUSE_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
@@ -109,7 +109,7 @@ export class Playback {
     this.askedSkip = 0;
     this.joinFaded = false;
     fadeReset();               // starting again at full, whatever a pause left behind
-    clearFrame();              // ...and with no dissolve owed from an earlier join
+    dissolve.clear();              // ...and with no dissolve owed from an earlier join
     this.seenAt = clipTime();
     this.seenTime = Date.now();
     this.updateTransport();
@@ -126,7 +126,7 @@ export class Playback {
     this.joinFaded = false;
     if (!el.rv.paused) el.rv.pause();
     fadeReset();               // a fade must never be left half-applied
-    clearFrame();              // ...nor a dissolve
+    dissolve.clear();              // ...nor a dissolve
     this.cancelLoop();
     this.updateTransport();
     this.updatePlayhead();
@@ -138,7 +138,7 @@ export class Playback {
     this.joinFaded = false;
     this.cancelLoop();
     fadeReset();
-    clearFrame();
+    dissolve.clear();
     this.updateTransport();
     this.updatePlayhead(0);
   }
@@ -249,7 +249,7 @@ export class Playback {
     // The recording in the video has run out: carry on into the next one, so the
     // joined clip plays as a whole. Its last frame is held, to dissolve away from.
     if (takeEnded()) {
-      holdFrame();
+      dissolve.holdFrame();
       void clipNext().then(joined => {
         if (!app.playing) return;
         if (!joined) { this.pause(); return; }

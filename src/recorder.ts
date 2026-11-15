@@ -13,7 +13,7 @@ import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { buildThumbs } from './ui/timeline-ui.js';
 import { clipLoad, clipTime, keptLengthNow } from './ui/clip.js';
 import { playback } from './ui/playback.js';
-import { buildWaveform } from './ui/waveform.js';
+import { waveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
 import { drawWebcamOverlay, stopWebcam } from './ui/webcam.js';
 import { liveTimeline } from './ui/live-timeline.js';
@@ -357,7 +357,7 @@ async function onRecStop(): Promise<void> {
 
   // The clip may be a cropped region, so size the preview canvas to it.
   if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
-  void buildWaveform(app.clip.takes.all());
+  void waveform.build(app.clip.takes.all());
   setTimerMs(keptLengthNow() * 1000);
   // Building the thumbnails seeks through the clip; once that is done, park the
   // playhead at the trim IN, or at the join when a recording was just added.
