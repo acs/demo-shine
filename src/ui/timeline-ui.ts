@@ -3,9 +3,9 @@
 
 import { el } from './dom.js';
 import { app } from '../state.js';
-import { clipSeconds, normalizeTrim, estimateWebmText } from '../domain/timeline.js';
+import { keptLength, normalizeTrim, estimateWebmText } from '../domain/timeline.js';
 import { seekTo } from './preview.js';
-import { syncToTrim, seekPlayback } from './playback.js';
+import { syncToTrim } from './playback.js';
 import { drawWaveform } from './waveform.js';
 
 export function resetTrim(): void {
@@ -41,7 +41,8 @@ export function updateTrimUI(): void {
 
 export function updateSizeUI(): void {
   if (!app.duration || app.phase === 'idle') { el.tSize.textContent = '—'; return; }
-  const clip = clipSeconds(app.duration, app.trimStart, app.trimEnd);
+  // Cuts are trimmed away, so they shrink the estimate too.
+  const clip = keptLength(app.cuts, app.trimStart, app.trimEnd) * app.duration;
   el.tSize.textContent = estimateWebmText(clip);
 }
 
@@ -57,14 +58,6 @@ export async function buildThumbs(): Promise<void> {
     wrap.appendChild(tc);
     el.thumbs.appendChild(wrap);
     frames.push({ tc });
-    const pct = i / COUNT;
-    wrap.addEventListener('click', () => {
-      if (app.phase !== 'review' || el.rv.readyState < 2) return;
-      const t = pct * app.duration;
-      el.rStart.value = String(Math.min(Math.floor(pct * 1000), parseInt(el.rEnd.value) - 10));
-      onTrim({ target: el.rStart });
-      if (app.playing) seekPlayback(t);
-    });
   }
   for (let i = 0; i < COUNT; i++) {
     await seekTo(el.rv, (i / COUNT) * app.duration);

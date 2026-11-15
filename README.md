@@ -16,7 +16,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 - **Region crop** — a red box over the preview always shows what will be recorded: the whole screen by default, drag to record just part of it, click to reset; while recording the box breathes (red ↔ background)
 - **Webcam overlay** — a header toggle adds a mirrored webcam bubble in the corner of the recording (disabled when no camera is present)
 - **Microphone** — a header toggle (disabled when no mic) with a live level meter; its audio is **mixed with the tab/system audio** in the recording
-- **Timeline trimmer** — drag IN/OUT handles, click thumbnail frames to scrub, live size estimate
+- **Timeline trimmer** — drag IN/OUT handles to keep a range, and **click twice to mark a region, then click it to trim it away**, live size estimate
 - **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
 - **Audio track** — a waveform of the recording under the thumbnails, shown when the clip has sound
 - **3-second countdown** — the live preview stays visible behind it, and pressing record again during it cancels
@@ -33,7 +33,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 2. The red box over the preview shows what will be recorded — the whole screen by default; drag to record only a region, and click to go back to the full screen
 3. Press the red button to record — a 3-second countdown runs, and pressing the button again during it cancels; press it again to stop
 4. The timeline then appears with a playback control and an audio track
-5. Play it back, drag the **blue IN** and **red OUT** handles to trim, and scrub with the thumbnails
+5. Play it back, drag the **blue IN** and **red OUT** handles to keep a range, or click anywhere on the timeline to play from that moment. To cut a part out, click where it starts and where it ends, then click inside the shaded region; click that region again to put it back
 6. Click **Export ↓** to encode and download
 
 ---

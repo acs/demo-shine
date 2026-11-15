@@ -4,6 +4,8 @@
 // importers, so cross-module state is carried here rather than in scattered
 // `let` variables. Domain logic stays out of this file.
 
+import type { Span } from './domain/timeline.js';
+
 export type Phase = 'idle' | 'starting' | 'live' | 'countdown' | 'recording' | 'review' | 'encoding';
 
 // A rectangular crop, normalised to 0..1 of the capture.
@@ -25,6 +27,9 @@ export interface AppState {
   duration: number;             // seconds, resolved after recording
   trimStart: number;            // 0..1
   trimEnd: number;              // 0..1
+
+  marks: number[];              // 0..1, up to two pending marks bounding the region to cut
+  cuts: Span[];                 // 0..1, regions removed from the clip (skipped on play + export)
 
   timerIv: number | null;       // record-clock interval id
   startAt: number | null;       // recording start timestamp
@@ -63,6 +68,9 @@ export const app: AppState = {
   duration: 0,
   trimStart: 0,
   trimEnd: 1,
+
+  marks: [],
+  cuts: [],
 
   timerIv: null,
   startAt: null,

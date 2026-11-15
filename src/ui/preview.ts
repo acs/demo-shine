@@ -36,6 +36,26 @@ export function seekTo(vid: HTMLVideoElement, t: number): Promise<void> {
   });
 }
 
+// A seek that gives up instead of waiting forever, reporting whether it landed.
+// MediaRecorder WebM carries no duration in its header, and seeking such a file
+// can stall; a stalled seek must never wedge playback or an export.
+export function seekWithin(vid: HTMLVideoElement, t: number, ms = 2500): Promise<boolean> {
+  return new Promise(res => {
+    let done = false;
+    const finish = (ok: boolean) => {
+      if (done) return;
+      done = true;
+      vid.removeEventListener('seeked', onSeeked);
+      clearTimeout(timer);
+      res(ok);
+    };
+    const onSeeked = () => finish(true);
+    const timer = setTimeout(() => finish(false), ms);
+    vid.addEventListener('seeked', onSeeked);
+    vid.currentTime = Math.min(Math.max(t, 0), vid.duration || 0);
+  });
+}
+
 export async function seekAndDraw(vid: HTMLVideoElement, t: number): Promise<void> {
   await seekTo(vid, t);
   drawFrame(vid);
