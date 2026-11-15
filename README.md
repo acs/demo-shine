@@ -12,7 +12,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 
 - **Zero dependencies on your machine** — runs entirely in the browser via `getDisplayMedia`
 - **Live preview on start** — the screen capture begins as soon as the app opens (full screen preferred), no need to press record first
-- **WebM export, encoded offline** — VP9 (VP8 fallback) with Opus audio, written straight from the decoded frames by WebCodecs: about **10× faster than the clip**, it keeps going while the tab is in the background, and the file carries a duration and cue points, so any player can scrub it. Browsers without `VideoEncoder` (Firefox below 130) fall back to the real-time canvas re-encode
+- **WebM export, encoded offline** — VP9 (VP8 fallback) with Opus audio, written straight from the decoded frames by WebCodecs: about **10× faster than the clip**, it keeps going while the tab is in the background, and the file carries a duration and cue points, so any player can scrub it
 - **Region crop** — a red box over the preview always shows what will be recorded: the whole screen by default, drag to record just part of it, click to reset; while recording the box breathes (red ↔ background)
 - **Webcam overlay** — a header toggle adds a mirrored webcam bubble in the corner of the recording (disabled when no camera is present)
 - **Microphone** — a header toggle (disabled when no mic) with a live level meter; its audio is **mixed with the tab/system audio** in the recording
@@ -54,7 +54,7 @@ demoshine/
 │   ├── state.ts          # Shared application state (the mutable model)
 │   ├── prefs.ts          # User preferences (localStorage)
 │   ├── recorder.ts       # Recording use case (getDisplayMedia + MediaRecorder)
-│   ├── exporter.ts       # Export + reset use cases (WebM, and which encoder writes it)
+│   ├── exporter.ts       # Export + reset use cases (WebM)
 │   ├── offline-export.ts # The export, encoded offline with WebCodecs
 │   ├── globals.d.ts      # Ambient types (prefixed AudioContext, captureStream)
 │   ├── vite-env.d.ts     # Vite client types
@@ -143,10 +143,14 @@ request.
 |---|---|---|---|
 | Chrome 94+ | ✓ | ✓ | ✓ |
 | Edge 94+ | ✓ | ✓ | ✓ |
-| Firefox 113+ | ✓ | ✓ | Partial |
+| Firefox 130+ | ✓ | ✓ | Partial |
 | Safari | ✗ | — | — |
 
 Safari does not support `getDisplayMedia` for screen capture.
+
+The export needs WebCodecs (`VideoEncoder`), so **Firefox 113–129 can record but
+not export** — it arrived in Firefox 130. There is no slower path to fall back to
+any more, and the app says so rather than failing halfway.
 
 ---
 
