@@ -5,10 +5,10 @@
 // If the browser requires a user gesture first, the red button falls back to
 // acquiring the capture.
 
-import { app, setPhase, type Phase } from './state.js';
+import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
 import { startMirror, stopMirror, seekWithin } from './ui/preview.js';
-import { runCountdown, cancelCountdown } from './ui/countdown.js';
+import { countdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { strip } from './ui/timeline-ui.js';
 import { keptLengthNow, player } from './ui/clip.js';
@@ -40,14 +40,14 @@ export async function toggleRec(): Promise<void> {
 // Pressing record during the countdown aborts it and the pending recording,
 // returning to the live preview.
 function cancelRecordingCountdown(): void {
-  countdownAborted = true;
-  cancelCountdown();
+  countdown.cancel();
   // Back to whatever was on screen before the countdown: the clip being
   // reviewed, not the live screen (its timeline is only live in 'review').
-  setPhase(phaseBeforeCountdown);
+  const back = countdown.returnsTo;
+  setPhase(back);
   el.recBtn.disabled = false;
   el.recLbl.textContent = 'Record';
-  if (phaseBeforeCountdown === 'review') {
+  if (back === 'review') {
     stopMirror();
     playback.seek(player.time());
     setStatus('ready', 'Ready to export');
@@ -55,9 +55,6 @@ function cancelRecordingCountdown(): void {
     setStatus('ready', `Live · ${app.captureW}×${app.captureH}`);
   }
 }
-
-let countdownAborted = false;
-let phaseBeforeCountdown: Phase = 'live';   // where a cancelled countdown returns to
 
 // Acquire the display and show it live on the preview. Called on load; also the
 // fallback when the browser blocked the gesture-less attempt.
@@ -225,8 +222,7 @@ function stopCropLoop(): void {
 async function startRecording(): Promise<void> {
   if (!app.stream || (app.phase !== 'live' && app.phase !== 'review')) return;
   const appending = !app.clip.takes.isEmpty();
-  countdownAborted = false;
-  phaseBeforeCountdown = app.phase;
+  const was = app.phase;               // where a cancelled countdown returns to
   setPhase('countdown');
   el.recBtn.disabled = false;          // stays clickable: a press cancels
   el.recLbl.textContent = 'Cancel';
@@ -242,9 +238,9 @@ async function startRecording(): Promise<void> {
     el.cv.height = app.captureH;
     startMirror();
   }
-  await runCountdown();
+  const ready = await countdown.run(was);
 
-  if (countdownAborted) return;                           // cancelled by a press
+  if (!ready) return;                                     // cancelled by a press
   if (!app.stream || !app.stream.active) {                // capture ended meanwhile
     el.recBtn.disabled = false;
     el.recLbl.textContent = 'Record';
@@ -318,7 +314,7 @@ function onCaptureEnded(): void {
   const counting = app.phase === 'countdown';
   if (!inReview && app.phase !== 'live' && !counting) return;
 
-  if (counting) { countdownAborted = true; cancelCountdown(); }
+  if (counting) countdown.cancel();
   releaseDisplay();
   stopWebcam();
   stopMic();
