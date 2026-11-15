@@ -11,7 +11,7 @@ import { startMirror, stopMirror, seekWithin } from './ui/preview.js';
 import { runCountdown, cancelCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { buildThumbs } from './ui/timeline-ui.js';
-import { clipLoad, clipTime, keptLengthNow } from './ui/clip.js';
+import { keptLengthNow, player } from './ui/clip.js';
 import { playback } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
@@ -49,7 +49,7 @@ function cancelRecordingCountdown(): void {
   el.recLbl.textContent = 'Record';
   if (phaseBeforeCountdown === 'review') {
     stopMirror();
-    playback.seek(clipTime());
+    playback.seek(player.time());
     setStatus('ready', 'Ready to export');
   } else {
     setStatus('ready', `Live · ${app.captureW}×${app.captureH}`);
@@ -353,7 +353,7 @@ async function onRecStop(): Promise<void> {
   app.clip.addTake(blob, duration);
 
   playback.reset();
-  await clipLoad(appending ? app.clip.takes.count() - 1 : 0);
+  await player.load(appending ? app.clip.takes.count() - 1 : 0);
 
   // The clip may be a cropped region, so size the preview canvas to it.
   if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
