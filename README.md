@@ -144,6 +144,9 @@ enable Pages itself).
 
 To deploy elsewhere, run `npm run build` and publish the `dist/` folder.
 
+The app redirects `http://` to `https://` automatically, except on `localhost`
+and `127.0.0.1` (so local dev over HTTP still works).
+
 ---
 
 ## Tech
