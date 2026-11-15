@@ -15,7 +15,7 @@
 
 import { app } from '../state.js';
 import { el } from './dom.js';
-import { partAt, partStart } from '../domain/timeline.js';
+import { partAt, partStart, keptLength, keptTime, sourceTime, type Span } from '../domain/timeline.js';
 import { drawFrame, seekTo } from './preview.js';
 
 // Object URLs for the parts, created on first use and released with the session.
@@ -24,6 +24,31 @@ let loaded = -1;                 // index of the part currently in the video
 
 export function totalDuration(): number {
   return partStart(app.parts, app.parts.length);
+}
+
+// ── the timeline the user sees ───────────────────────────────────────────────
+//
+// Approved trims leave the timeline and what is left closes up, so the timeline
+// shows what the export will hold. Everything the user sees and points at goes
+// through these; the recording itself is still addressed in its own time.
+
+function cutsSeconds(): Span[] {
+  const d = app.duration;
+  return app.cuts.map(c => ({ s: c.s * d, e: c.e * d }));
+}
+
+export function keptLengthNow(): number {
+  return keptLength(cutsSeconds(), 0, app.duration);
+}
+
+// A time in the recording, as the timeline shows it.
+export function keptOf(source: number): number {
+  return keptTime(cutsSeconds(), source);
+}
+
+// A time on the timeline, as the recording holds it.
+export function sourceOf(kept: number): number {
+  return sourceTime(cutsSeconds(), kept);
 }
 
 // The time on the joined clip, where the video currently sits.
