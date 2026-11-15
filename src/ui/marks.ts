@@ -4,23 +4,22 @@
 // second one:
 //
 //   * the keep range, dragged with the blue/red IN/OUT handles (timeline-ui.ts);
-//   * removed sections, selected with marks and approved here.
+//   * the cuts: a section selected with two marks and approved here, which leaves
 //
 // The gesture, in full:
 //
 //   click                     drop a mark (and play from there)
 //   click again               bound the section between the two marks
-//   ✓ / click inside it       trim it out — the section leaves the timeline
+//   ✓ / click inside it       approve it — the section becomes a cut and leaves
 //   ✗                         leave it in; the selection is dropped
-//   drag a mark / the section move what is selected, and the clip plays there
+//   drag a mark / the section  move what is selected; the clip plays under it
 //
 // An approved trim is taken out of the timeline and what is left closes up, so
 // the timeline shows what the export will hold and no discarded hatching is left
 // lying about. That mapping is in clip.ts (keptOf/sourceOf); everything here
 // works in the recording's own time and converts on the way to the screen. The
 // recording itself is never re-encoded — playback and the export simply skip the
-// removed stretches — which is what makes one "Undo" enough to put a section
-// back.
+// cut stretches — which is what makes one "Undo" enough to put a cut back.
 
 import { app } from '../state.js';
 import type { ClipEvent } from '../domain/clip/Clip.js';
@@ -31,7 +30,7 @@ import { updateSizeUI } from './timeline-ui.js';
 import { clipTime, keptLengthNow, keptOf, sourceOf } from './clip.js';
 import { playFrom, seekPlayback, setScrubbing } from './playback.js';
 
-const MIN_REGION = Trim.MIN_GAP;   // a hundredth of the clip: the shortest section worth trimming
+const MIN_SECTION = Trim.MIN_GAP;   // a hundredth of the clip: the shortest section worth trimming
 
 const DRAG_MIN   = 3;     // px of travel before a press counts as a drag
 const EDGE_GRIP  = 7;     // px near a section's edge that resizes instead of moves
@@ -58,7 +57,7 @@ function followTheClip(event: ClipEvent): void {
       app.marks = [];                              // the selection was spent on it
       break;
     case 'trim-undone':
-      app.marks = [event.region.s, event.region.e];   // it comes back selected
+      app.marks = [event.cut.s, event.cut.e];   // the cut, selected again
       break;
     case 'cleared':
       app.marks = [];
@@ -85,7 +84,7 @@ export function initTimelineMarks(): void {
 export function renderMarks(): void {
   const d = app.clip.total();
   const host = el.tlMarks;
-  const region = pendingRegion();
+  const section = pendingSection();
 
   if (app.phase !== 'review' || !(d > 0)) {
     host.replaceChildren();
@@ -99,11 +98,11 @@ export function renderMarks(): void {
   const stamp = (seconds: number) => keptOf(seconds).toFixed(2) + 's';
   let html = '';
 
-  if (region) {
-    html += `<div class="tl-sel" style="left:${at(region.s * d)};width:${pctWidth(region)}">`
-          + `<em>TRIM ${stamp(region.s * d)}–${stamp(region.e * d)}</em></div>`;
+  if (section) {
+    html += `<div class="tl-sel" style="left:${at(section.s * d)};width:${pctWidth(section)}">`
+          + `<em>TRIM ${stamp(section.s * d)}–${stamp(section.e * d)}</em></div>`;
     // the two answers sit on the section itself, clamped so they stay reachable
-    const centre = (keptOf(region.s * d) + keptOf(region.e * d)) / 2 / Math.max(0.001, keptLengthNow()) * 100;
+    const centre = (keptOf(section.s * d) + keptOf(section.e * d)) / 2 / Math.max(0.001, keptLengthNow()) * 100;
     html += `<span class="tl-acts" style="left:${Math.max(7, Math.min(93, centre)).toFixed(2)}%">`
           + `<button class="tl-act ok" data-act="trim" title="Trim this section out" aria-label="Trim this section out">`
           + `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg></button>`
@@ -117,8 +116,8 @@ export function renderMarks(): void {
   host.innerHTML = html;
 
   // the actions: approve or leave the selection, or take the last trim back
-  if (region) {
-    el.tCut.textContent = `TRIM ${stamp(region.s * d)}–${stamp(region.e * d)}`;
+  if (section) {
+    el.tCut.textContent = `TRIM ${stamp(section.s * d)}–${stamp(section.e * d)}`;
     el.trimUndo.style.display = 'none';
     el.tTrim.classList.add('on');
   } else if (app.clip.canUndo()) {
@@ -132,9 +131,9 @@ export function renderMarks(): void {
   }
 }
 
-function pctWidth(region: Span): string {
+function pctWidth(section: Span): string {
   const kept = Math.max(0.001, keptLengthNow());
-  return (((keptOf(region.e * app.clip.total()) - keptOf(region.s * app.clip.total())) / kept) * 100).toFixed(3) + '%';
+  return (((keptOf(section.e * app.clip.total()) - keptOf(section.s * app.clip.total())) / kept) * 100).toFixed(3) + '%';
 }
 
 // The check and the cross are drawn with the section, so they are read here
@@ -153,10 +152,10 @@ function onActionClick(evt: MouseEvent): void {
 // playhead lands where the section was.
 function approveTrim(): void {
   if (!canEdit()) return;
-  const region = pendingRegion();
-  if (!region) return;
-  app.clip.approve(region);                       // it leaves the timeline, and closes up
-  afterEdits(region.s * app.clip.total());        // a time in the recording
+  const section = pendingSection();
+  if (!section) return;
+  app.clip.approve(section);                       // it leaves the timeline, and closes up
+  afterEdits(section.s * app.clip.total());        // a time in the recording
 }
 
 // The red cross: leave the section in and drop the selection.
@@ -168,7 +167,7 @@ function dismissSelection(): void {
 
 // Put the last approved trim back.
 function undoTrim(): void {
-  if (!app.clip.undo()) return;                   // the clip puts the region back
+  if (!app.clip.undo()) return;                   // the clip puts the section back
   afterEdits(clipTime());
 }
 
@@ -196,8 +195,8 @@ function onTimelineClick(evt: MouseEvent): void {
   const time = f * app.clip.total();
 
   // Inside the selected section: that is the confirmation — trim it out.
-  const region = pendingRegion();
-  if (region && f >= region.s && f <= region.e) { approveTrim(); playFrom(time); return; }
+  const section = pendingSection();
+  if (section && f >= section.s && f <= section.e) { approveTrim(); playFrom(time); return; }
 
   // Otherwise drop a mark. A click outside the section starts a new pair.
   app.marks = app.marks.length >= 2 ? [f] : [...app.marks, f].sort((a, b) => a - b);
@@ -236,7 +235,7 @@ function onBarDown(evt: PointerEvent): void {
   press = {
     kind,
     index: Number(bar.dataset.i),
-    offset: kind === 'move' ? fractionAt(evt.clientX) - (pendingRegion()?.s ?? 0) : 0,
+    offset: kind === 'move' ? fractionAt(evt.clientX) - (pendingSection()?.s ?? 0) : 0,
     fromX: evt.clientX,
     moved: false,
     lastSeek: 0,
@@ -276,13 +275,13 @@ function dragTo(f: number): void {
     return;
   }
   // the section between the marks, moved or resized by an edge
-  const region = pendingRegion();
-  if (!region) return;
-  const f0 = region.s, f1 = region.e;        // already fractions of the recording
+  const section = pendingSection();
+  if (!section) return;
+  const f0 = section.s, f1 = section.e;        // already fractions of the recording
   const span = Span.of(f0, f1);
   const moved = p.kind === 'move' ? span.movedTo(f - p.offset)
-              : p.kind === 'left' ? span.resized('s', f, MIN_REGION)
-              : span.resized('e', f, MIN_REGION);
+              : p.kind === 'left' ? span.resized('s', f, MIN_SECTION)
+              : span.resized('e', f, MIN_SECTION);
   app.marks = [moved.s, moved.e];
 }
 
@@ -307,6 +306,6 @@ function fractionAt(clientX: number): number {
 }
 
 // The span the two pending marks bound, or null while there is not a pair yet.
-function pendingRegion(): Span | null {
-  return app.marks.length === 2 ? Span.between(app.marks[0], app.marks[1], MIN_REGION) : null;
+function pendingSection(): Span | null {
+  return app.marks.length === 2 ? Span.between(app.marks[0], app.marks[1], MIN_SECTION) : null;
 }

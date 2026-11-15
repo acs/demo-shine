@@ -24,7 +24,7 @@ describe('TimelineMap', () => {
     expect(map.sourceOf(1)).toBeCloseTo(1);
   });
 
-  it('gives the time before a removed region, and the time after it', () => {
+  it('gives the time before a cut, and the time after it', () => {
     const map = clip([{ s: 0.2, e: 0.3 }]);
     expect(map.keptOf(2)).toBeCloseTo(2);            // the edge itself: before it
     expect(map.sourceOf(2)).toBeCloseTo(3);          // the same point on the timeline: after it
@@ -36,11 +36,23 @@ describe('TimelineMap', () => {
     expect(clip([]).sourceOf(99)).toBe(99);
   });
 
-  it('knows a moment inside a removed region, and where to jump to leave it', () => {
+  it('knows a moment inside a cut, and where to jump to leave it', () => {
     const map = clip([{ s: 0.2, e: 0.3 }]);
     expect(map.contains(2.5)).toBe(true);
     expect(map.endAt(2.5)).toBeCloseTo(3);
     expect(map.endAt(5)).toBeNull();
+  });
+
+  it('gives a position on the timeline as a fraction of the recording', () => {
+    const map = clip([{ s: 0.2, e: 0.3 }]);          // 2s-3s of a 10s recording
+    expect(map.sourceFraction(0)).toBeCloseTo(0);
+    expect(map.sourceFraction(5)).toBeCloseTo(0.6);  // 5s on the timeline is 6s of it
+    expect(map.sourceFraction(99)).toBeCloseTo(1);   // held inside the recording
+    expect(map.sourceFraction(-4)).toBeCloseTo(0);
+  });
+
+  it('says nothing when there is no recording to be a fraction of', () => {
+    expect(TimelineMap.none(0).sourceFraction(3)).toBe(0);
   });
 
   it('is the whole clip when nothing was removed', () => {

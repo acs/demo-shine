@@ -42,7 +42,7 @@ describe('Clip', () => {
     expect(clip.takes.count()).toBe(2);
   });
 
-  it('takes a region out of the timeline, and says what that was worth', () => {
+  it('takes a cut out of the timeline, and says what that was worth', () => {
     const clip = clipOf(10);
     expect(clip.approve(Span.of(0.2, 0.3))).toBeCloseTo(1);
     expect(clip.keptLength()).toBeCloseTo(9);
@@ -65,7 +65,7 @@ describe('Clip', () => {
     expect(clip.lastRemoved()).toBeCloseTo(1);
   });
 
-  it('keeps a removed region over its moment when the clip grows', () => {
+  it('keeps a cut over its moment when the clip grows', () => {
     const clip = clipOf(10);
     clip.approve(Span.of(0.5, 0.6));            // 5s-6s
     clip.addTake(new Blob(['x']), 10);          // now 20s of clip
@@ -93,7 +93,7 @@ describe('Clip', () => {
       .toEqual([[0, 0, 3], [1, 3, 4.2], [1, 4.8, 6]]);
   });
 
-  it('empties itself: the takes, the regions and the keep range', () => {
+  it('empties itself: the takes, the cuts and the keep range', () => {
     const clip = clipOf(4);
     clip.approve(Span.of(0.1, 0.2));
     clip.keepRange(Trim.of(0.2, 0.8));
@@ -119,7 +119,7 @@ describe('Clip, announcing what changed', () => {
     ]);
   });
 
-  it('says a region was approved, what it was worth, and that it went back', () => {
+  it('says a cut was approved, what it was worth, and that it went back', () => {
     const clip = clipOf(10);
     const seen: ClipEvent[] = [];
     clip.onChange(event => seen.push(event));
@@ -127,8 +127,8 @@ describe('Clip, announcing what changed', () => {
     clip.undo();
     expect(seen.map(e => e.type)).toEqual(['trim-approved', 'trim-undone']);
     expect(seen[0]).toMatchObject({ removed: 1 });
-    const undone = seen[1] as { region: Span };
-    expect(undone.region.equals(Span.of(0.2, 0.3))).toBe(true);
+    const undone = seen[1] as { cut: Span };
+    expect(undone.cut.equals(Span.of(0.2, 0.3))).toBe(true);
   });
 
   it('says the handles moved, and that the session was dropped', () => {

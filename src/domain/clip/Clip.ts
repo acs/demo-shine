@@ -6,11 +6,11 @@
 //   * the takes, in order, and so the clip's length (the sum of them, derived, so
 //     it cannot drift from the takes it is made of);
 //   * the keep range, as a fraction of that length;
-//   * the regions that were trimmed away, as a set that cannot overlap.
+//   * the cuts — the stretches approved out of it — as a set that cannot overlap.
 //
 // — and it owns the rules that relate them, which used to be spread between the
 // marks module, the exporter and a couple of fields on the app: a trim that is
-// approved leaves the timeline, the last one can be put back, the regions are
+// approved leaves the timeline, the last one can be put back, the cuts are
 // fractions of a clip that grows when a new take arrives, and the kept stretches
 // of a range are what an export is made of.
 //
@@ -38,8 +38,8 @@ export type Segment = { takeIndex: number; from: number; to: number };
  */
 export type ClipEvent =
   | { type: 'take-added'; take: Take; index: number; previousTotal: number }
-  | { type: 'trim-approved'; region: Span; removed: number }
-  | { type: 'trim-undone'; region: Span }
+  | { type: 'trim-approved'; cut: Span; removed: number }
+  | { type: 'trim-undone'; cut: Span }
   | { type: 'keep-range'; trim: Trim }
   | { type: 'cleared' };
 
@@ -47,7 +47,7 @@ export type ClipListener = (event: ClipEvent) => void;
 
 export class Clip {
   private keep = Trim.of(0, 1);
-  private lastApproved: { before: SpanSet; region: Span; removed: number } | null = null;
+  private lastApproved: { before: SpanSet; cut: Span; removed: number } | null = null;
   private readonly listeners = new Set<ClipListener>();
 
   private constructor(
@@ -103,7 +103,7 @@ export class Clip {
   }
 
   /**
-   * A new recording at the end. The clip is longer, and the removed regions are
+   * A new recording at the end. The clip is longer, and the cuts are
    * fractions of it, so they are re-based to stay over the same moments — and the
    * last one cannot be undone across a join it was never measured against.
    */
@@ -118,16 +118,16 @@ export class Clip {
   }
 
   /**
-   * Approve a region: it leaves the timeline, and how much that was worth comes
-   * back. The region is held so it can be put back.
+   * Approve a cut: it leaves the timeline, and how much that was worth comes
+   * back. The cut is held so it can be put back.
    */
-  approve(region: Span): number {
+  approve(cut: Span): number {
     const before = this.keptLength();
     const previous = this.removed;
-    this.removed = this.removed.add(region);
+    this.removed = this.removed.add(cut);
     const removed = before - this.keptLength();
-    this.lastApproved = { before: previous, region, removed };
-    this.announce({ type: 'trim-approved', region, removed });
+    this.lastApproved = { before: previous, cut, removed };
+    this.announce({ type: 'trim-approved', cut, removed });
     return removed;
   }
 
@@ -141,14 +141,14 @@ export class Clip {
     return this.lastApproved?.removed ?? 0;
   }
 
-  /** Put the last approved region back, and say which one it was. */
+  /** Put the last approved cut back, and say which one it was. */
   undo(): Span | null {
     const last = this.lastApproved;
     if (!last) return null;
     this.removed = last.before;
     this.lastApproved = null;
-    this.announce({ type: 'trim-undone', region: last.region });
-    return last.region;
+    this.announce({ type: 'trim-undone', cut: last.cut });
+    return last.cut;
   }
 
   /**
@@ -158,7 +158,7 @@ export class Clip {
    */
   segmentsIn(from: number, to: number): Segment[] {
     const takes = this.repo.all();
-    const gone = this.removed.scaled(this.total());     // the regions, in seconds
+    const gone = this.removed.scaled(this.total());     // the cuts, in seconds
     const out: Segment[] = [];
     let at = from;
     while (at < to - 0.001) {

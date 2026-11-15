@@ -3,7 +3,7 @@
 //
 // The timeline shows the clip with its approved trims taken out, so everything
 // here is in timeline time — the handles, the labels and the strip are mapped
-// through the kept regions (clip.ts). The recording's own time is what playback
+// through the kept-time mapping (clip.ts). The recording's own time is what playback
 // and the export use.
 
 import { clock, el } from './dom.js';
@@ -36,7 +36,7 @@ export function onTrim(evt: { target: EventTarget | null }): void {
   // The handles work in timeline units (0..1000 of what is left), so the model
   // keeps its own fractions of the recording.
   const { start: s, end: en } = Trim.fromSlider(parseInt(el.rStart.value), parseInt(el.rEnd.value)).normalized(moved).slider;
-  app.clip.keepRange(Trim.of(toRecordingFraction(s), toRecordingFraction(en)));
+  app.clip.keepRange(Trim.of(handleFraction(s), handleFraction(en)));
   updateTrimUI(false);       // the handles are the authority while dragging
   updateSizeUI();
   syncToTrim(moved);
@@ -137,9 +137,8 @@ function pct(kept: number, seconds: number): number {
   return kept > 0 ? Math.max(0, Math.min(100, (seconds / kept) * 100)) : 0;
 }
 
-// A handle position (0..1000 of the timeline) as a fraction of the recording.
-function toRecordingFraction(units: number): number {
-  if (!(app.clip.total() > 0)) return 0;
-  const seconds = sourceOf((units / 1000) * keptLengthNow());
-  return Math.max(0, Math.min(1, seconds / app.clip.total()));
+// A handle position (0..1000 of the timeline) as a fraction of the recording:
+// the clip's own map is what turns kept time into recording time.
+function handleFraction(units: number): number {
+  return app.clip.timeline().sourceFraction((units / Trim.SLIDER_MAX) * keptLengthNow());
 }
