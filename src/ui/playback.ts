@@ -2,11 +2,22 @@
 // kept in sync with the trim handles: playback is bounded by IN/OUT, and moving
 // a handle while playing re-clamps the playhead; while paused, moving a handle
 // previews that handle's frame.
+//
+// Removed regions ("cuts") are jumped over as they are reached, without pausing,
+// so the trimmed clip plays as one continuous piece. Three pieces of state make
+// that work:
+//
+//   askedSkip   the cut end already seeked to — each jump is asked for once, not
+//               once per frame, so the browser is never re-asked mid-seek
+//   scrubbing   a bar is being dragged: play even inside a cut, which is the
+//               whole point of dragging one
+//   seenAt/seenTime   watchdog — if the playhead really will not move, stop
+//               rather than leave the transport claiming to play
 
 import { app } from '../state.js';
 import { el } from './dom.js';
 import { drawFrame, seekAndDraw } from './preview.js';
-import { clampToClip, type Span } from '../domain/timeline.js';
+import { clampToClip, cutEndAt } from '../domain/timeline.js';
 
 const PLAY_ICON  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
 const PAUSE_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
@@ -16,9 +27,27 @@ const STALL_MS = 2500;   // how long the playhead may stand still before we stop
 const clipStart = () => app.trimStart * app.duration;
 const clipEnd   = () => app.trimEnd * app.duration;
 
-let skipped  = 0;        // cut end already seeked to, so it is asked for once
-let seenAt   = 0;        // watchdog: position of the playhead at the last look
-let seenTime = 0;        // watchdog: when that look happened
+let askedSkip = 0;       // cut end already seeked to, so it is asked for once
+let scrubbing = false;   // a bar is being dragged: play even inside a cut
+let seenAt    = 0;       // watchdog: position of the playhead at the last look
+let seenTime  = 0;       // watchdog: when that look happened
+
+// The end of the removed region the playhead sits in, in seconds, or null when
+// it is not inside one. The cuts are stored as fractions of the clip.
+function cutEndFor(t: number): number | null {
+  if (!(app.duration > 0)) return null;
+  const end = cutEndAt(app.cuts, t / app.duration);
+  return end === null ? null : end * app.duration;
+}
+
+// While a bar is dragged the clip is played from wherever it is, including the
+// inside of a removed region — otherwise there would be nothing to hear.
+export function setScrubbing(on: boolean): void {
+  scrubbing = on;
+  askedSkip = 0;
+  seenAt = el.rv.currentTime;
+  seenTime = Date.now();
+}
 
 export function isPlaying(): boolean {
   return app.playing;
@@ -46,29 +75,22 @@ export function playFrom(time: number): void {
   const end   = clipEnd();
   let t = clampToClip(time, start, end);
   // Land outside anything trimmed away, then off the OUT point, which restarts.
-  const cut = cutAt(t);
-  if (cut) t = Math.min(cut.e, end);
-  if (t >= end - 0.02) t = start;
+  // While a bar is being dragged, neither rule applies: the whole point is to
+  // hear what sits at the bar.
+  if (!scrubbing) {
+    const cutEnd = cutEndFor(t);
+    if (cutEnd !== null) t = Math.min(cutEnd, end);
+    if (t >= end - 0.02) t = start;
+  }
   updatePlayhead(t);
-  skipped = 0;
+  askedSkip = 0;
   el.rv.currentTime = t;
   if (!app.playing) beginPlayback();
 }
 
-// The cut region containing an absolute time, in seconds.
-function cutAt(t: number): Span | null {
-  const d = app.duration;
-  for (const c of app.cuts) {
-    const s = c.s * d;
-    const e = c.e * d;
-    if (t >= s && t < e) return { s, e };
-  }
-  return null;
-}
-
 function beginPlayback(): void {
   app.playing = true;
-  skipped = 0;
+  askedSkip = 0;
   seenAt = el.rv.currentTime;
   seenTime = Date.now();
   updateTransport();
@@ -80,7 +102,7 @@ function beginPlayback(): void {
 
 export function pausePlayback(): void {
   app.playing = false;
-  skipped = 0;
+  askedSkip = 0;
   if (!el.rv.paused) el.rv.pause();
   cancelLoop();
   updateTransport();
@@ -89,7 +111,7 @@ export function pausePlayback(): void {
 
 export function resetPlayback(): void {
   app.playing = false;
-  skipped = 0;
+  askedSkip = 0;
   cancelLoop();
   updateTransport();
   updatePlayhead(0);
@@ -103,7 +125,7 @@ export function syncToTrim(moved: 'start' | 'end'): void {
   if (app.playing) {
     // Keep playing, but never outside the new range.
     const t = clampToClip(el.rv.currentTime, start, end);
-    if (t !== el.rv.currentTime) { skipped = 0; el.rv.currentTime = t; }
+    if (t !== el.rv.currentTime) { askedSkip = 0; el.rv.currentTime = t; }
     updatePlayhead(t);
   } else {
     // Preview the frame at the handle the user just moved.
@@ -117,7 +139,7 @@ export function syncToTrim(moved: 'start' | 'end'): void {
 export function seekPlayback(time: number): void {
   if (app.phase !== 'review' || el.rv.readyState < 2) return;
   const t = clampToClip(time, clipStart(), clipEnd());
-  skipped = 0;
+  askedSkip = 0;
   el.rv.currentTime = t;
   updatePlayhead(t);
   if (!app.playing) void seekAndDraw(el.rv, t);
@@ -137,15 +159,15 @@ function loop(): void {
   // A trimmed-away stretch is jumped over without pausing, so playback carries
   // straight on. The seek is asked for once and the playhead is left alone until
   // the element comes out of the seek, so the browser is not re-asked every frame.
-  const cut = cutAt(el.rv.currentTime);
-  if (cut) {
-    const to = Math.min(cut.e, clipEnd());
-    if (!el.rv.seeking && skipped !== to) { skipped = to; el.rv.currentTime = to; }
+  const cutEnd = scrubbing ? null : cutEndFor(el.rv.currentTime);
+  if (cutEnd !== null) {
+    const to = Math.min(cutEnd, clipEnd());
+    if (!el.rv.seeking && askedSkip !== to) { askedSkip = to; el.rv.currentTime = to; }
     updatePlayhead(to);
     app.playRaf = requestAnimationFrame(loop);
     return;
   }
-  skipped = 0;
+  askedSkip = 0;
 
   if (el.rv.currentTime >= clipEnd()) {
     el.rv.currentTime = clipEnd();

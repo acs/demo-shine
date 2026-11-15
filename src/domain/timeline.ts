@@ -1,5 +1,15 @@
 // Pure trim / timeline math. No DOM and no browser APIs, so this module can be
 // read and tested on its own.
+//
+// The app trims in two independent ways, and both live here as pure functions:
+//
+//   * the keep range — `trimStart`/`trimEnd`, dragged with the IN/OUT handles;
+//   * the removed regions ("cuts") — bounded by two marks on the timeline.
+//
+// A "span" is any { s, e } pair; most functions here do not care what unit it is
+// in. The app stores cuts as fractions of the clip (0..1) because that is what
+// the timeline is drawn in, and converts to seconds only where the media element
+// needs them (`cutsInSeconds`).
 
 export const MIN_TRIM_GAP = 10;   // slider units (the range is 0..1000)
 export const SLIDER_MAX = 1000;
@@ -43,8 +53,7 @@ export function estimateWebmText(clip: number): string {
 
 // ── Marks and cuts ───────────────────────────────────────────────────────────
 //
-// A "span" is half-open, [s, e), in whatever unit the caller works in (the app
-// uses fractions of the clip). Cuts are spans removed from the kept range: they
+// A span is half-open, [s, e). Cuts are spans removed from the kept range: they
 // are skipped on playback and on export, never re-encoded away.
 
 export interface Span {
@@ -75,6 +84,13 @@ export function spanAt(spans: Span[], v: number): number {
   return spans.findIndex(sp => v >= sp.s && v < sp.e);
 }
 
+// The end of the span containing v, or null when v is not inside one. This is
+// where the playhead has to jump to in order to leave a removed region.
+export function cutEndAt(spans: Span[], v: number): number | null {
+  const i = spanAt(spans, v);
+  return i < 0 ? null : spans[i].e;
+}
+
 // Length of the spans inside [start, end], counting an overlap only once.
 export function spanLength(spans: Span[], start: number, end: number): number {
   let total = 0;
@@ -93,4 +109,24 @@ export function spanLength(spans: Span[], start: number, end: number): number {
 // The length left after a range has had the spans inside it removed.
 export function keptLength(spans: Span[], start: number, end: number): number {
   return Math.max(0, (end - start) - spanLength(spans, start, end));
+}
+
+// Cuts in seconds, for the media element. The app keeps them as fractions.
+export function cutsInSeconds(cuts: Span[], duration: number): Span[] {
+  return cuts.map(c => ({ s: c.s * duration, e: c.e * duration }));
+}
+
+// Slide a span so that it starts at `toStart`, keeping its length and staying
+// inside [0, 1].
+export function moveSpan(span: Span, toStart: number): Span {
+  const len = span.e - span.s;
+  const s = Math.min(Math.max(toStart, 0), 1 - len);
+  return { s, e: s + len };
+}
+
+// Drag one edge of a span, keeping it at least `min` long and inside [0, 1].
+export function resizeSpan(span: Span, edge: 's' | 'e', to: number, min = 0): Span {
+  return edge === 's'
+    ? { s: Math.min(Math.max(to, 0), span.e - min), e: span.e }
+    : { s: span.s, e: Math.max(Math.min(to, 1), span.s + min) };
 }
