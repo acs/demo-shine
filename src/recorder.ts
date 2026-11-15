@@ -15,6 +15,7 @@ import { resetPlayback } from './ui/playback.js';
 import { buildWaveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
 import { drawWebcamOverlay, stopWebcam } from './ui/webcam.js';
+import { stopMic } from './ui/mic.js';
 import { getBestMime } from './infra/codecs.js';
 
 export async function toggleRec(): Promise<void> {
@@ -97,13 +98,22 @@ export async function startCapture(): Promise<void> {
 
 let crop: { ctx: CanvasRenderingContext2D; rx: number; ry: number; rw: number; rh: number } | null = null;
 
-// When a region is set or the webcam is on, record a canvas mirrored from just
-// that region (plus the capture's audio); otherwise record the raw display stream.
+// When a region is set, the webcam is on, or the mic is on, record a stream we
+// build ourselves (canvas video + mixed audio); otherwise record the raw stream.
 function buildRecordingStream(): MediaStream {
   const src = app.stream!;
   crop = null;
   const region = app.region;
-  if (isFullRegion(region) && !app.webcamOn) return src;
+  const needCanvas = !isFullRegion(region) || app.webcamOn;
+  const audio = buildAudioTracks();
+
+  if (!needCanvas) {
+    if (!app.micOn) return src;                 // raw stream already carries the audio
+    const out = new MediaStream();
+    src.getVideoTracks().forEach(t => out.addTrack(t));
+    audio.forEach(t => out.addTrack(t));
+    return out;
+  }
 
   const rx = Math.round(region.x * app.captureW);
   const ry = Math.round(region.y * app.captureH);
@@ -116,9 +126,31 @@ function buildRecordingStream(): MediaStream {
   if (!cctx) return src;
 
   const stream = canvas.captureStream(30);
-  for (const t of src.getAudioTracks()) stream.addTrack(t);
+  audio.forEach(t => stream.addTrack(t));
   crop = { ctx: cctx, rx, ry, rw, rh };
   return stream;
+}
+
+// The recording's audio: the capture's system audio, plus the microphone when it
+// is on, mixed through a Web Audio graph. Without a mic we pass the raw track.
+let mixCtx: AudioContext | null = null;
+
+function buildAudioTracks(): MediaStreamTrack[] {
+  const sys = app.stream ? app.stream.getAudioTracks() : [];
+  const mic = app.micOn && app.micStream ? app.micStream.getAudioTracks() : [];
+  if (!mic.length) return sys;
+
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  mixCtx = new Ctx();
+  const dest = mixCtx.createMediaStreamDestination();
+  if (sys.length) mixCtx.createMediaStreamSource(new MediaStream(sys)).connect(dest);
+  mixCtx.createMediaStreamSource(app.micStream!).connect(dest);
+  void mixCtx.resume();
+  return dest.stream.getAudioTracks();
+}
+
+function stopMix(): void {
+  if (mixCtx) { void mixCtx.close(); mixCtx = null; }
 }
 
 function startCropLoop(): void {
@@ -155,6 +187,7 @@ async function startRecording(): Promise<void> {
   }
 
   const recStream = buildRecordingStream();
+  app.recAudio = recStream.getAudioTracks().length > 0;   // system and/or mic
   const mime = getBestMime(app.recAudio);
   app.rec = new MediaRecorder(recStream, mime ? { mimeType: mime } : {});
   app.chunks = [];
@@ -179,6 +212,7 @@ async function startRecording(): Promise<void> {
 export function stopRec(): void {
   if (app.rec && app.rec.state !== 'inactive') app.rec.stop();
   stopCropLoop();
+  stopMix();
   if (app.stream) {
     // Detach first, so releasing the tracks doesn't re-enter onCaptureEnded.
     app.stream.getVideoTracks()[0]?.removeEventListener('ended', onCaptureEnded);
@@ -201,6 +235,7 @@ function onCaptureEnded(): void {
   if (app.phase === 'countdown') cancelCountdown();
   if (app.phase !== 'live' && app.phase !== 'countdown') return;
   stopWebcam();
+  stopMic();
   app.stream = null;
   el.sv.srcObject = null;
   stopMirror();

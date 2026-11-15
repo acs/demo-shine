@@ -15,6 +15,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 - **WebM export** — VP9/VP8 codec with tab/system audio, re-encoded through a canvas stream
 - **Region crop** — a red box over the preview always shows what will be recorded: the whole screen by default, drag to record just part of it, click to reset; while recording the box breathes (red ↔ background)
 - **Webcam overlay** — a header toggle adds a mirrored webcam bubble in the corner of the recording (disabled when no camera is present)
+- **Microphone** — a header toggle (disabled when no mic) with a live level meter; its audio is **mixed with the tab/system audio** in the recording
 - **Timeline trimmer** — drag IN/OUT handles, click thumbnail frames to scrub, live size estimate
 - **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
 - **Audio track** — a waveform of the recording under the thumbnails, shown when the clip has sound

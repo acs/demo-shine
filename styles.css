@@ -73,6 +73,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .icon-btn:disabled{opacity:.35;cursor:not-allowed;}
 .icon-btn:disabled:hover{background:var(--glass);color:var(--text-mid);border-color:var(--glass-b);}
 .icon-btn.active{color:var(--crimson);border-color:rgba(229,62,62,.42);background:rgba(229,62,62,.1);}
+
+/* Microphone level meter */
+.vu{position:relative;width:44px;height:6px;border-radius:3px;overflow:hidden;display:none;background:linear-gradient(90deg,var(--green),var(--amber),var(--crimson));flex-shrink:0;}
+.vu.on{display:block;}
+.vu-fill{position:absolute;top:0;right:0;bottom:0;width:100%;background:var(--bg);transition:width .06s linear;}
 .icon-btn svg{pointer-events:none;}
 
 .status-chip{display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:100px;background:var(--glass);border:1px solid var(--glass-b);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--text-mid);user-select:none;flex-shrink:0;}
