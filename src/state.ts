@@ -38,7 +38,6 @@ export interface AppState {
   playRaf: number | null;       // playback render loop id
 
   region: Rect;                 // crop region to record (whole source by default)
-  cropRaf: number | null;       // crop render loop id while recording
 
   webcamStream: MediaStream | null;   // webcam capture (video only)
   webcamOn: boolean;            // webcam overlay shown/baked into the recording
@@ -74,7 +73,6 @@ export const app: AppState = {
   playRaf: null,
 
   region: { x: 0, y: 0, w: 1, h: 1 },
-  cropRaf: null,
 
   webcamStream: null,
   webcamOn: false,
