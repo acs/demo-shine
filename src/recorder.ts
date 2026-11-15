@@ -7,7 +7,7 @@
 
 import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
-import { startMirror, stopMirror } from './ui/preview.js';
+import { startMirror, stopMirror, seekWithin } from './ui/preview.js';
 import { runCountdown, cancelCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { buildThumbs, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
@@ -278,22 +278,52 @@ function onRecStop(): void {
   el.rv.src = URL.createObjectURL(app.blob);
   el.rv.load();
   el.rv.addEventListener('loadeddata', () => {
-    // Use actual file duration — wall clock is always slightly longer than the
-    // encoded video, which causes exportWebM to hang if we use the wall clock.
-    app.duration = (isFinite(el.rv.duration) && el.rv.duration > 0.1) ? el.rv.duration : wallClock;
-    // The clip may be a cropped region, so size the preview canvas to it.
-    if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
-    resetPlayback();
-    void buildWaveform(app.blob);
-    setTimerMs(app.duration * 1000);
-    resetTrim();
-    resetMarks();
-    // Building the thumbnails seeks the video to the last frame; once it's done,
-    // put the playhead back at the trim IN so the first Play starts from the top.
-    void buildThumbs().then(() => seekPlayback(app.trimStart * app.duration));
-    el.timeline.classList.add('on');
-    el.btnReset.style.display = '';
-    el.btnExp.style.display   = '';
-    updateSizeUI();
+    void (async () => {
+      // Use the real file duration: the wall clock is always slightly longer
+      // than the encoded video, which causes exportWebM to hang.
+      app.duration = (await resolveDuration(el.rv)) ?? wallClock;
+      // The clip may be a cropped region, so size the preview canvas to it.
+      if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
+      resetPlayback();
+      void buildWaveform(app.blob);
+      setTimerMs(app.duration * 1000);
+      resetTrim();
+      resetMarks();
+      // Building the thumbnails seeks the video to the last frame; once it's done,
+      // put the playhead back at the trim IN so the first Play starts from the top.
+      void buildThumbs().then(() => seekPlayback(app.trimStart * app.duration));
+      el.timeline.classList.add('on');
+      el.btnReset.style.display = '';
+      el.btnExp.style.display   = '';
+      updateSizeUI();
+    })();
   }, { once: true });
+}
+
+// The clip's real duration, or null if the browser will not give one.
+//
+// A MediaRecorder WebM has no duration in its header, so the browser reports
+// Infinity and treats the file as an open-ended stream: seeking it is slow and
+// can stall outright. Seeking far past the end once makes it parse the whole
+// file, after which the duration is known and seeking behaves normally.
+export async function resolveDuration(vid: HTMLVideoElement): Promise<number | null> {
+  if (isFinite(vid.duration)) return vid.duration > 0.1 ? vid.duration : null;
+
+  const found = await new Promise<number | null>(resolve => {
+    let done = false;
+    const finish = (value: number | null) => {
+      if (done) return;
+      done = true;
+      vid.removeEventListener('durationchange', onDuration);
+      clearTimeout(timer);
+      resolve(value);
+    };
+    const onDuration = () => { if (isFinite(vid.duration) && vid.duration > 0.1) finish(vid.duration); };
+    const timer = setTimeout(() => finish(null), 1500);
+    vid.addEventListener('durationchange', onDuration);
+    vid.currentTime = 1e101;
+  });
+
+  await seekWithin(vid, 0, 1500);      // back to the start, ready for the thumbnails
+  return found;
 }

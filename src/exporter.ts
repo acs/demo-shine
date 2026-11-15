@@ -3,7 +3,7 @@
 
 import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
-import { seekTo, drawGrid } from './ui/preview.js';
+import { seekTo, seekWithin, drawGrid } from './ui/preview.js';
 import { setTimerMs } from './ui/timer.js';
 import { resetTrim, updateSizeUI } from './ui/timeline-ui.js';
 import { cutSeconds, resetMarks } from './ui/marks.js';
@@ -112,14 +112,27 @@ function exportWebM(): Promise<void> {
     rec.start(100);
 
     seekTo(el.rv, s).then(() => {
+      let hopping = false;
+      // Seeking mid-playback stalls on a MediaRecorder WebM, so an export hop
+      // pauses, seeks, waits, then plays on — the same dance the preview does.
+      async function hopCut(to: number): Promise<void> {
+        hopping = true;
+        el.rv.pause();
+        const ok = await seekWithin(el.rv, to, 4000);
+        hopping = false;
+        if (!ok || el.rv.currentTime >= e) { finish(); return; }
+        try { await el.rv.play(); } catch { finish(); return; }
+        requestAnimationFrame(frame);
+      }
+
       function frame() {
+        if (hopping) { requestAnimationFrame(frame); return; }
         const t = el.rv.currentTime;
         if (t >= e || el.rv.ended || el.rv.paused) { finish(); return; }
         const cut = spanAt(cuts, t);
         if (cut >= 0) {
           // Trimmed away: jump past it instead of encoding it.
-          el.rv.currentTime = Math.min(cuts[cut].e, e);
-          requestAnimationFrame(frame);
+          void hopCut(Math.min(cuts[cut].e, e));
           return;
         }
         ectx?.drawImage(el.rv, 0, 0, ec.width, ec.height);
