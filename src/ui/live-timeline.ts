@@ -271,3 +271,5 @@ function cellCanvas(i: number): HTMLCanvasElement | null {
   const frame = el.thumbs.children[i];
   return frame ? frame.querySelector('canvas') : null;
 }
+
+export const liveTimeline = new LiveTimeline();

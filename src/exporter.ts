@@ -20,7 +20,7 @@ import { el, setStatus, toast } from './ui/dom.js';
 import { beginEncoding, encodingAt, endEncoding } from './ui/timeline-ui.js';
 import { dlBlob, ts } from './infra/download.js';
 import { stopRec, startCapture, releaseDisplay } from './recorder.js';
-import { pausePlayback } from './ui/playback.js';
+import { playback } from './ui/playback.js';
 import { session } from './session.js';
 import { exportOffline, offlineAvailable, type OfflineStats } from './offline-export.js';
 import { planExport } from './application/export-clip.js';
@@ -48,7 +48,7 @@ export async function doExport(): Promise<void> {
     toast('This browser cannot write WebM — it needs Chrome 94+ or Firefox 130+.', 6000);
     return;
   }
-  pausePlayback();
+  playback.pause();
   setPhase('encoding');
   el.recBtn.disabled   = true;
   el.btnExp.disabled   = true;
@@ -71,7 +71,7 @@ export async function doExport(): Promise<void> {
   el.btnReset.disabled = false;
   el.playBtn.disabled  = false;
   endEncoding();
-  pausePlayback();               // refresh the playhead after the export moved rv
+  playback.pause();               // refresh the playhead after the export moved rv
 }
 
 export function resetAll(): void {

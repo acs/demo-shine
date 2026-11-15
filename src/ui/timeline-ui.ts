@@ -12,7 +12,7 @@ import { estimateWebmText } from './size-estimate.js';
 import { Trim } from '../domain/clip/Trim.js';
 import { clipSeek, keptLengthNow, keptOf, sourceOf } from './clip.js';
 import { setTimerMs } from './timer.js';
-import { syncToTrim } from './playback.js';
+import { playback } from './playback.js';
 import { drawWaveform } from './waveform.js';
 
 const COUNT = 22;         // thumbnail frames across the strip
@@ -39,7 +39,7 @@ export function onTrim(evt: { target: EventTarget | null }): void {
   app.clip.keepRange(Trim.of(handleFraction(s), handleFraction(en)));
   updateTrimUI(false);       // the handles are the authority while dragging
   updateSizeUI();
-  syncToTrim(moved);
+  playback.syncToTrim(moved);
   drawWaveform();
 }
 
