@@ -64,7 +64,6 @@ export interface AppState {
   recAudio: boolean;            // did the last recording capture an audio track?
   audioCtx: AudioContext | null;
   audioGain: GainNode | null;           // the element's sound, for fades at joins
-  audioDest: MediaStreamAudioDestinationNode | null;
 }
 
 export const app: AppState = {
@@ -104,7 +103,6 @@ export const app: AppState = {
   recAudio: false,
   audioCtx: null,
   audioGain: null,
-  audioDest: null,
 };
 
 export function setPhase(phase: Phase): void {
