@@ -59,7 +59,7 @@ export function drawWebcamOverlay(c: CanvasRenderingContext2D, boxX: number, box
   const v = el.wcv;
   if (!app.webcamOn || v.readyState < 2 || !v.videoWidth) return;
 
-  const d = Math.round(boxW * 0.24);            // circle diameter
+  const d = Math.round(boxW * 0.10);            // circle diameter (10% of the box)
   const m = Math.round(boxW * 0.03);            // margin from the corner
   const cx = boxX + boxW - m - d / 2;
   const cy = boxY + boxH - m - d / 2;
@@ -82,7 +82,7 @@ export function drawWebcamOverlay(c: CanvasRenderingContext2D, boxX: number, box
   c.beginPath();
   c.arc(cx, cy, d / 2, 0, Math.PI * 2);
   c.strokeStyle = 'rgba(255,255,255,0.72)';
-  c.lineWidth = Math.max(2, boxW / 260);
+  c.lineWidth = Math.max(1.25, d / 30);
   c.stroke();
   c.restore();
 }
