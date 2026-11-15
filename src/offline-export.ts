@@ -5,9 +5,10 @@
 // export no longer has to be. Nothing plays here: each take is read with
 // Mediabunny, decoded in order by VideoDecoder, and drawn on a canvas, which is
 // where the trimmed stretches disappear, the sound is faded and the picture
-// dissolves; VideoEncoder encodes those frames, AudioEncoder the sound that an
-// OfflineAudioContext rendered off the clock; and webm-muxer writes the
-// container, including the Duration and Cues that MediaRecorder leaves out.
+// dissolves at a join; the canvas goes back to Mediabunny, which encodes it and
+// writes the container, and the sound an OfflineAudioContext rendered off the
+// clock goes the same way. One library reads and writes; the file it writes
+// carries the Duration and Cues that MediaRecorder leaves out.
 //
 // Measured on a 6 s 1280x720 take (see POC-offline-export.md): 11.6x real time,
 // against 1x for the real-time export and 1.8x for an attempt that seeked to each
@@ -17,19 +18,20 @@
 // there, or a take cannot be read, it throws — src/exporter.ts owns the decision
 // to export the slow way instead.
 
-import { ArrayBufferTarget, Muxer } from 'webm-muxer';
-import { BufferSource, Input, VideoSampleSink, WEBM } from 'mediabunny';
+import {
+  AudioBufferSource, BufferSource, BufferTarget, CanvasSource, Input, Output, Quality,
+  VideoSampleSink, WEBM, WebMOutputFormat,
+} from 'mediabunny';
 import { app } from './state.js';
 import { ctx as preview, el } from './ui/dom.js';
 import { cutEndAt, cutsInSeconds, keptTime, partAt, partStart, type Span } from './domain/timeline.js';
 import { clearFrame, dissolveAlpha, heldCanvas, holdFrom } from './ui/dissolve.js';
 import { FADE_S } from './ui/fade.js';
 
-const BITRATE        = 4_000_000;   // video, bits per second
-const KEYFRAME_EVERY = 2;           // seconds between keyframes, so the file seeks
-const SAMPLE_RATE    = 48_000;
+const VIDEO_BITRATE  = 4_000_000;   // bits per second
 const AUDIO_BITRATE  = 128_000;
-const AUDIO_BLOCK    = 1024;        // samples per AudioData submitted
+const KEYFRAME_S     = 2;           // seconds between keyframes, so the file seeks
+const SAMPLE_RATE    = 48_000;
 const REPORT_EVERY   = 8;           // frames between progress reports
 
 export type OfflineStats = {
@@ -67,16 +69,18 @@ function keptSegments(from: number, to: number, cuts: Span[]): Segment[] {
   return out;
 }
 
-async function pickVideoCodec(width: number, height: number): Promise<{ encoder: string; muxer: string } | null> {
+// VP9, the codec the recording itself prefers, with VP8 behind it. Asked of
+// WebCodecs directly rather than of Mediabunny: its codec registry is a lot of
+// table for one question, and this is the one it is kept out of the bundle for.
+async function pickVideoCodec(width: number, height: number): Promise<'vp9' | 'vp8' | null> {
   const wanted = [
-    { encoder: 'vp09.00.10.08', muxer: 'V_VP9' },   // VP9, what the export prefers
-    { encoder: 'vp8',           muxer: 'V_VP8' },   // the fallback codec
+    { codec: 'vp9' as const, probe: 'vp09.00.10.08' },
+    { codec: 'vp8' as const, probe: 'vp8' },
   ];
-  for (const c of wanted) {
+  for (const { codec, probe } of wanted) {
     try {
-      const support = await VideoEncoder.isConfigSupported({ codec: c.encoder, width, height, bitrate: BITRATE });
-      if (support.supported) return c;
-    } catch { /* an unknown codec string is simply not supported */ }
+      if ((await VideoEncoder.isConfigSupported({ codec: probe, width, height, bitrate: VIDEO_BITRATE })).supported) return codec;
+    } catch { /* an unknown codec string: try the next */ }
   }
   return null;
 }
@@ -84,6 +88,10 @@ async function pickVideoCodec(width: number, height: number): Promise<{ encoder:
 // The sound of the kept range, rendered off the clock: each take is decoded, its
 // kept stretches placed end to end, and the same fade put either side of a join
 // that playback has. Null when the clip has no sound.
+//
+// It is handed over as one buffer, which is why the mixing happens here rather
+// than in the encoder: an OfflineAudioContext is the only place a Web Audio graph
+// can be rendered faster than real time.
 async function renderAudio(segments: Segment[], offsets: number[], total: number): Promise<AudioBuffer | null> {
   if (!app.recAudio || !segments.length) return null;
   const ctx = new OfflineAudioContext(2, Math.max(1, Math.ceil(total * SAMPLE_RATE)), SAMPLE_RATE);
@@ -147,57 +155,21 @@ export async function exportOffline(onProgress?: (source: number) => void): Prom
 
   const codec = await pickVideoCodec(ec.width, ec.height);
   if (!codec) throw new Error('this browser cannot encode WebM offline');
-
   const audio = await renderAudio(segments, offsets, total);
-  const failure: { error: Error | null } = { error: null };
 
-  const muxer = new Muxer({
-    target: new ArrayBufferTarget(),
-    video: { codec: codec.muxer, width: ec.width, height: ec.height },
-    ...(audio ? { audio: { codec: 'A_OPUS', numberOfChannels: 2, sampleRate: SAMPLE_RATE } } : {}),
-    firstTimestampBehavior: 'offset',
+  const output = new Output({ format: new WebMOutputFormat(), target: new BufferTarget() });
+  const video = new CanvasSource(ec, {
+    codec,
+    quality: new Quality({ bitrate: VIDEO_BITRATE }),
+    keyFrameInterval: KEYFRAME_S,
   });
-  const video = new VideoEncoder({
-    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-    error: err => { failure.error = err as Error; },
-  });
-  video.configure({ codec: codec.encoder, width: ec.width, height: ec.height, bitrate: BITRATE });
-
-  const sound = audio ? new AudioEncoder({
-    output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
-    error: err => { failure.error = err as Error; },
-  }) : null;
-  sound?.configure({ codec: 'opus', sampleRate: SAMPLE_RATE, numberOfChannels: 2, bitrate: AUDIO_BITRATE });
-
-  // The sound is submitted in step with the picture, so the muxer sees the two
-  // tracks in order rather than all of one and then all of the other.
-  let sample = 0;
-  const pumpAudio = (upTo: number): void => {
-    if (!audio || !sound) return;
-    while (sample / SAMPLE_RATE <= upTo && sample < audio.length && (sound.encodeQueueSize ?? 0) < 32) {
-      const frames = Math.min(AUDIO_BLOCK, audio.length - sample);
-      const data = new Float32Array(frames * 2);
-      for (let ch = 0; ch < 2; ch++) {
-        data.set(audio.getChannelData(ch).subarray(sample, sample + frames), ch * frames);
-      }
-      const chunk = new AudioData({
-        format: 'f32-planar',
-        sampleRate: SAMPLE_RATE,
-        numberOfFrames: frames,
-        numberOfChannels: 2,
-        timestamp: Math.round((sample / SAMPLE_RATE) * 1e6),
-        data,
-      });
-      sound.encode(chunk);
-      chunk.close();
-      sample += frames;
-    }
-  };
+  output.addVideoTrack(video);
+  const sound = audio ? new AudioBufferSource({ codec: 'opus', quality: new Quality({ bitrate: AUDIO_BITRATE }) }) : null;
+  if (sound) output.addAudioTrack(sound);
+  await output.start();
 
   const base = keptTime(cuts, s);      // where the export starts on the kept timeline
-  const keyFrameUs = KEYFRAME_EVERY * 1e6;
   let frames = 0;
-  let lastEnd = -1;
 
   try {
     for (let p = 0; p < parts.length; p++) {
@@ -225,7 +197,6 @@ export async function exportOffline(onProgress?: (source: number) => void): Prom
             const source = partStart(app.parts, part) + (frame.timestamp - first);
             const at = keptTime(cuts, source) - base;      // the output timeline
             if (at < -0.001 || at > total + 0.001) continue;   // trimmed away, or outside
-            if (failure.error) throw failure.error;
 
             // The picture's side of the join, the same blend playback draws: the
             // frame left behind at full, the new take rising over it.
@@ -242,16 +213,11 @@ export async function exportOffline(onProgress?: (source: number) => void): Prom
             // does — the export does not play, so nothing else would move.
             preview.drawImage(ec, 0, 0, el.cv.width, el.cv.height);
 
-            const ts = Math.max(Math.round(at * 1e6), lastEnd);
-            const out = new VideoFrame(ec, { timestamp: ts, duration: Math.round(frame.duration * 1e6) });
-            video.encode(out, { keyFrame: Math.floor(ts / keyFrameUs) !== Math.floor(lastEnd / keyFrameUs) });
-            out.close();
-            lastEnd = ts;
+            // Hand the canvas over: Mediabunny encodes it and writes the frame,
+            // and awaiting is how its back-pressure is respected.
+            await video.add(at, frame.duration);
             frames++;
-            pumpAudio(at);
             if (frames % REPORT_EVERY === 0) onProgress?.(source);
-            // Back-pressure: do not let the encoders queue the whole clip in memory.
-            while ((video.encodeQueueSize ?? 0) > 8) await new Promise(r => setTimeout(r, 0));
           } finally {
             frame.close();
           }
@@ -262,16 +228,16 @@ export async function exportOffline(onProgress?: (source: number) => void): Prom
     }
     if (!frames) throw new Error('no frames came back from the takes');
 
-    pumpAudio(total);
-    await video.flush();
-    await sound?.flush();
-    if (failure.error) throw failure.error;
-    muxer.finalize();
+    // The sound, whole, then the file.
+    if (sound && audio) await sound.add(audio);
+    await output.finalize();
   } finally {
     clearFrame();          // a dissolve must not outlive the export
   }
 
-  const blob = new Blob([muxer.target.buffer], { type: 'video/webm' });
+  const buffer = output.target.buffer;
+  if (!buffer) throw new Error('the encoder wrote nothing');
+  const blob = new Blob([buffer], { type: 'video/webm' });
   const ms = performance.now() - started;
   return { blob, stats: { clip: total, ms, realtime: (total * 1000) / ms, frames, bytes: blob.size } };
 }
