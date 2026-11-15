@@ -1,44 +1,50 @@
-// Timeline marks and cuts — the controller for the trim-by-region gesture.
+// Timeline marks, the sections they select, and the trim they approve.
 //
 // The clip can be trimmed in two independent ways, and this module owns the
 // second one:
 //
 //   * the keep range, dragged with the blue/red IN/OUT handles (timeline-ui.ts);
-//   * removed regions ("cuts"), bounded by two marks on the timeline (here).
+//   * removed sections, selected with marks and approved here.
 //
 // The gesture, in full:
 //
 //   click                     drop a mark (and play from there)
-//   click again               bound the region between the two marks
-//   click inside that region  remove it — it becomes a cut
-//   click a cut               put it back
-//   drag a bar                move a mark, or move/resize a cut; the clip plays
-//                             from wherever the bar is while it is dragged
+//   click again               bound the section between the two marks
+//   ✓ / click inside it       trim it out — the section leaves the timeline
+//   ✗                         leave it in; the selection is dropped
+//   drag a mark / the section move what is selected, and the clip plays there
 //
-// All the arithmetic lives in domain/timeline.ts (pure and unit-tested); this
-// module only holds state, wires pointer events and paints the overlay. Cuts are
-// skipped on playback (playback.ts) and on export (exporter.ts) — nothing is
-// re-encoded away, which is what keeps a cut cheap and reversible.
+// An approved trim is taken out of the timeline and what is left closes up, so
+// the timeline shows what the export will hold and no discarded hatching is left
+// lying about. That mapping is in clip.ts (keptOf/sourceOf); everything here
+// works in the recording's own time and converts on the way to the screen. The
+// recording itself is never re-encoded — playback and the export simply skip the
+// removed stretches — which is what makes one "Undo" enough to put a section
+// back.
 
 import { app } from '../state.js';
 import { el } from './dom.js';
 import {
-  MIN_TRIM_GAP, addSpan, moveSpan, resizeSpan, spanAt, spanBetween, type Span,
+  MIN_TRIM_GAP, addSpan, moveSpan, resizeSpan, spanBetween, type Span,
 } from '../domain/timeline.js';
-import { updateSizeUI } from './timeline-ui.js';
-import { playFrom, setScrubbing } from './playback.js';
+import { rebuildTimeline, updateSizeUI } from './timeline-ui.js';
+import { clipTime, keptLengthNow, keptOf, sourceOf } from './clip.js';
+import { playFrom, seekPlayback, setScrubbing } from './playback.js';
 
 const MIN_REGION = MIN_TRIM_GAP / 1000;   // slider units -> fraction of the clip
 
 const DRAG_MIN   = 3;     // px of travel before a press counts as a drag
-const EDGE_GRIP  = 7;     // px near a cut's edge that resizes instead of moves
+const EDGE_GRIP  = 7;     // px near a section's edge that resizes instead of moves
 const SEEK_EVERY = 70;    // ms between seeks while dragging
+
+let lastTrim: { marks: number[]; cuts: Span[]; at: number; removed: number } | null = null;
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
 export function resetMarks(): void {
   app.marks = [];
   app.cuts = [];
+  lastTrim = null;
   renderMarks();
   updateSizeUI();          // clearing the cuts restores the estimate
 }
@@ -47,6 +53,7 @@ export function resetMarks(): void {
 // held as fractions of it: re-base them so they stay over the same moments of
 // the recording, and the added recording is not covered by an old cut.
 export function rescaleMarks(wasTotal: number, nowTotal: number): void {
+  lastTrim = null;         // the recording it referred to has moved under it
   if (!(wasTotal > 0) || !(nowTotal > wasTotal)) { renderMarks(); return; }
   const k = wasTotal / nowTotal;
   app.marks = app.marks.map(m => m * k);
@@ -57,41 +64,107 @@ export function rescaleMarks(wasTotal: number, nowTotal: number): void {
 
 export function initTimelineMarks(): void {
   el.timeline.addEventListener('click', onTimelineClick);
+  el.trimOk.addEventListener('click', approveTrim);
+  el.trimNo.addEventListener('click', dismissSelection);
+  el.trimUndo.addEventListener('click', undoTrim);
   el.tlMarks.addEventListener('pointerdown', onBarDown);
   window.addEventListener('pointermove', onBarMove);
   window.addEventListener('pointerup', onBarUp);
   window.addEventListener('pointercancel', onBarUp);
 }
 
-// Paint the marks and the removed regions over the timeline track.
+// Paint the marks and the selected section over the timeline, and the actions
+// for the section in the header.
 export function renderMarks(): void {
   const d = app.duration;
   const host = el.tlMarks;
-  if (app.phase !== 'review' || !(d > 0)) { host.innerHTML = ''; el.tCut.textContent = ''; return; }
-
-  const pct = (v: number) => (v * 100).toFixed(3) + '%';
-  const stamp = (v: number) => (v * d).toFixed(2) + 's';
-  let html = '';
-
-  app.cuts.forEach((c, i) => {
-    html += `<div class="tl-cut" data-i="${i}" style="left:${pct(c.s)};width:${pct(c.e - c.s)}"`
-          + ` title="Removed ${stamp(c.s)}–${stamp(c.e)} — drag to move, click to put it back"></div>`;
-  });
-
   const region = pendingRegion();
-  if (region) {
-    html += `<div class="tl-sel" style="left:${pct(region.s)};width:${pct(region.e - region.s)}">`
-          + `<em>TRIM ${stamp(region.s)}–${stamp(region.e)}</em></div>`;
+
+  if (app.phase !== 'review' || !(d > 0)) {
+    host.replaceChildren();
+    el.tTrim.classList.remove('on');
+    return;
   }
 
-  app.marks.forEach((m, i) => {
-    html += `<div class="tl-mark" data-i="${i}" style="left:${pct(m)}" title="Mark ${stamp(m)} — drag to move"></div>`;
-  });
+  // `at` and `stamp` take seconds of the recording; the selection and the marks
+  // are held as fractions of it.
+  const at = (seconds: number) => ((keptOf(seconds) / Math.max(0.001, keptLengthNow())) * 100).toFixed(3) + '%';
+  const stamp = (seconds: number) => keptOf(seconds).toFixed(2) + 's';
+  let html = '';
 
+  if (region) {
+    html += `<div class="tl-sel" style="left:${at(region.s * d)};width:${pctWidth(region)}">`
+          + `<em>TRIM ${stamp(region.s * d)}–${stamp(region.e * d)}</em></div>`;
+  }
+  app.marks.forEach((m, i) => {
+    html += `<div class="tl-mark" data-i="${i}" style="left:${at(m * d)}" title="Mark ${stamp(m * d)} — drag to move"></div>`;
+  });
   host.innerHTML = html;
-  el.tCut.textContent = region
-    ? `· removing ${stamp(region.s)}–${stamp(region.e)}`
-    : app.marks.length === 1 ? '· click again to close the region' : '';
+
+  // the actions: approve or leave the selection, or take the last trim back
+  if (region) {
+    el.tCut.textContent = `TRIM ${stamp(region.s * d)}–${stamp(region.e * d)}`;
+    el.trimOk.style.display = '';
+    el.trimNo.style.display = '';
+    el.trimUndo.style.display = 'none';
+    el.tTrim.classList.add('on');
+  } else if (lastTrim) {
+    el.tCut.textContent = `TRIMMED ${lastTrim.removed.toFixed(2)}s`;
+    el.trimOk.style.display = 'none';
+    el.trimNo.style.display = 'none';
+    el.trimUndo.style.display = '';
+    el.tTrim.classList.add('on');
+  } else {
+    el.tCut.textContent = app.marks.length === 1 ? 'mark set — click again to close the section' : '';
+    el.trimOk.style.display = 'none';
+    el.trimNo.style.display = 'none';
+    el.trimUndo.style.display = 'none';
+    el.tTrim.classList.toggle('on', app.marks.length === 1);
+  }
+}
+
+function pctWidth(region: Span): string {
+  const kept = Math.max(0.001, keptLengthNow());
+  return (((keptOf(region.e * app.duration) - keptOf(region.s * app.duration)) / kept) * 100).toFixed(3) + '%';
+}
+
+// ── Approving, dismissing, undoing ───────────────────────────────────────────
+
+// The green check: take the section out. The timeline closes up over it, and the
+// playhead lands where the section was.
+function approveTrim(): void {
+  if (!canEdit()) return;
+  const region = pendingRegion();
+  if (!region) return;
+  const wasKept = keptLengthNow();
+  const at = keptOf(region.s * app.duration);
+  lastTrim = { marks: app.marks, cuts: app.cuts, at, removed: 0 };
+  app.cuts = addSpan(app.cuts, region);
+  app.marks = [];
+  lastTrim.removed = wasKept - keptLengthNow();   // how much left the timeline
+  afterEdits(at);
+}
+
+// The red cross: leave the section in and drop the selection.
+function dismissSelection(): void {
+  app.marks = [];
+  renderMarks();
+  updateSizeUI();
+}
+
+// Put the last approved trim back.
+function undoTrim(): void {
+  if (!lastTrim) return;
+  app.marks = lastTrim.marks;
+  app.cuts = lastTrim.cuts;
+  lastTrim = null;
+  afterEdits(clipTime());
+}
+
+function afterEdits(at: number): void {
+  renderMarks();
+  rebuildTimeline();            // the timeline is a different length now
+  void seekPlayback(at);        // the playhead follows what is left
 }
 
 // ── Clicking the timeline ────────────────────────────────────────────────────
@@ -101,36 +174,21 @@ function onTimelineClick(evt: MouseEvent): void {
   if (!canEdit()) return;
 
   const target = evt.target as HTMLElement | null;
-  if (target?.closest('.tl-header')) return;                    // labels + transport button
+  if (target?.closest('.tl-header')) return;                    // labels + actions
   if (target && (target.tagName === 'INPUT' || target.tagName === 'BUTTON')) return;
 
-  const width = trackWidth();
+  const width = track().width;
   if (width <= 0) return;
-  // A click on the last couple of pixels means the OUT point.
-  const atEnd = evt.clientX - trackLeft() >= width - 2;
+  // A click on the last couple of pixels means the end of the clip.
+  const atEnd = evt.clientX - track().left >= width - 2;
   const f = atEnd ? 1 : fractionAt(evt.clientX);
   const time = f * app.duration;
 
-  // Inside an already-removed region: put it back.
-  const removed = spanAt(app.cuts, f);
-  if (removed >= 0) {
-    app.cuts = app.cuts.filter((_, i) => i !== removed);
-    refresh();
-    playFrom(time);
-    return;
-  }
-
-  // Inside the pending region: that is the confirmation — trim it.
+  // Inside the selected section: that is the confirmation — trim it out.
   const region = pendingRegion();
-  if (region && f >= region.s && f <= region.e) {
-    app.cuts = addSpan(app.cuts, region);
-    app.marks = [];
-    refresh();
-    playFrom(time);
-    return;
-  }
+  if (region && f >= region.s && f <= region.e) { approveTrim(); playFrom(time); return; }
 
-  // Otherwise drop a mark. A click outside the pending region starts a new pair.
+  // Otherwise drop a mark. A click outside the section starts a new pair.
   app.marks = app.marks.length >= 2 ? [f] : [...app.marks, f].sort((a, b) => a - b);
   renderMarks();
   playFrom(time);
@@ -143,7 +201,7 @@ type GrabKind = 'mark' | 'move' | 'left' | 'right';
 interface Press {
   kind: GrabKind;
   index: number;
-  offset: number;    // where inside a moved cut the pointer took hold
+  offset: number;    // where in the section the pointer took hold
   fromX: number;     // clientX at the press
   moved: boolean;    // has it travelled far enough to count as a drag?
   lastSeek: number;  // when the clip was last moved to follow the bar
@@ -155,11 +213,10 @@ let swallowNextClick = false;   // the click that follows a drag must not re-tri
 function onBarDown(evt: PointerEvent): void {
   swallowNextClick = false;
   if (!canEdit()) return;
-  const bar = (evt.target as HTMLElement | null)?.closest<HTMLElement>('.tl-mark, .tl-cut');
+  const bar = (evt.target as HTMLElement | null)?.closest<HTMLElement>('.tl-mark, .tl-sel');
   if (!bar) return;
 
-  const index = Number(bar.dataset.i);
-  const rect  = bar.getBoundingClientRect();
+  const rect = bar.getBoundingClientRect();
   const kind: GrabKind = bar.classList.contains('tl-mark') ? 'mark'
     : evt.clientX - rect.left <= EDGE_GRIP ? 'left'
     : rect.right - evt.clientX <= EDGE_GRIP ? 'right'
@@ -167,8 +224,8 @@ function onBarDown(evt: PointerEvent): void {
 
   press = {
     kind,
-    index,
-    offset: kind === 'move' ? fractionAt(evt.clientX) - app.cuts[index].s : 0,
+    index: Number(bar.dataset.i),
+    offset: kind === 'move' ? fractionAt(evt.clientX) - (pendingRegion()?.s ?? 0) : 0,
     fromX: evt.clientX,
     moved: false,
     lastSeek: 0,
@@ -181,12 +238,12 @@ function onBarMove(evt: PointerEvent): void {
   if (!press.moved) {
     if (Math.abs(evt.clientX - press.fromX) < DRAG_MIN) return;
     press.moved = true;
-    setScrubbing(true);      // a cut plays while it is being positioned
+    setScrubbing(true);      // a section plays while it is being positioned
   }
 
   const f = fractionAt(evt.clientX);
   dragTo(f);
-  refresh();
+  renderMarks();
   // Play where the bar now is, so its sound and picture come with it.
   const now = Date.now();
   if (now - press.lastSeek >= SEEK_EVERY) { press.lastSeek = now; playFrom(f * app.duration); }
@@ -207,11 +264,13 @@ function dragTo(f: number): void {
     app.marks[p.index] = f;
     return;
   }
-  const cut = app.cuts[p.index];
-  if (!cut) return;
-  if (p.kind === 'move')       app.cuts[p.index] = moveSpan(cut, f - p.offset);
-  else if (p.kind === 'left')  app.cuts[p.index] = resizeSpan(cut, 's', f, MIN_REGION);
-  else                         app.cuts[p.index] = resizeSpan(cut, 'e', f, MIN_REGION);
+  // the section between the marks, moved or resized by an edge
+  const region = pendingRegion();
+  if (!region) return;
+  const f0 = region.s, f1 = region.e;        // already fractions of the recording
+  if (p.kind === 'move')       { const m = moveSpan({ s: f0, e: f1 }, f - p.offset); app.marks = [m.s, m.e]; }
+  else if (p.kind === 'left')  { const m = resizeSpan({ s: f0, e: f1 }, 's', f, MIN_REGION); app.marks = [m.s, m.e]; }
+  else                         { const m = resizeSpan({ s: f0, e: f1 }, 'e', f, MIN_REGION); app.marks = [m.s, m.e]; }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -225,27 +284,16 @@ function track(): DOMRect {
   return el.thumbs.getBoundingClientRect();
 }
 
-function trackWidth(): number {
-  return track().width;
-}
-
-function trackLeft(): number {
-  return track().left;
-}
-
-// Where on the clip a given screen x sits, 0..1.
+// Where on the recording a given screen x sits, 0..1. The timeline is in
+// timeline time, so this is where the mapping comes back the other way.
 function fractionAt(clientX: number): number {
   const t = track();
-  if (t.width <= 0) return 0;
-  return Math.max(0, Math.min(1, (clientX - t.left) / t.width));
+  if (t.width <= 0 || !(app.duration > 0)) return 0;
+  const kept = Math.max(0, Math.min(1, (clientX - t.left) / t.width));
+  return Math.max(0, Math.min(1, sourceOf(kept * keptLengthNow()) / app.duration));
 }
 
 // The span the two pending marks bound, or null while there is not a pair yet.
 function pendingRegion(): Span | null {
   return app.marks.length === 2 ? spanBetween(app.marks[0], app.marks[1], MIN_REGION) : null;
-}
-
-function refresh(): void {
-  renderMarks();
-  updateSizeUI();
 }

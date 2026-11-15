@@ -12,7 +12,7 @@ import { runCountdown, cancelCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { buildThumbs, resetTrim, updateSizeUI, updateTrimUI } from './ui/timeline-ui.js';
 import { resetMarks, rescaleMarks } from './ui/marks.js';
-import { clipLoad, clipTime, totalDuration } from './ui/clip.js';
+import { clipLoad, clipTime, keptLengthNow, totalDuration } from './ui/clip.js';
 import { pausePlayback, resetPlayback, seekPlayback } from './ui/playback.js';
 import { buildWaveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
@@ -360,7 +360,7 @@ async function onRecStop(): Promise<void> {
   // The clip may be a cropped region, so size the preview canvas to it.
   if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
   void buildWaveform(app.parts);
-  setTimerMs(app.duration * 1000);
+  setTimerMs(keptLengthNow() * 1000);
   // Building the thumbnails seeks through the clip; once that is done, park the
   // playhead at the trim IN, or at the join when a recording was just added.
   const park = appending ? previous : app.trimStart * app.duration;

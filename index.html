@@ -129,6 +129,18 @@
         <button class="tl-play" id="play-btn" aria-label="Play" title="Play / pause"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>
         <span class="tl-label" id="tl-label">Timeline · Trim</span>
         <span class="tl-live" id="t-live" aria-hidden="true"><span class="tl-live-dot"></span>REC <span id="t-live-time">00:00</span></span>
+        <span class="tl-trim" id="t-trim">
+          <span id="t-cut"></span>
+          <button class="tl-act ok" id="trim-ok" title="Trim this section out" aria-label="Trim this section out">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg>
+          </button>
+          <button class="tl-act no" id="trim-no" title="Leave this section in" aria-label="Leave this section in">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+          <button class="tl-act undo" id="trim-undo" title="Put the trimmed section back" aria-label="Put the trimmed section back">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-5"/></svg>
+          </button>
+        </span>
         <div class="tl-times" id="t-labels">
           <span class="tl-now-wrap">NOW <span id="t-now">0.00s</span></span>
           <span class="tl-dur">·</span>
@@ -216,7 +228,7 @@
         <div class="help-num">3</div>
         <div class="help-step-body">
           <div class="help-step-title">Stop and trim</div>
-          <div class="help-step-desc">Press ▶ to play the clip back with sound — it plays within your IN/OUT range, and you can still drag the handles while it plays. <strong>Click anywhere on the timeline to play from that moment.</strong> Drag the blue IN handle and red OUT handle to define your clip. To cut a part out: click where it starts and click where it ends, then click inside the shaded region to trim it away — click the region again to put it back. Drag a mark or a shaded region to move it (a region also resizes if you grab it near an edge), and the clip plays under the bar as you drag. The estimated file size updates live.</div>
+          <div class="help-step-desc">Press ▶ to play the clip back with sound — it plays within your IN/OUT range, and you can still drag the handles while it plays. <strong>Click anywhere on the timeline to play from that moment.</strong> Drag the blue IN handle and red OUT handle to define your clip. To cut a part out: click where it starts and click where it ends, then press the <strong>green check</strong> — or just click inside the shaded section — and it leaves the timeline, which closes up over it. The <strong>red cross</strong> leaves the section in, and the small <strong>undo</strong> arrow brings back whatever you just trimmed. Drag a mark or the shaded section to move it (it resizes if you grab it near an edge), and the clip plays under it as you drag. The estimated file size updates live.</div>
         </div>
       </div>
       <div class="help-step">

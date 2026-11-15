@@ -111,6 +111,29 @@ export function keptLength(spans: Span[], start: number, end: number): number {
   return Math.max(0, (end - start) - spanLength(spans, start, end));
 }
 
+// A trim that has been approved disappears from the timeline and what is left
+// closes up, so the timeline shows what the export will hold. These two map
+// between a time in the recording and that time as the user sees it. They are
+// inverses of each other, except exactly at the edge of a removed region, where
+// keptTime gives the time before it and sourceTime the time after.
+export function keptTime(cuts: Span[], source: number): number {
+  let kept = source;
+  for (const c of cuts) {
+    if (source <= c.s) break;
+    kept -= Math.min(source, c.e) - c.s;
+  }
+  return Math.max(0, kept);
+}
+
+export function sourceTime(cuts: Span[], kept: number): number {
+  let source = kept;
+  for (const c of cuts) {
+    if (source < c.s) break;
+    source += c.e - c.s;
+  }
+  return source;
+}
+
 // Cuts in seconds, for the media element. The app keeps them as fractions.
 export function cutsInSeconds(cuts: Span[], duration: number): Span[] {
   return cuts.map(c => ({ s: c.s * duration, e: c.e * duration }));

@@ -9,11 +9,13 @@ import {
   cutsInSeconds,
   estimateWebmText,
   keptLength,
+  keptTime,
   moveSpan,
   normalizeTrim,
   partAt,
   partStart,
   resizeSpan,
+  sourceTime,
   spanAt,
   spanBetween,
   spanLength,
@@ -166,6 +168,33 @@ describe('cutsInSeconds', () => {
 
   it('is empty for no cuts', () => {
     expect(cutsInSeconds([], 20)).toEqual([]);
+  });
+});
+
+describe('keptTime / sourceTime', () => {
+  const cuts = [{ s: 10, e: 15 }, { s: 20, e: 22 }];
+
+  it('is the time itself when nothing has been trimmed', () => {
+    expect(keptTime([], 7)).toBe(7);
+    expect(sourceTime([], 7)).toBe(7);
+  });
+
+  it('takes the removed regions out of the time', () => {
+    expect(keptTime(cuts, 12)).toBe(10);     // 2s into a 5s region
+    expect(keptTime(cuts, 20)).toBe(15);     // 5s gone by now
+    expect(keptTime(cuts, 21)).toBe(15);     // 6s gone, 1s into the second
+    expect(keptTime(cuts, 30)).toBe(23);     // 7s gone in all
+  });
+
+  it('adds them back the other way', () => {
+    expect(sourceTime(cuts, 10)).toBe(15);   // the kept edge, just after the cut
+    expect(sourceTime(cuts, 14)).toBe(19);
+    expect(sourceTime(cuts, 15)).toBe(22);
+    expect(sourceTime(cuts, 23)).toBe(30);
+  });
+
+  it('round-trips away from the edges', () => {
+    for (const t of [0, 5, 9.5, 16, 18, 25]) expect(sourceTime(cuts, keptTime(cuts, t))).toBe(t);
   });
 });
 

@@ -1,42 +1,53 @@
 // Timeline panel: trim handles, time labels, size estimate and the thumbnail
 // strip.
+//
+// The timeline shows the clip with its approved trims taken out, so everything
+// here is in timeline time — the handles, the labels and the strip are mapped
+// through the kept regions (clip.ts). The recording's own time is what playback
+// and the export use.
 
 import { el } from './dom.js';
 import { app } from '../state.js';
-import { keptLength, normalizeTrim, estimateWebmText } from '../domain/timeline.js';
-import { clipSeek } from './clip.js';
+import { estimateWebmText, keptLength, normalizeTrim } from '../domain/timeline.js';
+import { clipSeek, keptLengthNow, keptOf, sourceOf } from './clip.js';
+import { setTimerMs } from './timer.js';
 import { syncToTrim } from './playback.js';
 import { drawWaveform } from './waveform.js';
+
+const COUNT = 22;         // thumbnail frames across the strip
 
 export function resetTrim(): void {
   app.trimStart = 0;
   app.trimEnd = 1;
-  el.rStart.value = '0';
-  el.rEnd.value = '1000';
   updateTrimUI();
 }
 
 export function onTrim(evt: { target: EventTarget | null }): void {
   const moved: 'start' | 'end' = evt.target === el.rStart ? 'start' : 'end';
+  // The handles work in timeline units (0..1000 of what is left), so the model
+  // keeps its own fractions of the recording.
   const { s, en } = normalizeTrim(parseInt(el.rStart.value), parseInt(el.rEnd.value), moved);
-  if (s  !== parseInt(el.rStart.value)) el.rStart.value = String(s);
-  if (en !== parseInt(el.rEnd.value))   el.rEnd.value   = String(en);
-  app.trimStart = s / 1000;
-  app.trimEnd   = en / 1000;
-  updateTrimUI();
+  app.trimStart = toRecordingFraction(s);
+  app.trimEnd   = toRecordingFraction(en);
+  updateTrimUI(false);       // the handles are the authority while dragging
   updateSizeUI();
   syncToTrim(moved);
   drawWaveform();
 }
 
-export function updateTrimUI(): void {
-  const s = app.trimStart * app.duration;
-  const e = app.trimEnd * app.duration;
+export function updateTrimUI(syncHandles = true): void {
+  const kept = keptLengthNow();
+  const s = keptOf(app.trimStart * app.duration);
+  const e = keptOf(app.trimEnd * app.duration);
   el.tIn.textContent   = s.toFixed(2) + 's';
   el.tOut.textContent  = e.toFixed(2) + 's';
-  el.tClip.textContent = (e - s).toFixed(2) + 's';
-  el.rFill.style.left  = (app.trimStart * 100).toFixed(1) + '%';
-  el.rFill.style.width = ((app.trimEnd - app.trimStart) * 100).toFixed(1) + '%';
+  el.tClip.textContent = Math.max(0, e - s).toFixed(2) + 's';
+  el.rFill.style.left  = pct(kept, s).toFixed(2) + '%';
+  el.rFill.style.width = pct(kept, e - s).toFixed(2) + '%';
+  if (syncHandles) {
+    el.rStart.value = String(Math.round(pct(kept, s) * 10));
+    el.rEnd.value   = String(Math.round(pct(kept, e) * 10));
+  }
 }
 
 export function updateSizeUI(): void {
@@ -46,9 +57,18 @@ export function updateSizeUI(): void {
   el.tSize.textContent = estimateWebmText(clip);
 }
 
+// Everything that shows how long the clip is: the timeline changes length when a
+// trim is approved or taken back, so it all has to be drawn again.
+export function rebuildTimeline(): void {
+  updateTrimUI();
+  updateSizeUI();
+  drawWaveform();
+  setTimerMs(keptLengthNow() * 1000);
+  void buildThumbs();
+}
+
 export async function buildThumbs(): Promise<void> {
-  el.thumbs.innerHTML = '';
-  const COUNT = 22;
+  el.thumbs.replaceChildren();
   const frames: Array<{ tc: HTMLCanvasElement }> = [];
   for (let i = 0; i < COUNT; i++) {
     const wrap = document.createElement('div');
@@ -60,7 +80,20 @@ export async function buildThumbs(): Promise<void> {
     frames.push({ tc });
   }
   for (let i = 0; i < COUNT; i++) {
-    await clipSeek((i / COUNT) * app.duration);
+    await clipSeek(sourceOf((i / COUNT) * keptLengthNow()));
     frames[i].tc.getContext('2d')?.drawImage(el.rv, 0, 0, 80, 45);
   }
+}
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function pct(kept: number, seconds: number): number {
+  return kept > 0 ? Math.max(0, Math.min(100, (seconds / kept) * 100)) : 0;
+}
+
+// A handle position (0..1000 of the timeline) as a fraction of the recording.
+function toRecordingFraction(units: number): number {
+  if (!(app.duration > 0)) return 0;
+  const seconds = sourceOf((units / 1000) * keptLengthNow());
+  return Math.max(0, Math.min(1, seconds / app.duration));
 }

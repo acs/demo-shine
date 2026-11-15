@@ -17,6 +17,7 @@ import { app } from '../state.js';
 import { el } from './dom.js';
 import { estimateWebmText } from '../domain/timeline.js';
 import { drawWebcamOverlay } from './webcam.js';
+import { keptLengthNow } from './clip.js';
 
 const CELLS     = 22;     // the same strip the review builds
 const CELL_W    = 80;
@@ -31,7 +32,7 @@ let tick = 0;
 let sources: HTMLCanvasElement[] = [];      // what the review strip was showing
 let frames: { t: number; c: HTMLCanvasElement }[] = [];   // the take, as it goes
 let lastCapture = -1;
-let prevTotal = 0;                          // length of the clip before this take
+let prevKept = 0;                           // timeline length of the clip before this take
 let samples: number[] = [];                 // levels heard so far in this take
 let audioCtx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
@@ -40,7 +41,7 @@ let lastDraw = 0;
 
 export function startLiveTimeline(recStream: MediaStream | null): void {
   stopLiveTimeline();
-  prevTotal = app.duration;
+  prevKept = keptLengthNow();
   sources = copyStrip();
   frames = [];
   lastCapture = -1;
@@ -76,7 +77,7 @@ function onTick(): void {
 
   readAudio();
   const elapsed = elapsedSeconds();
-  const head = prevTotal + elapsed;
+  const head = prevKept + elapsed;
   // How much of the clip the cells are spread over: what has been recorded plus
   // room for the take to run on, so the strip fills up rather than jumping.
   const span = head + Math.max(MIN_SPAN, elapsed * SLACK);
@@ -127,7 +128,7 @@ function paintStrip(span: number, head: number): void {
     // the middle of the time this cell stands for
     const mid = (((i + 0.5) / CELLS) * span);
     if (mid > head) continue;                        // still to come
-    const frame = mid < prevTotal ? sourceNear(mid) : takeNear(mid);
+    const frame = mid < prevKept ? sourceNear(mid) : takeNear(mid);
     if (frame) ctx.drawImage(frame, 0, 0, CELL_W, CELL_H);
   }
 }
@@ -150,7 +151,7 @@ function paintWave(span: number): void {
   const mid = h / 2;
   const bw = Math.max(1, (w * SAMPLE_MS) / 1000 / span);
   for (let k = 0; k < samples.length; k++) {
-    const when = prevTotal + (k * SAMPLE_MS) / 1000;      // when it was heard
+    const when = prevKept + (k * SAMPLE_MS) / 1000;      // when it was heard
     const barH = Math.max(1, samples[k] * (h - 4));
     ctx.fillRect((when / span) * w, mid - barH / 2, bw, barH);
   }
@@ -191,8 +192,8 @@ function nearest(list: { t: number; c: HTMLCanvasElement }[], time: number): HTM
 }
 
 function sourceNear(time: number): HTMLCanvasElement | null {
-  if (!sources.length || prevTotal <= 0) return null;
-  const per = prevTotal / sources.length;
+  if (!sources.length || prevKept <= 0) return null;
+  const per = prevKept / sources.length;
   const list = sources.map((c, i) => ({ t: (i + 0.5) * per, c }));
   return nearest(list, time);
 }
