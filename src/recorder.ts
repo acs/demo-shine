@@ -28,10 +28,12 @@ export async function toggleRec(): Promise<void> {
   if (app.phase === 'recording') return stopRec();
   if (app.phase === 'review') {
     // Recording again adds to the end of what is already there. The share is
-    // kept while reviewing, so this usually needs no picker; if the share was
-    // stopped, ask for one and let the next press record.
-    if (!app.stream) return startCapture();
-    return startRecording();
+    // kept while reviewing, so this usually needs no picker. When it is gone —
+    // the shared window was closed, or Chrome's "Stop sharing" was pressed —
+    // ask for another one; the next press records and adds to the end.
+    if (app.stream) return startRecording();
+    toast('The share ended — choose a screen to keep recording', 4000);
+    return startCapture(true);
   }
 }
 
@@ -49,11 +51,12 @@ let countdownAborted = false;
 
 // Acquire the display and show it live on the preview. Called on load; also the
 // fallback when the browser blocked the gesture-less attempt.
-export async function startCapture(): Promise<void> {
-  // Never while a recording is being reviewed or encoded: a fresh capture would
-  // clobber it. Reset leaves 'review' before it restarts the capture.
-  if (app.stream || app.phase === 'starting' || app.phase === 'recording'
-      || app.phase === 'review' || app.phase === 'encoding') return;
+export async function startCapture(force = false): Promise<void> {
+  // Never while a recording is being reviewed or encoded unless it is asked for
+  // explicitly: a fresh capture would clobber it. Reset leaves 'review' first,
+  // and Record while reviewing asks for one on purpose when the share is gone.
+  if (app.stream || app.phase === 'starting' || app.phase === 'recording') return;
+  if (!force && (app.phase === 'review' || app.phase === 'encoding')) return;
   try {
     setPhase('starting');
     el.recBtn.disabled = true;
@@ -224,8 +227,11 @@ async function startRecording(): Promise<void> {
   if (!app.stream || !app.stream.active) {                // capture ended meanwhile
     el.recBtn.disabled = false;
     el.recLbl.textContent = 'Record';
-    setPhase('idle');
-    setStatus('ready', 'Ready');
+    // A finished clip is kept, so land back on it rather than on an empty app.
+    const keepClip = app.parts.length > 0;
+    setPhase(keepClip ? 'review' : 'idle');
+    setStatus('ready', keepClip ? 'Ready to export · press Record to share again' : 'Ready');
+    toast('The share ended — press Record to share again', 4000);
     return;
   }
 
@@ -280,25 +286,25 @@ export function releaseDisplay(): void {
   stopMirror();
 }
 
-// The user clicked the browser's "Stop sharing" chip.
+// The user clicked the browser's "Stop sharing" chip, or the shared surface went
+// away (a closed window, a tab that was closed).
 function onCaptureEnded(): void {
   if (app.phase === 'recording') { stopRec(); return; }
-  if (app.phase === 'countdown') cancelCountdown();
-  const reviewing = app.phase === 'review';
-  if (!reviewing && app.phase !== 'live' && app.phase !== 'countdown') return;
+  const inReview = app.phase === 'review';
+  const counting = app.phase === 'countdown';
+  if (!inReview && app.phase !== 'live' && !counting) return;
+
+  if (counting) { countdownAborted = true; cancelCountdown(); }
   releaseDisplay();
   stopWebcam();
   stopMic();
   el.resBadge.style.display = 'none';
   el.recLbl.textContent = 'Record';
-  if (reviewing) {
-    // The recording is kept; recording more now needs a share again.
-    setStatus('ready', 'Ready to export · press Record to share again');
-    return;
-  }
-  el.idleOv.classList.remove('gone');
-  setPhase('idle');
-  setStatus('ready', 'Ready');
+  // A finished clip is kept: recording more just needs a share again.
+  const keepClip = inReview || app.parts.length > 0;
+  if (!keepClip) el.idleOv.classList.remove('gone');
+  setPhase(keepClip ? 'review' : 'idle');
+  setStatus('ready', keepClip ? 'Ready to export · press Record to share again' : 'Ready');
 }
 
 // A recording just finished: keep it as a part, then open the review on the
