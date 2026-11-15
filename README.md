@@ -12,7 +12,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 
 - **Zero dependencies on your machine** — runs entirely in the browser via `getDisplayMedia`
 - **Live preview on start** — the screen capture begins as soon as the app opens (full screen preferred), no need to press record first
-- **WebM export** — VP9/VP8 codec with tab/system audio, re-encoded through a canvas stream
+- **WebM export, encoded offline** — VP9 (VP8 fallback) with Opus audio, written straight from the decoded frames by WebCodecs: about **10× faster than the clip**, it keeps going while the tab is in the background, and the file carries a duration and cue points, so any player can scrub it. Browsers without `VideoEncoder` (Firefox below 130) fall back to the real-time canvas re-encode
 - **Region crop** — a red box over the preview always shows what will be recorded: the whole screen by default, drag to record just part of it, click to reset; while recording the box breathes (red ↔ background)
 - **Webcam overlay** — a header toggle adds a mirrored webcam bubble in the corner of the recording (disabled when no camera is present)
 - **Microphone** — a header toggle (disabled when no mic) with a live level meter; its audio is **mixed with the tab/system audio** in the recording
@@ -54,7 +54,8 @@ demoshine/
 │   ├── state.ts          # Shared application state (the mutable model)
 │   ├── prefs.ts          # User preferences (localStorage)
 │   ├── recorder.ts       # Recording use case (getDisplayMedia + MediaRecorder)
-│   ├── exporter.ts       # Export + reset use cases (WebM)
+│   ├── exporter.ts       # Export + reset use cases (WebM, and which encoder writes it)
+│   ├── offline-export.ts # The export, encoded offline with WebCodecs
 │   ├── globals.d.ts      # Ambient types (prefixed AudioContext, captureStream)
 │   ├── vite-env.d.ts     # Vite client types
 │   ├── domain/           # Pure logic — no DOM, no browser APIs
@@ -170,7 +171,10 @@ To deploy elsewhere, run `npm run build` and publish the `dist/` folder.
 
 - [Vite](https://vite.dev/) — dev server and build
 - [`MediaDevices.getDisplayMedia()`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia) — screen capture
-- [`MediaRecorder`](https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder) — WebM encoding
+- [`MediaRecorder`](https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder) — WebM encoding as a take is recorded
+- [WebCodecs](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API) — `VideoEncoder`/`AudioEncoder` for the offline export
+- [Mediabunny](https://mediabunny.dev/) — reads the takes back, frame by frame, for that export
+- [webm-muxer](https://github.com/Vanilagy/webm-muxer) — writes the exported container, duration and cue points included
 - [Syne](https://fonts.google.com/specimen/Syne) + [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono) — typefaces
 - Service Worker + Web App Manifest — PWA support
 
