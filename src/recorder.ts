@@ -12,7 +12,7 @@ import { runCountdown, cancelCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { buildThumbs, resetTrim, updateSizeUI, updateTrimUI } from './ui/timeline-ui.js';
 import { resetMarks, rescaleMarks } from './ui/marks.js';
-import { clipLoad, clipTime, keptLengthNow, totalDuration } from './ui/clip.js';
+import { clipLoad, clipTime, keptLengthNow } from './ui/clip.js';
 import { pausePlayback, resetPlayback, seekPlayback } from './ui/playback.js';
 import { buildWaveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
@@ -225,7 +225,7 @@ function stopCropLoop(): void {
 
 async function startRecording(): Promise<void> {
   if (!app.stream || (app.phase !== 'live' && app.phase !== 'review')) return;
-  const appending = app.parts.length > 0;
+  const appending = !app.clip.takes.isEmpty();
   countdownAborted = false;
   phaseBeforeCountdown = app.phase;
   setPhase('countdown');
@@ -250,7 +250,7 @@ async function startRecording(): Promise<void> {
     el.recBtn.disabled = false;
     el.recLbl.textContent = 'Record';
     // A finished clip is kept, so land back on it rather than on an empty app.
-    const keepClip = app.parts.length > 0;
+    const keepClip = !app.clip.takes.isEmpty();
     setPhase(keepClip ? 'review' : 'idle');
     setStatus('ready', keepClip ? 'Ready to export · press Record to share again' : 'Ready');
     toast('The share ended — press Record to share again', 4000);
@@ -326,7 +326,7 @@ function onCaptureEnded(): void {
   el.resBadge.style.display = 'none';
   el.recLbl.textContent = 'Record';
   // A finished clip is kept: recording more just needs a share again.
-  const keepClip = inReview || app.parts.length > 0;
+  const keepClip = inReview || !app.clip.takes.isEmpty();
   if (!keepClip) el.idleOv.classList.remove('gone');
   setPhase(keepClip ? 'review' : 'idle');
   setStatus('ready', keepClip ? 'Ready to export · press Record to share again' : 'Ready');
@@ -339,8 +339,8 @@ function onCaptureEnded(): void {
 async function onRecStop(): Promise<void> {
   const blob = new Blob(app.chunks, { type: 'video/webm' });
   const wallClock = (Date.now() - (app.startAt ?? Date.now())) / 1000;
-  const appending = app.parts.length > 0;
-  const previous = app.duration;
+  const appending = !app.clip.takes.isEmpty();
+  const previous = app.clip.total();
 
   setPhase('review');
   setStatus('ready', 'Ready to export');
@@ -348,22 +348,21 @@ async function onRecStop(): Promise<void> {
   // Measure this part before it joins the others: its length is where the next
   // part will start, and the total drives the whole timeline.
   const duration = (await measurePart(blob)) ?? wallClock;
-  app.parts.push({ blob, duration });
-  app.duration = totalDuration();
+  app.clip.addTake(blob, duration);
 
   resetPlayback();
-  await clipLoad(appending ? app.parts.length - 1 : 0);
-  if (appending) rescaleMarks(previous, app.duration);   // keep cuts over their moments
+  await clipLoad(appending ? app.clip.takes.count() - 1 : 0);
+  if (appending) rescaleMarks(previous, app.clip.total());   // the clip re-bases its cuts; the marks are the view's
   else           { resetTrim(); resetMarks(); }
   updateTrimUI();          // the handles come back from the live progress bar
 
   // The clip may be a cropped region, so size the preview canvas to it.
   if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
-  void buildWaveform(app.parts);
+  void buildWaveform(app.clip.takes.all());
   setTimerMs(keptLengthNow() * 1000);
   // Building the thumbnails seeks through the clip; once that is done, park the
   // playhead at the trim IN, or at the join when a recording was just added.
-  const park = appending ? previous : app.trimStart * app.duration;
+  const park = appending ? previous : app.clip.trim.start * app.clip.total();
   void buildThumbs().then(() => seekPlayback(park));
   el.timeline.classList.add('on');
   el.btnExp.style.display   = '';

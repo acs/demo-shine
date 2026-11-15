@@ -6,9 +6,9 @@
 // The bars come from a decode of the recording, which is read-only: the file, the
 // playback and the export are untouched by it. See PEAK_RATE below.
 
-import { app, type Part } from '../state.js';
+import { app } from '../state.js';
+import type { Take } from '../domain/clip/Take.js';
 import { el } from './dom.js';
-import { SpanSet } from '../domain/clip/SpanSet.js';
 import { keptLengthNow, keptOf } from './clip.js';
 
 const BUCKETS = 600;          // horizontal resolution of the waveform
@@ -35,8 +35,8 @@ export function currentPeaks(): Float32Array | null {
   return peaks;
 }
 
-export async function buildWaveform(parts: Part[]): Promise<void> {
-  if (!parts.length || !app.recAudio) { clearWaveform(); return; }
+export async function buildWaveform(takes: readonly Take[]): Promise<void> {
+  if (!takes.length || !app.recAudio) { clearWaveform(); return; }
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if (!Ctx) { clearWaveform(); return; }
 
@@ -48,16 +48,16 @@ export async function buildWaveform(parts: Part[]): Promise<void> {
   try { ctx = new Ctx({ sampleRate: PEAK_RATE }); }
   catch { ctx = new Ctx(); }                    // a rate it will not take: its own
 
-  const total = parts.reduce((n, p) => n + p.duration, 0);
+  const total = takes.reduce((n, take) => n + take.duration, 0);
   if (!(total > 0)) { void ctx.close(); clearWaveform(); return; }
 
   try {
     // One recording per press of Record: each gets as many bars as its share of
     // the clip, so the strip lines up with the whole of it.
     const out: number[] = [];
-    for (const part of parts) {
-      const audio = await ctx.decodeAudioData(await part.blob.arrayBuffer());
-      const bars = Math.max(1, Math.round(BUCKETS * (part.duration / total)));
+    for (const take of takes) {
+      const audio = await ctx.decodeAudioData(await take.blob.arrayBuffer());
+      const bars = Math.max(1, Math.round(BUCKETS * (take.duration / total)));
       out.push(...computePeaks(audio, bars));
     }
     if (!out.length) { clearWaveform(); return; }
@@ -93,8 +93,8 @@ export function drawWaveform(): void {
   // screen, so its bars are left out and the rest closes up over it.
   const kept = keptLengthNow();
   if (!(kept > 0)) return;
-  const gone = SpanSet.of(app.cuts).scaled(app.duration);   // the removed regions, in seconds
-  const step = app.duration / peaks.length;
+  const gone = app.clip.cuts.scaled(app.clip.total());   // the removed regions, in seconds
+  const step = app.clip.total() / peaks.length;
   const bw = Math.max(0.7, (w / kept) * step);
 
   const mid = h / 2;
@@ -107,8 +107,8 @@ export function drawWaveform(): void {
   }
 
   // Dim everything outside the kept range.
-  const x0 = (keptOf(app.trimStart * app.duration) / kept) * w;
-  const x1 = (keptOf(app.trimEnd * app.duration) / kept) * w;
+  const x0 = (keptOf(app.clip.trim.start * app.clip.total()) / kept) * w;
+  const x1 = (keptOf(app.clip.trim.end * app.clip.total()) / kept) * w;
   ctx.fillStyle = shade;
   ctx.fillRect(0, 0, Math.max(0, x0), h);
   ctx.fillRect(Math.min(w, x1), 0, Math.max(0, w - x1), h);
