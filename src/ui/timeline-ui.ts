@@ -10,7 +10,7 @@ import { clock, el } from './dom.js';
 import { app } from '../state.js';
 import { estimateWebmText } from './size-estimate.js';
 import { Trim } from '../domain/clip/Trim.js';
-import { clipSeek, keptLengthNow, keptOf, sourceOf } from './clip.js';
+import { keptLengthNow, keptOf, player, sourceOf } from './clip.js';
 import { setTimerMs } from './timer.js';
 import { playback } from './playback.js';
 import { waveform } from './waveform.js';
@@ -127,7 +127,7 @@ export async function buildThumbs(): Promise<void> {
     frames.push({ tc });
   }
   for (let i = 0; i < COUNT; i++) {
-    await clipSeek(sourceOf((i / COUNT) * keptLengthNow()));
+    await player.seek(sourceOf((i / COUNT) * keptLengthNow()));
     frames[i].tc.getContext('2d')?.drawImage(el.rv, 0, 0, 80, 45);
   }
 }
