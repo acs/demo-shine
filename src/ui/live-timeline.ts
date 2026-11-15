@@ -23,7 +23,7 @@ import { clock, el } from './dom.js';
 import { estimateWebmText } from './size-estimate.js';
 import { drawWebcamOverlay } from './webcam.js';
 import { keptLengthNow, keptOf } from './clip.js';
-import { currentPeaks } from './waveform.js';
+import { waveform } from './waveform.js';
 
 const CELLS     = 22;     // the same strip the review builds
 const CELL_W    = 80;
@@ -51,7 +51,7 @@ export class LiveTimeline {
   start(recStream: MediaStream | null): void {
     this.stop();
     this.prevKept = keptLengthNow();
-    this.echo = currentPeaks();
+    this.echo = waveform.current();
     this.sources = copyStrip();
     this.frames = [];
     this.lastCapture = -1;

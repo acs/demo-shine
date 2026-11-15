@@ -55,7 +55,7 @@ export async function doExport(): Promise<void> {
   el.btnReset.disabled = true;
   el.playBtn.disabled  = true;
   setStatus('proc', 'Encoding…');
-  beginEncoding();
+  const wasCut = beginEncoding();   // what the chip said before the export took it over
   try {
     const stats = await exportOfflineHere();
     setStatus('ready', 'Export complete ✓');
@@ -70,7 +70,7 @@ export async function doExport(): Promise<void> {
   el.btnExp.disabled   = false;
   el.btnReset.disabled = false;
   el.playBtn.disabled  = false;
-  endEncoding();
+  endEncoding(wasCut);
   playback.pause();               // refresh the playhead after the export moved rv
 }
 
