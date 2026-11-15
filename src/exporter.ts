@@ -3,16 +3,17 @@
 
 import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
-import { seekTo, drawGrid } from './ui/preview.js';
+import { drawGrid } from './ui/preview.js';
 import { setTimerMs } from './ui/timer.js';
 import { resetTrim, updateSizeUI } from './ui/timeline-ui.js';
 import { resetMarks } from './ui/marks.js';
+import { clipSeek, clipTime, releaseParts } from './ui/clip.js';
 import { getBestMime } from './infra/codecs.js';
 import { dlBlob, ts } from './infra/download.js';
 import { stopRec, startCapture, releaseDisplay } from './recorder.js';
 import { pausePlayback, resetPlayback } from './ui/playback.js';
 import { clearWaveform } from './ui/waveform.js';
-import { cutEndAt, cutsInSeconds, keptLength, spanLength } from './domain/timeline.js';
+import { cutEndAt, cutsInSeconds, keptLength, partAt, partStart, spanLength } from './domain/timeline.js';
 
 export async function doExport(): Promise<void> {
   if (app.phase !== 'review') return;
@@ -76,11 +77,9 @@ function attachExportAudio(stream: MediaStream): void {
 
 function exportWebM(): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Clamp end point to actual video duration — wall-clock duration is always
-    // slightly longer than the encoded file, which was causing an infinite loop.
-    const vDur    = (isFinite(el.rv.duration) && el.rv.duration > 0) ? el.rv.duration : app.duration;
     const s       = app.trimStart * app.duration;
-    const e       = Math.min(app.trimEnd * app.duration, vDur - 0.05);
+    // Clamp the end to the clip itself — a measured total, so this is exact.
+    const e       = Math.min(app.trimEnd * app.duration, app.duration - 0.05);
     // Cuts (regions trimmed away) are skipped below, so they must not count
     // towards the progress bar or the clip length.
     const cuts    = cutsInSeconds(app.cuts, app.duration);
@@ -111,35 +110,49 @@ function exportWebM(): Promise<void> {
     rec.onerror = reject;
     rec.start(100);
 
-    seekTo(el.rv, s).then(() => {
-      let asked = 0;          // cut end already seeked to, so it is asked for once
-      let stuckAt = 0;        // when the playhead last failed to get out of a cut
-      function frame() {
-        const t = el.rv.currentTime;
-        if (t >= e || el.rv.ended || el.rv.paused) { finish(); return; }
-        const cutEnd = cutEndAt(cuts, t);
-        if (cutEnd !== null) {
-          // Trimmed away: jump past it, without pausing, so the capture and its
-          // audio carry straight on. If the element will not come out of the cut,
-          // stop rather than record the whole trimmed region.
-          const to = Math.min(cutEnd, e);
-          if (!el.rv.seeking && asked !== to) { asked = to; el.rv.currentTime = to; }
-          if (!stuckAt) stuckAt = Date.now();
-          if (Date.now() - stuckAt > 5000) { finish(); return; }
+    // Draw the kept range into the recorder. It may span several recordings, so
+    // they are played one after another into the same recorder: the file that
+    // comes out is one clip, however many presses of Record it took.
+    function drawTo(limit: number): Promise<void> {
+      return new Promise(done => {
+        let asked = 0;          // cut end already seeked to, so it is asked for once
+        let stuckAt = 0;        // when the playhead last failed to get out of a cut
+        (function frame() {
+          const t = clipTime();
+          if (t >= limit - 0.01 || el.rv.ended || el.rv.paused) { done(); return; }
+          const cutEnd = cutEndAt(cuts, t);
+          if (cutEnd !== null) {
+            // Trimmed away: jump past it, without pausing, so the capture and its
+            // audio carry straight on. If the element will not come out of the
+            // cut, move on rather than record the whole trimmed region.
+            const to = Math.min(cutEnd, e);
+            if (!el.rv.seeking && asked !== to) { asked = to; void clipSeek(to); }
+            if (!stuckAt) stuckAt = Date.now();
+            if (Date.now() - stuckAt > 5000) { done(); return; }
+            requestAnimationFrame(frame);
+            return;
+          }
+          asked = 0; stuckAt = 0;
+          ectx?.drawImage(el.rv, 0, 0, ec.width, ec.height);
+          const removed = spanLength(cuts, s, t);
+          el.encBar.style.width = Math.min(((t - s - removed) / keptDur) * 100, 99).toFixed(1) + '%';
           requestAnimationFrame(frame);
-          return;
-        }
-        asked = 0; stuckAt = 0;
-        ectx?.drawImage(el.rv, 0, 0, ec.width, ec.height);
-        const removed = spanLength(cuts, s, t);
-        el.encBar.style.width = Math.min(((t - s - removed) / keptDur) * 100, 99).toFixed(1) + '%';
-        requestAnimationFrame(frame);
+        })();
+      });
+    }
+
+    void (async () => {
+      let at = s;
+      while (at < e - 0.01) {
+        const index = partAt(app.parts, at);
+        const limit = Math.min(partStart(app.parts, index) + app.parts[index].duration, e);
+        await clipSeek(at);
+        await el.rv.play().catch(err => { throw err; });
+        await drawTo(limit);
+        at = limit;
       }
-      // Add listeners BEFORE play() to avoid race condition
-      el.rv.addEventListener('playing', frame, { once: true });
-      el.rv.addEventListener('ended', finish, { once: true });
-      el.rv.play().catch(reject);
-    }).catch(reject);
+      finish();
+    })().catch(reject);
   });
 }
 
@@ -154,7 +167,8 @@ export function resetAll(): void {
 
   setPhase('idle');
   if (el.rv.src) { URL.revokeObjectURL(el.rv.src); el.rv.src = ''; }
-  app.blob = null; app.chunks = []; app.duration = 0; app.recAudio = false;
+  releaseParts();
+  app.parts = []; app.chunks = []; app.duration = 0; app.recAudio = false;
   el.timeline.classList.remove('on');
   el.idleOv.classList.remove('gone');
   el.btnExp.style.display   = 'none';

@@ -4,7 +4,7 @@
 import { el } from './dom.js';
 import { app } from '../state.js';
 import { keptLength, normalizeTrim, estimateWebmText } from '../domain/timeline.js';
-import { seekTo } from './preview.js';
+import { clipSeek } from './clip.js';
 import { syncToTrim } from './playback.js';
 import { drawWaveform } from './waveform.js';
 
@@ -60,7 +60,7 @@ export async function buildThumbs(): Promise<void> {
     frames.push({ tc });
   }
   for (let i = 0; i < COUNT; i++) {
-    await seekTo(el.rv, (i / COUNT) * app.duration);
+    await clipSeek((i / COUNT) * app.duration);
     frames[i].tc.getContext('2d')?.drawImage(el.rv, 0, 0, 80, 45);
   }
 }
