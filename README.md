@@ -14,6 +14,8 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 - **Live preview on start** — the screen capture begins as soon as the app opens (full screen preferred), no need to press record first
 - **WebM export** — VP9/VP8 codec with tab/system audio, re-encoded through a canvas stream
 - **Region crop** — a red box over the preview always shows what will be recorded: the whole screen by default, drag to record just part of it, click to reset; while recording the box breathes (red ↔ background)
+- **Webcam overlay** — a header toggle adds a mirrored webcam bubble in the corner of the recording (disabled when no camera is present)
+- **Microphone** — a header toggle (disabled when no mic) with a live level meter; its audio is **mixed with the tab/system audio** in the recording
 - **Timeline trimmer** — drag IN/OUT handles, click thumbnail frames to scrub, live size estimate
 - **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
 - **Audio track** — a waveform of the recording under the thumbnails, shown when the clip has sound
@@ -96,10 +98,9 @@ npm install
 
 | Command | Does |
 |---|---|
-| `npm run dev` | Starts the Vite dev server at https://localhost:5173 with hot module replacement (HTTPS by default) |
+| `npm run dev` | Starts the Vite dev server at https://localhost:5173 with hot module replacement |
 | `npm run build` | Type-checks and builds the production site into `dist/` |
 | `npm run preview` | Serves the built site (`dist/`) over HTTPS with the PWA/service worker active |
-| `npm run dev:http` / `preview:http` | Same, but over plain HTTP |
 | `npm run typecheck` | Type-checks without emitting |
 | `npm run lint` | ESLint (use `npm run lint:fix` to auto-fix) |
 | `npm test` | Runs the Vitest unit tests (`npm run test:watch` to watch) |
@@ -110,8 +111,10 @@ shadow HMR — so use `npm run preview` to exercise the real PWA locally.
 HTTPS is on by default, using a self-signed certificate from
 `@vitejs/plugin-basic-ssl`. Browsers will warn until that certificate is
 trusted, and the service worker will not register on an untrusted one — trust
-the certificate (add it to your keychain) for install/offline testing. Use
-`npm run dev:http` / `preview:http` for plain HTTP.
+the certificate (add it to your keychain) for install/offline testing.
+
+The app also redirects any `http://` access (localhost included) to `https://`,
+because screen capture needs a secure context — so there is no plain-HTTP mode.
 
 Linting runs on every commit through a Husky pre-commit hook, and the CI
 workflow runs lint, type-check, tests and the build on every push and pull
