@@ -23,10 +23,11 @@
 // back.
 
 import { app } from '../state.js';
+import type { ClipEvent } from '../domain/clip/Clip.js';
 import { el } from './dom.js';
 import { Span } from '../domain/clip/Span.js';
 import { Trim } from '../domain/clip/Trim.js';
-import { rebuildTimeline, updateSizeUI } from './timeline-ui.js';
+import { updateSizeUI } from './timeline-ui.js';
 import { clipTime, keptLengthNow, keptOf, sourceOf } from './clip.js';
 import { playFrom, seekPlayback, setScrubbing } from './playback.js';
 
@@ -38,26 +39,38 @@ const SEEK_EVERY = 70;    // ms between seeks while dragging
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-export function resetMarks(): void {
-  app.marks = [];
+// The marks are the view's, but they sit over the clip, so they move when it does.
+// The clip says what happened; nothing here has to be remembered by the caller.
+function followTheClip(event: ClipEvent): void {
+  switch (event.type) {
+    case 'take-added': {
+      // Fractions of the clip: a new take makes it longer, so the marks move with
+      // the moments they were placed over. The first take begins a new clip, which
+      // has nothing selected yet.
+      if (event.index === 0) app.marks = [];
+      else if (event.previousTotal > 0) {
+        const k = event.previousTotal / app.clip.total();
+        app.marks = app.marks.map(m => m * k);
+      }
+      break;
+    }
+    case 'trim-approved':
+      app.marks = [];                              // the selection was spent on it
+      break;
+    case 'trim-undone':
+      app.marks = [event.region.s, event.region.e];   // it comes back selected
+      break;
+    case 'cleared':
+      app.marks = [];
+      break;
+    case 'keep-range':
+      return;                    // the handles moved; the marks did not
+  }
   renderMarks();
-  updateSizeUI();          // clearing the cuts restores the estimate
-}
-
-// A new part was added to the end, so the clip is longer. Marks and cuts are
-// held as fractions of it: re-base them so they stay over the same moments of
-// the recording, and the added recording is not covered by an old cut.
-export function rescaleMarks(wasTotal: number, nowTotal: number): void {
-  // The clip re-bases its own removed regions when a take is added — the marks are
-  // the view's, and are re-based here.
-  if (!(wasTotal > 0) || !(nowTotal > wasTotal)) { renderMarks(); return; }
-  const k = wasTotal / nowTotal;
-  app.marks = app.marks.map(m => m * k);
-  renderMarks();
-  updateSizeUI();
 }
 
 export function initTimelineMarks(): void {
+  app.clip.onChange(followTheClip);
   el.timeline.addEventListener('click', onTimelineClick);
   el.tlMarks.addEventListener('click', onActionClick);     // the check and the cross
   el.trimUndo.addEventListener('click', undoTrim);
@@ -143,7 +156,6 @@ function approveTrim(): void {
   const region = pendingRegion();
   if (!region) return;
   app.clip.approve(region);                       // it leaves the timeline, and closes up
-  app.marks = [];
   afterEdits(region.s * app.clip.total());        // a time in the recording
 }
 
@@ -156,16 +168,14 @@ function dismissSelection(): void {
 
 // Put the last approved trim back.
 function undoTrim(): void {
-  const region = app.clip.undo();                 // the clip puts the region back
-  if (!region) return;
-  app.marks = [region.s, region.e];
+  if (!app.clip.undo()) return;                   // the clip puts the region back
   afterEdits(clipTime());
 }
 
+// The marks and the timeline redraw because the clip told them to; all that is
+// left to do here is follow the playhead.
 function afterEdits(at: number): void {
-  renderMarks();
-  rebuildTimeline();            // the timeline is a different length now
-  void seekPlayback(at);        // the playhead follows what is left
+  void seekPlayback(at);
 }
 
 // ── Clicking the timeline ────────────────────────────────────────────────────

@@ -17,9 +17,18 @@ import { drawWaveform } from './waveform.js';
 
 const COUNT = 22;         // thumbnail frames across the strip
 
-export function resetTrim(): void {
-  app.clip.keepRange(Trim.of(0, 1));
-  updateTrimUI();
+// The timeline is a view of the clip and nothing else, so the clip saying what
+// changed is the whole of the coupling: an approved or undone trim re-cuts the
+// strip, a new take and a dragged handle only move what is drawn from the model.
+export function initTimeline(): void {
+  app.clip.onChange(event => {
+    if (event.type === 'trim-approved' || event.type === 'trim-undone') {
+      void rebuildTimeline();     // the clip is a different length now
+    }
+    updateTrimUI();
+    updateSizeUI();
+    drawWaveform();
+  });
 }
 
 export function onTrim(evt: { target: EventTarget | null }): void {

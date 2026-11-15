@@ -14,8 +14,7 @@ import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
 import { drawGrid } from './ui/preview.js';
 import { setTimerMs } from './ui/timer.js';
-import { beginEncoding, encodingAt, endEncoding, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
-import { resetMarks } from './ui/marks.js';
+import { beginEncoding, encodingAt, endEncoding, updateSizeUI } from './ui/timeline-ui.js';
 import { forgetLoaded } from './ui/clip.js';
 import { dlBlob, ts } from './infra/download.js';
 import { stopRec, startCapture, releaseDisplay } from './recorder.js';
@@ -89,8 +88,6 @@ export function resetAll(): void {
   setTimerMs(0);
   resetPlayback();
   clearWaveform();
-  resetMarks();
-  resetTrim();
   updateSizeUI();
   drawGrid();
   setStatus('ready', 'Ready');
