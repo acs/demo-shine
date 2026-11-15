@@ -17,8 +17,59 @@ export function isFullRegion(r: Rect): boolean {
 
 const MIN_PX = 16;               // below this a pointer gesture counts as a click
 
-let dragging = false;
-let sX = 0, sY = 0, cX = 0, cY = 0;   // canvas pixels
+/** A box in canvas pixels, which is what a gesture is measured in. */
+type Box = { x: number; y: number; w: number; h: number };
+
+// The crop gesture in flight: where the pointer went down, and where it is now.
+// It belongs to the interaction and to nothing else, so it lives on an object
+// with a lifetime — and the session ends that lifetime, because a drag must not
+// outlive the session it was cropping.
+class CropDrag {
+  private live = false;
+  private fromX = 0;
+  private fromY = 0;
+  private toX = 0;
+  private toY = 0;
+
+  get active(): boolean {
+    return this.live;
+  }
+
+  // A gesture begins where the pointer landed.
+  begin(x: number, y: number): void {
+    this.live = true;
+    this.fromX = this.toX = x;
+    this.fromY = this.toY = y;
+  }
+
+  // ...and the box follows the pointer.
+  move(x: number, y: number): void {
+    this.toX = x;
+    this.toY = y;
+  }
+
+  // The pointer came up: the box it made, and the gesture is over.
+  end(): Box {
+    const box = this.box();
+    this.live = false;
+    return box;
+  }
+
+  // The box as it stands, in canvas pixels.
+  box(): Box {
+    return {
+      x: Math.min(this.fromX, this.toX), y: Math.min(this.fromY, this.toY),
+      w: Math.abs(this.toX - this.fromX), h: Math.abs(this.toY - this.fromY),
+    };
+  }
+
+  // The session is over: nothing is being dragged.
+  cancel(): void {
+    this.live = false;
+  }
+}
+
+export const crop = new CropDrag();
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 
@@ -45,27 +96,25 @@ function toCanvas(e: PointerEvent): { x: number; y: number } {
 function onDown(e: PointerEvent): void {
   if (app.phase !== 'live') return;
   const p = toCanvas(e);
-  dragging = true; sX = cX = p.x; sY = cY = p.y;
+  crop.begin(p.x, p.y);
   try { el.cv.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
   e.preventDefault();
 }
 
 function onMove(e: PointerEvent): void {
-  if (!dragging) return;
+  if (!crop.active) return;
   const p = toCanvas(e);
-  cX = p.x; cY = p.y;
+  crop.move(p.x, p.y);
 }
 
 function onUp(e: PointerEvent): void {
-  if (!dragging) return;
-  dragging = false;
+  if (!crop.active) return;
+  const box = crop.end();
   try { el.cv.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
 
-  const w = Math.abs(cX - sX), h = Math.abs(cY - sY);
-  if (w < MIN_PX || h < MIN_PX) { clearRegion(); return; }   // a click → full source
+  if (box.w < MIN_PX || box.h < MIN_PX) { clearRegion(); return; }   // a click → full source
 
-  const x = Math.min(sX, cX), y = Math.min(sY, cY);
-  app.region = { x: x / el.cv.width, y: y / el.cv.height, w: w / el.cv.width, h: h / el.cv.height };
+  app.region = { x: box.x / el.cv.width, y: box.y / el.cv.height, w: box.w / el.cv.width, h: box.h / el.cv.height };
 }
 
 // A small, consistent on-screen font size, whatever the capture resolution.
@@ -86,11 +135,9 @@ export function drawRegion(): void {
   const fs = fontPx();
 
   let rect = app.region;
-  if (dragging) {
-    rect = {
-      x: Math.min(sX, cX) / W, y: Math.min(sY, cY) / H,
-      w: Math.abs(cX - sX) / W, h: Math.abs(cY - sY) / H,
-    };
+  if (crop.active) {
+    const box = crop.box();
+    rect = { x: box.x / W, y: box.y / H, w: box.w / W, h: box.h / H };
   }
 
   const x = rect.x * W, y = rect.y * H, w = rect.w * W, h = rect.h * H;

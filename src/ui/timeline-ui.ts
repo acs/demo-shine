@@ -111,26 +111,48 @@ export function rebuildTimeline(): void {
   updateSizeUI();
   waveform.draw();
   setTimerMs(keptLengthNow() * 1000);
-  void buildThumbs();
+  void strip.build();
 }
 
-export async function buildThumbs(): Promise<void> {
-  el.thumbs.replaceChildren();
-  const frames: Array<{ tc: HTMLCanvasElement }> = [];
-  for (let i = 0; i < COUNT; i++) {
-    const wrap = document.createElement('div');
-    wrap.className = 'thumb-frame';
-    const tc = document.createElement('canvas');
-    tc.width = 80; tc.height = 45;
-    wrap.appendChild(tc);
-    el.thumbs.appendChild(wrap);
-    frames.push({ tc });
+// The thumbnail strip: the clip's own frames, taken by seeking the element through
+// it. It is the one thing on this panel that takes time — twenty-two seeks — so it
+// is an object with a lifetime, and a build is abandoned the moment it is
+// superseded or the session ends. Nothing else may draw into cells that are no
+// longer there, and a build must not go on moving the element over a clip that has
+// been dropped.
+class Strip {
+  private generation = 0;
+
+  /** Build the strip from the clip. A build already running is abandoned. */
+  async build(): Promise<void> {
+    const mine = ++this.generation;
+    el.thumbs.replaceChildren();
+    const frames: Array<{ tc: HTMLCanvasElement }> = [];
+    for (let i = 0; i < COUNT; i++) {
+      const wrap = document.createElement('div');
+      wrap.className = 'thumb-frame';
+      const tc = document.createElement('canvas');
+      tc.width = 80; tc.height = 45;
+      wrap.appendChild(tc);
+      el.thumbs.appendChild(wrap);
+      frames.push({ tc });
+    }
+    for (let i = 0; i < COUNT; i++) {
+      if (mine !== this.generation) return;     // superseded, or the session ended
+      await player.seek(sourceOf((i / COUNT) * keptLengthNow()));
+      if (mine !== this.generation) return;
+      frames[i].tc.getContext('2d')?.drawImage(el.rv, 0, 0, 80, 45);
+    }
   }
-  for (let i = 0; i < COUNT; i++) {
-    await player.seek(sourceOf((i / COUNT) * keptLengthNow()));
-    frames[i].tc.getContext('2d')?.drawImage(el.rv, 0, 0, 80, 45);
+
+  /** The session is over: whatever is being built is not wanted, and the cells go. */
+  cancel(): void {
+    this.generation++;
+    el.thumbs.replaceChildren();
   }
 }
+
+export const strip = new Strip();
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
