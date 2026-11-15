@@ -2,7 +2,7 @@
 // clip, visible only when the recording has audio. The part outside the trimmed
 // range is dimmed, so it tracks the IN/OUT handles.
 
-import { app } from '../state.js';
+import { app, type Part } from '../state.js';
 import { el } from './dom.js';
 
 const BUCKETS = 600;          // horizontal resolution of the waveform
@@ -15,23 +15,32 @@ export function clearWaveform(): void {
   el.waveform.getContext('2d')?.clearRect(0, 0, el.waveform.width, el.waveform.height);
 }
 
-export async function buildWaveform(blob: Blob | null): Promise<void> {
-  if (!blob || !app.recAudio) { clearWaveform(); return; }
+export async function buildWaveform(parts: Part[]): Promise<void> {
+  if (!parts.length || !app.recAudio) { clearWaveform(); return; }
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  const ctx = new Ctx();
   try {
-    const buffer = await blob.arrayBuffer();
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    const ctx = new Ctx();
-    const audio = await ctx.decodeAudioData(buffer);
-    void ctx.close();
-    if (!audio.duration) { clearWaveform(); return; }
-    // Decoded audio is usually a touch shorter than the wall-clock clip.
-    span = app.duration > 0 ? Math.min(audio.duration / app.duration, 1) : 1;
-    peaks = computePeaks(audio, BUCKETS);
+    // One recording per press of Record: decode each and give it as many bars as
+    // its share of the sound, so the strip lines up with the whole joined clip.
+    const decoded: AudioBuffer[] = [];
+    for (const part of parts) decoded.push(await ctx.decodeAudioData(await part.blob.arrayBuffer()));
+    const audible = decoded.reduce((n, audio) => n + audio.duration, 0);
+    if (!audible) { clearWaveform(); return; }
+
+    const out: number[] = [];
+    for (const audio of decoded) {
+      const bars = Math.max(1, Math.round(BUCKETS * (audio.duration / audible)));
+      out.push(...computePeaks(audio, bars));
+    }
+    peaks = Float32Array.from(out);
+    span = 1;
     el.waveform.style.display = '';
     drawWaveform();
   } catch (err) {
     console.warn('DemoShine: could not decode audio for the waveform —', err);
     clearWaveform();
+  } finally {
+    void ctx.close();
   }
 }
 

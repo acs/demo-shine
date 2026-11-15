@@ -11,7 +11,8 @@ import { startMirror, stopMirror, seekWithin } from './ui/preview.js';
 import { runCountdown, cancelCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { buildThumbs, resetTrim, updateSizeUI } from './ui/timeline-ui.js';
-import { resetMarks } from './ui/marks.js';
+import { resetMarks, rescaleMarks } from './ui/marks.js';
+import { clipLoad, totalDuration } from './ui/clip.js';
 import { resetPlayback, seekPlayback } from './ui/playback.js';
 import { buildWaveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
@@ -25,6 +26,13 @@ export async function toggleRec(): Promise<void> {
   if (app.phase === 'idle')      return startCapture();
   if (app.phase === 'live')      return startRecording();
   if (app.phase === 'recording') return stopRec();
+  if (app.phase === 'review') {
+    // Recording again adds to the end of what is already there. The share is
+    // kept while reviewing, so this usually needs no picker; if the share was
+    // stopped, ask for one and let the next press record.
+    if (!app.stream) return startCapture();
+    return startRecording();
+  }
 }
 
 // Pressing record during the countdown aborts it and the pending recording,
@@ -202,12 +210,14 @@ function stopCropLoop(): void {
 }
 
 async function startRecording(): Promise<void> {
-  if (!app.stream || app.phase !== 'live') return;
+  if (!app.stream || (app.phase !== 'live' && app.phase !== 'review')) return;
+  const appending = app.parts.length > 0;
   countdownAborted = false;
   setPhase('countdown');
   el.recBtn.disabled = false;          // stays clickable: a press cancels
   el.recLbl.textContent = 'Cancel';
-  setStatus('proc', 'Get ready…');
+  setStatus('proc', appending ? 'Get ready to add…' : 'Get ready…');
+  if (appending) toast('Recording will be added to the end', 3000);
   await runCountdown();
 
   if (countdownAborted) return;                           // cancelled by a press
@@ -246,7 +256,8 @@ export function stopRec(): void {
   if (app.rec && app.rec.state !== 'inactive') app.rec.stop();
   stopCropLoop();
   stopMix();
-  releaseDisplay();
+  // The share is kept: reviewing a clip and then pressing Record again adds to
+  // it, which should not cost another trip through the picker.
   stopTimer();
   stopMirror();
   el.recBtn.classList.remove('recording');
@@ -273,47 +284,73 @@ export function releaseDisplay(): void {
 function onCaptureEnded(): void {
   if (app.phase === 'recording') { stopRec(); return; }
   if (app.phase === 'countdown') cancelCountdown();
-  if (app.phase !== 'live' && app.phase !== 'countdown') return;
+  const reviewing = app.phase === 'review';
+  if (!reviewing && app.phase !== 'live' && app.phase !== 'countdown') return;
+  releaseDisplay();
   stopWebcam();
   stopMic();
-  app.stream = null;
-  el.sv.srcObject = null;
-  stopMirror();
-  el.idleOv.classList.remove('gone');
   el.resBadge.style.display = 'none';
   el.recLbl.textContent = 'Record';
+  if (reviewing) {
+    // The recording is kept; recording more now needs a share again.
+    setStatus('ready', 'Ready to export · press Record to share again');
+    return;
+  }
+  el.idleOv.classList.remove('gone');
   setPhase('idle');
   setStatus('ready', 'Ready');
 }
 
-function onRecStop(): void {
-  app.blob = new Blob(app.chunks, { type: 'video/webm' });
+// A recording just finished: keep it as a part, then open the review on the
+// whole joined clip. A second recording is added to the end, so the trims made
+// before it stay put (only the removed regions are re-based, to keep them over
+// the same moments of the recording).
+async function onRecStop(): Promise<void> {
+  const blob = new Blob(app.chunks, { type: 'video/webm' });
   const wallClock = (Date.now() - (app.startAt ?? Date.now())) / 1000;
+  const appending = app.parts.length > 0;
+  const previous = app.duration;
+
   setPhase('review');
   setStatus('ready', 'Ready to export');
 
-  el.rv.src = URL.createObjectURL(app.blob);
-  el.rv.load();
-  el.rv.addEventListener('loadeddata', () => {
-    void (async () => {
-      // Use the real file duration: the wall clock is always slightly longer
-      // than the encoded video, which causes exportWebM to hang.
-      app.duration = (await resolveDuration(el.rv)) ?? wallClock;
-      // The clip may be a cropped region, so size the preview canvas to it.
-      if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
-      resetPlayback();
-      void buildWaveform(app.blob);
-      setTimerMs(app.duration * 1000);
-      resetTrim();
-      resetMarks();
-      // Building the thumbnails seeks the video to the last frame; once it's done,
-      // put the playhead back at the trim IN so the first Play starts from the top.
-      void buildThumbs().then(() => seekPlayback(app.trimStart * app.duration));
-      el.timeline.classList.add('on');
-      el.btnExp.style.display   = '';
-      updateSizeUI();
-    })();
-  }, { once: true });
+  // Measure this part before it joins the others: its length is where the next
+  // part will start, and the total drives the whole timeline.
+  const duration = (await measurePart(blob)) ?? wallClock;
+  app.parts.push({ blob, duration });
+  app.duration = totalDuration();
+
+  resetPlayback();
+  await clipLoad(appending ? app.parts.length - 1 : 0);
+  if (appending) rescaleMarks(previous, app.duration);   // keep cuts over their moments
+  else           { resetTrim(); resetMarks(); }
+
+  // The clip may be a cropped region, so size the preview canvas to it.
+  if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
+  void buildWaveform(app.parts);
+  setTimerMs(app.duration * 1000);
+  // Building the thumbnails seeks through the clip; once that is done, park the
+  // playhead at the trim IN, or at the join when a recording was just added.
+  const park = appending ? previous : app.trimStart * app.duration;
+  void buildThumbs().then(() => seekPlayback(park));
+  el.timeline.classList.add('on');
+  el.btnExp.style.display   = '';
+  updateSizeUI();
+}
+
+// The real length of a recorded blob, or null if the browser will not say.
+async function measurePart(blob: Blob): Promise<number | null> {
+  const vid = document.createElement('video');
+  vid.preload = 'auto';
+  const url = URL.createObjectURL(blob);
+  vid.src = url;
+  const ok = await new Promise<boolean>(resolve => {
+    vid.addEventListener('loadedmetadata', () => resolve(true), { once: true });
+    setTimeout(() => resolve(false), 1500);
+  });
+  const duration = ok ? await resolveDuration(vid) : null;
+  URL.revokeObjectURL(url);
+  return duration;
 }
 
 // The clip's real duration, or null if the browser will not give one.

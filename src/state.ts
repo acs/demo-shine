@@ -16,15 +16,21 @@ export interface Rect {
   h: number;
 }
 
+// One recording. A session is a list of them, reviewed as one joined clip.
+export interface Part {
+  blob: Blob;
+  duration: number;   // seconds of media
+}
+
 export interface AppState {
   phase: Phase;
 
   stream: MediaStream | null;   // from getDisplayMedia
   rec: MediaRecorder | null;    // live recording
-  chunks: Blob[];               // recorded blobs
-  blob: Blob | null;            // the assembled recording
+  chunks: Blob[];               // blobs of the recording in progress
+  parts: Part[];                // the recordings made so far, in order
 
-  duration: number;             // seconds, resolved after recording
+  duration: number;             // seconds of the whole joined clip
   trimStart: number;            // 0..1
   trimEnd: number;              // 0..1
 
@@ -66,7 +72,7 @@ export const app: AppState = {
   stream: null,
   rec: null,
   chunks: [],
-  blob: null,
+  parts: [],
 
   duration: 0,
   trimStart: 0,

@@ -130,3 +130,26 @@ export function resizeSpan(span: Span, edge: 's' | 'e', to: number, min = 0): Sp
     ? { s: Math.min(Math.max(to, 0), span.e - min), e: span.e }
     : { s: span.s, e: Math.max(Math.min(to, 1), span.s + min) };
 }
+
+// ── Several recordings as one clip ───────────────────────────────────────────
+//
+// A session can hold more than one recording ("parts"), played one after another
+// as a single clip. Two questions follow from that: where a part begins on the
+// joined timeline, and which part holds a given time.
+
+export interface Timed {
+  duration: number;
+}
+
+export function partStart(parts: Timed[], index: number): number {
+  let at = 0;
+  for (let i = 0; i < index && i < parts.length; i++) at += parts[i].duration;
+  return at;
+}
+
+export function partAt(parts: Timed[], time: number): number {
+  for (let i = 0; i < parts.length; i++) {
+    if (time < partStart(parts, i) + parts[i].duration) return i;
+  }
+  return Math.max(0, parts.length - 1);
+}

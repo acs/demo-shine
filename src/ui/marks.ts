@@ -43,6 +43,18 @@ export function resetMarks(): void {
   updateSizeUI();          // clearing the cuts restores the estimate
 }
 
+// A new part was added to the end, so the clip is longer. Marks and cuts are
+// held as fractions of it: re-base them so they stay over the same moments of
+// the recording, and the added recording is not covered by an old cut.
+export function rescaleMarks(wasTotal: number, nowTotal: number): void {
+  if (!(wasTotal > 0) || !(nowTotal > wasTotal)) { renderMarks(); return; }
+  const k = wasTotal / nowTotal;
+  app.marks = app.marks.map(m => m * k);
+  app.cuts  = app.cuts.map(c => ({ s: c.s * k, e: c.e * k }));
+  renderMarks();
+  updateSizeUI();
+}
+
 export function initTimelineMarks(): void {
   el.timeline.addEventListener('click', onTimelineClick);
   el.tlMarks.addEventListener('pointerdown', onBarDown);
