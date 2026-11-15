@@ -60,7 +60,7 @@ function init(): void {
   onPhaseChange(showReset);
   showReset(app.phase);
 
-  // Click the timeline to play from that point, mark a region and trim it.
+  // Click the timeline to play from that point, mark a section and trim it.
   initTimelineMarks();
   initTimeline();   // the timeline listens to the clip
 
