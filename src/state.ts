@@ -27,7 +27,7 @@ export interface AppState {
   clip: Clip;                   // the takes, the keep range, and what was trimmed away —
                                 // everything else asks this object what the clip is
 
-  marks: number[];              // 0..1, up to two pending marks bounding the region to cut —
+  marks: number[];              // 0..1, up to two pending marks bounding the section to cut —
                                 // the half-made selection, which the view owns
 
   timerIv: number | null;       // record-clock interval id

@@ -3,7 +3,7 @@
 // a handle while playing re-clamps the playhead; while paused, moving a handle
 // previews that handle's frame.
 //
-// Removed regions ("cuts") are jumped over as they are reached, without pausing,
+// The cuts are jumped over as they are reached, without pausing,
 // so the trimmed clip plays as one continuous piece. Three pieces of state make
 // that work:
 //
@@ -40,17 +40,17 @@ let seenAt    = 0;       // watchdog: position of the playhead at the last look
 let seenTime  = 0;       // watchdog: when that look happened
 let joinFaded = false;   // the sound is down for a join that is coming
 
-// The end of the removed region the playhead sits in, in seconds, or null when
+// The end of the cut the playhead sits in, in seconds, or null when
 // it is not inside one. The cuts are stored as fractions of the clip.
 function cutEndFor(t: number): number | null {
   if (!(app.clip.total() > 0)) return null;
-  // Asked in seconds: the map holds the regions in the recording's own time, so
+  // Asked in seconds: the map holds the cuts in the recording's own time, so
   // the fraction-of-the-clip the app stores never reaches this question.
   return app.clip.timeline().endAt(t);
 }
 
 // While a bar is dragged the clip is played from wherever it is, including the
-// inside of a removed region — otherwise there would be nothing to hear.
+// inside of a cut — otherwise there would be nothing to hear.
 export function setScrubbing(on: boolean): void {
   scrubbing = on;
   askedSkip = 0;

@@ -55,6 +55,16 @@ What does stay with a flow is the sequencing that depends on the **browser** —
 as building the thumbnails, which needs the element to be holding the take first.
 Events say what changed about the clip, not when the browser is ready.
 
+## State has an owner, and a lifetime
+
+Model state belongs to the clip. View state belongs to the view module that owns the
+widget. Nothing else is shared, and `state.ts` should keep shrinking.
+
+A view module's state is an **object with a lifetime**, not module-level `let`s:
+`ui/live-timeline.ts` keeps thirteen variables at module scope today, which is why
+"start a new session" is thirty lines of manual tidying (`resetAll`) and why the app
+cannot be exercised twice in one page. A new session should be one call.
+
 ## Tests come with the rule
 
 Every rule above gets a unit test beside it, in node, with a fake behind any port.
