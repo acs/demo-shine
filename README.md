@@ -18,7 +18,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 - **Microphone** — a header toggle (disabled when no mic) with a live level meter; its audio is **mixed with the tab/system audio** in the recording
 - **Add more takes** — pressing Record after a recording appends the new one to the end of the clip; the share is kept between takes, so there is no second picker and **every take in a clip comes from the same source** (the same tab, window or screen). Reset starts a new clip; if the share ends, Record asks for another one and the next take still adds on
 - **Live timeline** — the timeline is there while a take records, filling in with the picture and the sound as they are captured (drawn from the live preview and the recorded stream's own levels, never by decoding the half-written file), and it becomes the trim timeline on stop
-- **Timeline trimmer** — drag IN/OUT handles to keep a range, **click twice to mark a region and click it to trim it away**, and **drag any bar** (a mark, or a removed region — whole or by an edge) to reposition it, with the clip playing under the bar as it moves
+- **Timeline trimmer** — drag IN/OUT handles to keep a range, then **click twice to select a section and approve it with the green check** (or by clicking inside it), with a **red cross** to leave it in and an **undo** to put it back. **An approved trim leaves the timeline**, which closes up over it, so the timeline always shows what the export will hold — the strip, the waveform, the handles and the playhead all follow. **Drag a mark or the selected section** (whole, or by an edge) to reposition it, with the clip playing under it as it moves
 - **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
 - **Audio track** — a waveform of the recording under the thumbnails, shown when the clip has sound
 - **3-second countdown** — the live preview stays visible behind it, and pressing record again during it cancels
@@ -36,7 +36,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 3. Press the red button to record — a 3-second countdown runs, and pressing the button again during it cancels; press it again to stop
 4. Press Record again to add another take to the end of the clip — the timeline then holds every take, and the trims you already made are kept
 5. The timeline holds a playback control and an audio track
-6. Play it back, drag the **blue IN** and **red OUT** handles to keep a range, or click anywhere on the timeline to play from that moment. To cut a part out, click where it starts and where it ends, then click inside the shaded region; click that region again to put it back. Marks and trimmed regions can be dragged to reposition them
+6. Play it back, drag the **blue IN** and **red OUT** handles to keep a range, or click anywhere on the timeline to play from that moment. To cut a part out, click where it starts and where it ends, then press the **green check** (or click inside the shaded section): it leaves the timeline and the rest closes up. The **red cross** leaves the section in, and the small **undo** arrow brings back what you just trimmed. Marks and the selected section can be dragged to reposition them
 7. Click **Export ↓** to encode and download
 
 ---

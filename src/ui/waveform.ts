@@ -1,13 +1,15 @@
 // The audio track shown under the video thumbnails: a waveform of the recorded
-// clip, visible only when the recording has audio. The part outside the trimmed
-// range is dimmed, so it tracks the IN/OUT handles.
+// clip, visible only when the recording has audio. It is drawn in timeline time,
+// so a trimmed-away stretch takes up no width and what is left closes up over
+// it, and the part outside the IN/OUT range is dimmed.
 
 import { app, type Part } from '../state.js';
 import { el } from './dom.js';
+import { spanAt } from '../domain/timeline.js';
+import { keptLengthNow, keptOf } from './clip.js';
 
 const BUCKETS = 600;          // horizontal resolution of the waveform
 let peaks: Float32Array | null = null;
-let span = 1;                 // fraction of the clip the decoded audio covers
 
 export function clearWaveform(): void {
   peaks = null;
@@ -33,7 +35,6 @@ export async function buildWaveform(parts: Part[]): Promise<void> {
       out.push(...computePeaks(audio, bars));
     }
     peaks = Float32Array.from(out);
-    span = 1;
     el.waveform.style.display = '';
     drawWaveform();
   } catch (err) {
@@ -62,21 +63,29 @@ export function drawWaveform(): void {
   const wave  = light ? 'rgba(59,127,255,0.55)'  : 'rgba(96,148,255,0.7)';
   const shade = light ? 'rgba(255,255,255,0.6)'  : 'rgba(6,7,16,0.6)';
 
-  // Waveform bars, centred vertically.
+  // The bars are drawn in timeline time: a trimmed-away stretch has no width on
+  // screen, so its bars are left out and the rest closes up over it.
+  const kept = keptLengthNow();
+  if (!(kept > 0)) return;
+  const cuts = app.cuts.map(c => ({ s: c.s * app.duration, e: c.e * app.duration }));
+  const step = app.duration / peaks.length;
+  const bw = Math.max(0.7, (w / kept) * step);
+
   const mid = h / 2;
-  const bw  = (w * span) / peaks.length;
   ctx.fillStyle = wave;
   for (let i = 0; i < peaks.length; i++) {
+    const at = (i + 0.5) * step;                       // when that bar was heard
+    if (spanAt(cuts, at) >= 0) continue;               // not in the clip any more
     const barH = Math.max(1, peaks[i] * (h - 4));
-    ctx.fillRect(i * bw, mid - barH / 2, Math.max(bw * 0.7, 0.6), barH);
+    ctx.fillRect((keptOf(at) / kept) * w - bw / 2, mid - barH / 2, bw, barH);
   }
 
-  // Dim everything outside the trimmed region.
-  const x0 = app.trimStart * w;
-  const x1 = app.trimEnd * w;
+  // Dim everything outside the kept range.
+  const x0 = (keptOf(app.trimStart * app.duration) / kept) * w;
+  const x1 = (keptOf(app.trimEnd * app.duration) / kept) * w;
   ctx.fillStyle = shade;
-  ctx.fillRect(0, 0, x0, h);
-  ctx.fillRect(x1, 0, w - x1, h);
+  ctx.fillRect(0, 0, Math.max(0, x0), h);
+  ctx.fillRect(Math.min(w, x1), 0, Math.max(0, w - x1), h);
 }
 
 function computePeaks(audio: AudioBuffer, buckets: number): Float32Array {

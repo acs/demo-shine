@@ -18,7 +18,7 @@ import { app } from '../state.js';
 import { el } from './dom.js';
 import { drawFrame } from './preview.js';
 import { clampToClip, cutEndAt } from '../domain/timeline.js';
-import { clipNext, clipSeek, clipSeekAndDraw, clipTime, partEnded } from './clip.js';
+import { clipNext, clipSeek, clipSeekAndDraw, clipTime, keptLengthNow, keptOf, partEnded } from './clip.js';
 
 const PLAY_ICON  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
 const PAUSE_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
@@ -61,7 +61,7 @@ export function togglePlayback(): void {
 }
 
 export function startPlayback(): void {
-  if (app.phase !== 'review' || el.rv.readyState < 2) return;
+  if (app.phase !== 'review' || el.rv.readyState < 1) return;
   const start = clipStart();
   const end   = clipEnd();
   // (Re)start from IN when the playhead sits outside the trimmed range.
@@ -72,7 +72,7 @@ export function startPlayback(): void {
 
 // Start (or keep) playing from an absolute time — a click on the timeline.
 export function playFrom(time: number): void {
-  if (app.phase !== 'review' || el.rv.readyState < 2) return;
+  if (app.phase !== 'review' || el.rv.readyState < 1) return;
   const start = clipStart();
   const end   = clipEnd();
   let t = clampToClip(time, start, end);
@@ -121,7 +121,7 @@ export function resetPlayback(): void {
 
 // Called by the timeline when a trim handle moves.
 export function syncToTrim(moved: 'start' | 'end'): void {
-  if (app.phase !== 'review' || el.rv.readyState < 2) return;
+  if (app.phase !== 'review' || el.rv.readyState < 1) return;
   const start = clipStart();
   const end   = clipEnd();
   if (app.playing) {
@@ -139,12 +139,23 @@ export function syncToTrim(moved: 'start' | 'end'): void {
 
 // Jump the playhead to an absolute time (thumbnail scrub), keeping transport state.
 export function seekPlayback(time: number): void {
-  if (app.phase !== 'review' || el.rv.readyState < 2) return;
+  if (app.phase !== 'review' || el.rv.readyState < 1) return;
   const t = clampToClip(time, clipStart(), clipEnd());
   askedSkip = 0;
   updatePlayhead(t);
   if (app.playing) void clipSeek(t);
   else             void clipSeekAndDraw(t);
+}
+
+// The playhead is shown in timeline time: a trimmed-away stretch has no width on
+// screen, so the head must not sit over it.
+function updatePlayhead(time?: number): void {
+  const source = time ?? clipTime();
+  const kept = keptOf(source);
+  const total = keptLengthNow();
+  const pct = total > 0 ? (kept / total) * 100 : 0;
+  el.playhead.style.left = Math.max(0, Math.min(pct, 100)).toFixed(2) + '%';
+  el.tNow.textContent = kept.toFixed(2) + 's';
 }
 
 function loop(): void {
@@ -201,11 +212,4 @@ function updateTransport(): void {
   el.playBtn.innerHTML = app.playing ? PAUSE_ICON : PLAY_ICON;
   el.playBtn.classList.toggle('playing', app.playing);
   el.playBtn.setAttribute('aria-label', app.playing ? 'Pause' : 'Play');
-}
-
-function updatePlayhead(time?: number): void {
-  const t   = time ?? clipTime();
-  const pct = app.duration > 0 ? (t / app.duration) * 100 : 0;
-  el.playhead.style.left = Math.max(0, Math.min(pct, 100)).toFixed(2) + '%';
-  el.tNow.textContent = t.toFixed(2) + 's';
 }
