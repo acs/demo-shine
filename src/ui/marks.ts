@@ -25,7 +25,7 @@
 import { app } from '../state.js';
 import { el } from './dom.js';
 import {
-  MIN_TRIM_GAP, addSpan, moveSpan, resizeSpan, spanBetween, type Span,
+  MIN_TRIM_GAP, Span, addSpan, moveSpan, resizeSpan, spanBetween,
 } from '../domain/timeline.js';
 import { rebuildTimeline, updateSizeUI } from './timeline-ui.js';
 import { clipTime, keptLengthNow, keptOf, sourceOf } from './clip.js';
@@ -57,7 +57,7 @@ export function rescaleMarks(wasTotal: number, nowTotal: number): void {
   if (!(wasTotal > 0) || !(nowTotal > wasTotal)) { renderMarks(); return; }
   const k = wasTotal / nowTotal;
   app.marks = app.marks.map(m => m * k);
-  app.cuts  = app.cuts.map(c => ({ s: c.s * k, e: c.e * k }));
+  app.cuts  = app.cuts.map(c => Span.of(c.s * k, c.e * k));
   renderMarks();
   updateSizeUI();
 }

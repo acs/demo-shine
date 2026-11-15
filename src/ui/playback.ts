@@ -17,7 +17,8 @@
 import { app } from '../state.js';
 import { el } from './dom.js';
 import { drawClipFrame } from './preview.js';
-import { clampToClip, cutEndAt } from '../domain/timeline.js';
+import { clampToClip } from '../domain/timeline.js';
+import { TimelineMap } from '../domain/clip/TimelineMap.js';
 import { clipNext, clipSeek, clipSeekAndDraw, clipTime, hasNextPart, keptLengthNow, keptOf, partEnded, partLeft } from './clip.js';
 import { FADE_S, fadeIn, fadeOut, fadeReset } from './fade.js';
 import { clearFrame, holdFrame } from './dissolve.js';
@@ -44,8 +45,9 @@ let joinFaded = false;   // the sound is down for a join that is coming
 // it is not inside one. The cuts are stored as fractions of the clip.
 function cutEndFor(t: number): number | null {
   if (!(app.duration > 0)) return null;
-  const end = cutEndAt(app.cuts, t / app.duration);
-  return end === null ? null : end * app.duration;
+  // Asked in seconds: the map holds the regions in the recording's own time, so
+  // the fraction-of-the-clip the app stores never reaches this question.
+  return TimelineMap.forClip(app.cuts, app.duration).endAt(t);
 }
 
 // While a bar is dragged the clip is played from wherever it is, including the
