@@ -18,7 +18,8 @@ import { app } from '../state.js';
 import { el } from './dom.js';
 import { drawFrame } from './preview.js';
 import { clampToClip, cutEndAt } from '../domain/timeline.js';
-import { clipNext, clipSeek, clipSeekAndDraw, clipTime, keptLengthNow, keptOf, partEnded } from './clip.js';
+import { clipNext, clipSeek, clipSeekAndDraw, clipTime, hasNextPart, keptLengthNow, keptOf, partEnded, partLeft } from './clip.js';
+import { FADE_S, fadeIn, fadeOut, fadeReset } from './fade.js';
 
 const PLAY_ICON  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
 const PAUSE_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
@@ -36,6 +37,7 @@ let nudgedAt  = 0;       // when playback was last re-asked for after a seek
 let scrubbing = false;   // a bar is being dragged: play even inside a cut
 let seenAt    = 0;       // watchdog: position of the playhead at the last look
 let seenTime  = 0;       // watchdog: when that look happened
+let joinFaded = false;   // the sound is down for a join that is coming
 
 // The end of the removed region the playhead sits in, in seconds, or null when
 // it is not inside one. The cuts are stored as fractions of the clip.
@@ -97,6 +99,8 @@ export function playFrom(time: number): void {
 function beginPlayback(): void {
   app.playing = true;
   askedSkip = 0;
+  joinFaded = false;
+  fadeReset();               // starting again at full, whatever a pause left behind
   seenAt = clipTime();
   seenTime = Date.now();
   updateTransport();
@@ -110,7 +114,9 @@ export function pausePlayback(): void {
   app.playing = false;
   askedSkip = 0;
   seekSince = 0;
+  joinFaded = false;
   if (!el.rv.paused) el.rv.pause();
+  fadeReset();               // a fade must never be left half-applied
   cancelLoop();
   updateTransport();
   updatePlayhead();
@@ -119,7 +125,9 @@ export function pausePlayback(): void {
 export function resetPlayback(): void {
   app.playing = false;
   askedSkip = 0;
+  joinFaded = false;
   cancelLoop();
+  fadeReset();
   updateTransport();
   updatePlayhead(0);
 }
@@ -218,12 +226,22 @@ function loop(): void {
     return;
   }
 
+  // Another recording follows this one, and the video is nearly at its end:
+  // bring the sound down over the last FADE_S, so the join is not abrupt. The
+  // sound comes back up as the next recording starts.
+  if (hasNextPart() && partLeft() <= FADE_S) {
+    if (!joinFaded) { joinFaded = true; fadeOut(); }
+  } else {
+    joinFaded = false;
+  }
+
   // The recording in the video has run out: carry on into the next one, so the
   // joined clip plays as a whole.
   if (partEnded()) {
     void clipNext().then(joined => {
       if (!app.playing) return;
       if (!joined) { pausePlayback(); return; }
+      fadeIn(); joinFaded = false;      // up from the join's silence
       app.playRaf = requestAnimationFrame(loop);
     });
     return;
