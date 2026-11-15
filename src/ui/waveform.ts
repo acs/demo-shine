@@ -8,7 +8,7 @@
 
 import { app, type Part } from '../state.js';
 import { el } from './dom.js';
-import { spanAt } from '../domain/timeline.js';
+import { SpanSet } from '../domain/clip/SpanSet.js';
 import { keptLengthNow, keptOf } from './clip.js';
 
 const BUCKETS = 600;          // horizontal resolution of the waveform
@@ -93,7 +93,7 @@ export function drawWaveform(): void {
   // screen, so its bars are left out and the rest closes up over it.
   const kept = keptLengthNow();
   if (!(kept > 0)) return;
-  const cuts = app.cuts.map(c => ({ s: c.s * app.duration, e: c.e * app.duration }));
+  const gone = SpanSet.of(app.cuts).scaled(app.duration);   // the removed regions, in seconds
   const step = app.duration / peaks.length;
   const bw = Math.max(0.7, (w / kept) * step);
 
@@ -101,7 +101,7 @@ export function drawWaveform(): void {
   ctx.fillStyle = wave;
   for (let i = 0; i < peaks.length; i++) {
     const at = (i + 0.5) * step;                       // when that bar was heard
-    if (spanAt(cuts, at) >= 0) continue;               // not in the clip any more
+    if (gone.contains(at)) continue;                   // not in the clip any more
     const barH = Math.max(1, peaks[i] * (h - 4));
     ctx.fillRect((keptOf(at) / kept) * w - bw / 2, mid - barH / 2, bw, barH);
   }

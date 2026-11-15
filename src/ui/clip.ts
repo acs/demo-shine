@@ -15,7 +15,7 @@
 
 import { app } from '../state.js';
 import { el } from './dom.js';
-import { partAt, partStart, keptLength, keptTime, sourceTime, type Span } from '../domain/timeline.js';
+import { Span, partAt, partStart, keptLength, keptTime, sourceTime } from '../domain/timeline.js';
 import { drawFrame, seekTo } from './preview.js';
 
 // Object URLs for the parts, created on first use and released with the session.
@@ -34,7 +34,7 @@ export function totalDuration(): number {
 
 function cutsSeconds(): Span[] {
   const d = app.duration;
-  return app.cuts.map(c => ({ s: c.s * d, e: c.e * d }));
+  return app.cuts.map(c => Span.of(c.s * d, c.e * d));
 }
 
 export function keptLengthNow(): number {
