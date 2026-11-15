@@ -1,7 +1,7 @@
 // The audio track shown under the video thumbnails: a waveform of the recorded
 // clip, visible only when the recording has audio. It is drawn in timeline time,
 // so a trimmed-away stretch takes up no width and what is left closes up over
-// it, and the part outside the IN/OUT range is dimmed.
+// it, and the stretches outside the IN/OUT range are dimmed.
 //
 // The bars come from a decode of the recording, which is read-only: the file, the
 // playback and the export are untouched by it. See PEAK_RATE below.

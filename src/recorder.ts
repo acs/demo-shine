@@ -10,8 +10,7 @@ import { el, setStatus, toast } from './ui/dom.js';
 import { startMirror, stopMirror, seekWithin } from './ui/preview.js';
 import { runCountdown, cancelCountdown } from './ui/countdown.js';
 import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
-import { buildThumbs, resetTrim, updateSizeUI, updateTrimUI } from './ui/timeline-ui.js';
-import { resetMarks, rescaleMarks } from './ui/marks.js';
+import { buildThumbs } from './ui/timeline-ui.js';
 import { clipLoad, clipTime, keptLengthNow } from './ui/clip.js';
 import { pausePlayback, resetPlayback, seekPlayback } from './ui/playback.js';
 import { buildWaveform } from './ui/waveform.js';
@@ -332,7 +331,7 @@ function onCaptureEnded(): void {
   setStatus('ready', keepClip ? 'Ready to export · press Record to share again' : 'Ready');
 }
 
-// A recording just finished: keep it as a part, then open the review on the
+// A recording just finished: keep it as a take, then open the review on the
 // whole joined clip. A second recording is added to the end, so the trims made
 // before it stay put (only the removed regions are re-based, to keep them over
 // the same moments of the recording).
@@ -345,16 +344,16 @@ async function onRecStop(): Promise<void> {
   setPhase('review');
   setStatus('ready', 'Ready to export');
 
-  // Measure this part before it joins the others: its length is where the next
-  // part will start, and the total drives the whole timeline.
-  const duration = (await measurePart(blob)) ?? wallClock;
+  // Measure this take before it joins the others: its length is where the next
+  // take will start, and the total drives the whole timeline.
+  const duration = (await measureTake(blob)) ?? wallClock;
+  // The clip announces the take and everything showing the clip reacts — the marks
+  // and the handles do so at once. The strip cannot: it is drawn by seeking the
+  // element, which only now starts holding the new take.
   app.clip.addTake(blob, duration);
 
   resetPlayback();
   await clipLoad(appending ? app.clip.takes.count() - 1 : 0);
-  if (appending) rescaleMarks(previous, app.clip.total());   // the clip re-bases its cuts; the marks are the view's
-  else           { resetTrim(); resetMarks(); }
-  updateTrimUI();          // the handles come back from the live progress bar
 
   // The clip may be a cropped region, so size the preview canvas to it.
   if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
@@ -366,11 +365,10 @@ async function onRecStop(): Promise<void> {
   void buildThumbs().then(() => seekPlayback(park));
   el.timeline.classList.add('on');
   el.btnExp.style.display   = '';
-  updateSizeUI();
 }
 
 // The real length of a recorded blob, or null if the browser will not say.
-async function measurePart(blob: Blob): Promise<number | null> {
+async function measureTake(blob: Blob): Promise<number | null> {
   const vid = document.createElement('video');
   vid.preload = 'auto';
   const url = URL.createObjectURL(blob);
