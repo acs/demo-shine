@@ -93,7 +93,7 @@ export function drawWaveform(): void {
   // screen, so its bars are left out and the rest closes up over it.
   const kept = keptLengthNow();
   if (!(kept > 0)) return;
-  const gone = app.clip.cuts.scaled(app.clip.total());   // the removed regions, in seconds
+  const gone = app.clip.cuts.scaled(app.clip.total());   // the cuts, in seconds
   const step = app.clip.total() / peaks.length;
   const bw = Math.max(0.7, (w / kept) * step);
 

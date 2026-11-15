@@ -18,6 +18,10 @@ as working because `npm run lint`, `npm run typecheck` and `npm run build` passe
 
 Say which level a change got, in the pull request, in those words.
 
+The recorder's row is not a gap to be closed later: `getDisplayMedia` needs a user
+gesture and a browser picker, so **no harness here can start a share**. Keep changes
+to that flow small, and ask the user to run it.
+
 ## Unit tests
 
 - Every rule in `domain/` has one. A rule without a test is a rule that will drift.

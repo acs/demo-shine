@@ -333,7 +333,7 @@ function onCaptureEnded(): void {
 
 // A recording just finished: keep it as a take, then open the review on the
 // whole joined clip. A second recording is added to the end, so the trims made
-// before it stay put (only the removed regions are re-based, to keep them over
+// before it stay put (only the cuts are re-based, to keep them over
 // the same moments of the recording).
 async function onRecStop(): Promise<void> {
   const blob = new Blob(app.chunks, { type: 'video/webm' });

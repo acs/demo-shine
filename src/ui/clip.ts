@@ -2,7 +2,7 @@
 //
 // Every press of Record produces a take. They are played in order in the same
 // <video>, so that everything else in the app — the playhead, the trim handles,
-// the removed regions, the thumbnails, the export — can go on thinking in terms
+// the cuts, the thumbnails, the export — can go on thinking in terms
 // of a single clip of `app.clip.total()` seconds. This module is the only place
 // that knows where a time in that clip falls: which take holds it, and where in
 // that take.
