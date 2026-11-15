@@ -23,12 +23,16 @@ import { clipNext, clipSeek, clipSeekAndDraw, clipTime, keptLengthNow, keptOf, p
 const PLAY_ICON  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
 const PAUSE_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
 
-const STALL_MS = 2500;   // how long the playhead may stand still before we stop
+const STALL_MS  = 2500;   // how long the playhead may stand still before we stop
+const SEEK_MS   = 12000;  // ...but a seek gets longer: jumping a trim means seeking
+const NUDGE_MS  = 600;    // ...and a seek that left the clip paused gets a moment
 
 const clipStart = () => app.trimStart * app.duration;
 const clipEnd   = () => app.trimEnd * app.duration;
 
 let askedSkip = 0;       // cut end already seeked to, so it is asked for once
+let seekSince = 0;       // when the seek in flight started (0 = none)
+let nudgedAt  = 0;       // when playback was last re-asked for after a seek
 let scrubbing = false;   // a bar is being dragged: play even inside a cut
 let seenAt    = 0;       // watchdog: position of the playhead at the last look
 let seenTime  = 0;       // watchdog: when that look happened
@@ -105,6 +109,7 @@ function beginPlayback(): void {
 export function pausePlayback(): void {
   app.playing = false;
   askedSkip = 0;
+  seekSince = 0;
   if (!el.rv.paused) el.rv.pause();
   cancelLoop();
   updateTransport();
@@ -162,12 +167,37 @@ function loop(): void {
   if (!app.playing) return;
   const now = Date.now();
 
-  // Watchdog: a playhead that stops moving means a stalled decode or seek, so
-  // stop rather than leaving the transport claiming to play.
+  // A seek is not a stall. Jumping over a trimmed stretch means seeking, and a
+  // MediaRecorder file can take a while over one, so it is allowed its own,
+  // longer time before being given up on.
+  if (el.rv.seeking) {
+    if (!seekSince) seekSince = now;
+    if (now - seekSince > SEEK_MS) { pausePlayback(); return; }
+    app.playRaf = requestAnimationFrame(loop);
+    return;
+  }
+  if (seekSince) {
+    seekSince = 0;
+    if (el.rv.paused && !el.rv.ended) {
+      // A seek can leave the clip paused; it was playing, so ask it again.
+      nudgedAt = now;
+      void el.rv.play().catch(() => {});
+      app.playRaf = requestAnimationFrame(loop);
+      return;
+    }
+    seenAt = clipTime(); seenTime = now;      // the stall clock starts fresh
+  }
+
+  // Watchdog: a playhead that stops moving means a stalled decode, so stop rather
+  // than leaving the transport claiming to play.
   if (clipTime() !== seenAt) { seenAt = clipTime(); seenTime = now; }
   else if (seenTime && now - seenTime > STALL_MS) { pausePlayback(); return; }
 
-  if (el.rv.paused && !el.rv.ended) { pausePlayback(); return; }
+  if (el.rv.paused && !el.rv.ended) {
+    if (now - nudgedAt < NUDGE_MS) { app.playRaf = requestAnimationFrame(loop); return; }
+    pausePlayback();
+    return;
+  }
 
   // A trimmed-away stretch is jumped over without pausing, so playback carries
   // straight on. The seek is asked for once and the playhead is left alone until
