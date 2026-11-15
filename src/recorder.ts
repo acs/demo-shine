@@ -39,6 +39,7 @@ let countdownAborted = false;
 // Acquire the display and show it live on the preview. Called on load; also the
 // fallback when the browser blocked the gesture-less attempt.
 export async function startCapture(): Promise<void> {
+  if (typeof navigator.mediaDevices?.getDisplayMedia !== 'function') return;
   if (app.stream || app.phase === 'starting' || app.phase === 'recording') return;
   try {
     setPhase('starting');
