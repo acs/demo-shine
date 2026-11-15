@@ -5,6 +5,7 @@
 // `let` variables. Domain logic stays out of this file.
 
 import type { Span } from './domain/timeline.js';
+import { TakeRepository } from './infra/takes.js';
 
 export type Phase = 'idle' | 'starting' | 'live' | 'countdown' | 'recording' | 'review' | 'encoding';
 
@@ -17,18 +18,13 @@ export interface Rect {
 }
 
 // One recording. A session is a list of them, reviewed as one joined clip.
-export interface Part {
-  blob: Blob;
-  duration: number;   // seconds of media
-}
-
 export interface AppState {
   phase: Phase;
 
   stream: MediaStream | null;   // from getDisplayMedia
   rec: MediaRecorder | null;    // live recording
   chunks: Blob[];               // blobs of the recording in progress
-  parts: Part[];                // the recordings made so far, in order
+  takes: TakeRepository;        // the recordings made so far, in order
 
   duration: number;             // seconds of the whole joined clip
   trimStart: number;            // 0..1
@@ -72,7 +68,7 @@ export const app: AppState = {
   stream: null,
   rec: null,
   chunks: [],
-  parts: [],
+  takes: new TakeRepository(),
 
   duration: 0,
   trimStart: 0,
