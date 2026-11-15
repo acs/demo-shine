@@ -1,8 +1,13 @@
-// Export and reset use cases: write the trimmed clip to WebM, and tear the
-// session down again.
+// The export and reset flows: wrap the use cases in the buttons, the status line
+// and the phase they belong to.
 //
-// The export is encoded offline by src/offline-export.ts: nothing plays, so it
-// runs faster than real time and keeps going with the tab in the background.
+// What the export should write is decided by src/application/export-clip.ts and
+// encoded by src/offline-export.ts, which between them need nothing from here.
+// What is left is the flow: refusing early where WebCodecs is missing, disabling
+// the controls, and saying how it went.
+//
+// The export is encoded offline: nothing plays, so it runs faster than real time
+// and keeps going with the tab in the background.
 //
 // There used to be a second, real-time export that played the clip through a
 // canvas and recorded that with MediaRecorder. It was only reachable on browsers
@@ -21,13 +26,17 @@ import { stopRec, startCapture, releaseDisplay } from './recorder.js';
 import { pausePlayback, resetPlayback } from './ui/playback.js';
 import { clearWaveform } from './ui/waveform.js';
 import { exportOffline, offlineAvailable, type OfflineStats } from './offline-export.js';
+import { planExport } from './application/export-clip.js';
+import { FADE_S } from './ui/fade.js';
 
 // The offline export writes the whole file itself, so there is nothing to feed a
 // recorder and nothing to play: it reports how far it has got as it goes, and
 // hands back what it managed so the caller can say it.
 async function exportOfflineHere(): Promise<OfflineStats> {
-  const end = Math.min(app.clip.trim.end * app.clip.total(), app.clip.total() - 0.05);
-  const { blob, stats } = await exportOffline(source => encodingAt(source, end));
+  const plan = planExport(app.clip, { audio: app.recAudio, fadeSeconds: FADE_S });
+  // Nothing to write is the same error the encoder used to raise, on the same path.
+  if (!plan) throw new Error('nothing to export');
+  const { blob, stats } = await exportOffline(plan, source => encodingAt(source, plan.to));
   dlBlob(blob, 'demoshine-' + ts() + '.webm');
   console.info('DemoShine export', stats);
   return stats;

@@ -1,0 +1,127 @@
+// What an export is made of, decided before anything is encoded.
+//
+// The exporter used to work this out as it went: a running offset, the take each
+// kept stretch belongs to and where it first lands, the window of each take to
+// decode, the joins to fade and dissolve — all interleaved with the encoding, in
+// a file that also owns a canvas, a demuxer and a WebCodecs encoder. That is a
+// plan, and a plan is a value: it is decided once, from the clip, and it can be
+// read and tested without a browser in sight.
+//
+// Both units live here together, as they do in TimelineMap: a piece holds seconds
+// of the recording and seconds of the output file, and no caller has to convert
+// between them by hand.
+
+import type { Segment } from './Clip.js';
+import type { Take } from './Take.js';
+import { TimelineMap } from './TimelineMap.js';
+
+/** One kept stretch of one take, placed in the file the export will write. */
+export interface ExportPiece {
+  takeIndex: number;
+  from: number;   // seconds of the recording, inclusive
+  to: number;     // seconds of the recording, exclusive
+  at: number;     // seconds into the output file
+}
+
+/** One take that survives the trims: the stretch of it to decode, and where it lands. */
+export interface ExportStep {
+  takeIndex: number;
+  local: { from: number; to: number };   // the take's own seconds
+  at: number;                            // where it begins in the output file
+  joinAt: number | null;                 // where the join to dissolve from begins, or null
+}
+
+/** What an export needs that is not the clip: whether there is sound, how a join fades. */
+export interface ExportSettings {
+  audio: boolean;
+  fadeSeconds: number;
+}
+
+export class ExportPlan {
+  private constructor(
+    readonly pieces: readonly ExportPiece[],
+    readonly steps: readonly ExportStep[],
+    readonly takes: readonly Take[],
+    readonly from: number,          // the trim range, in seconds of the recording
+    readonly to: number,
+    readonly total: number,         // seconds the file will hold
+    readonly audio: boolean,
+    readonly fadeSeconds: number,
+    private readonly map: TimelineMap,
+    private readonly base: number,  // where the range starts on the kept timeline
+    private readonly starts: readonly number[],
+  ) {}
+
+  /**
+   * Place the kept stretches end to end on the output timeline. `segments` is
+   * what the clip says survives the trims; `range` is what the trim handles hold,
+   * in seconds of the recording; `map` is the recording and the timeline mapped
+   * both ways, which is where a frame's position comes from.
+   */
+  static of(
+    segments: readonly Segment[],
+    takes: readonly Take[],
+    range: { from: number; to: number },
+    map: TimelineMap,
+    settings: ExportSettings,
+  ): ExportPlan {
+    const starts: number[] = [];
+    let running = 0;
+    for (const take of takes) { starts.push(running); running += take.duration; }
+
+    const pieces: ExportPiece[] = [];
+    let total = 0;
+    for (const seg of segments) {
+      pieces.push({ takeIndex: seg.takeIndex, from: seg.from, to: seg.to, at: total });
+      total += seg.to - seg.from;
+    }
+
+    // Where each take first lands on the output timeline: that is where a join
+    // is, and so where a dissolve has to start.
+    const firstAt = new Map<number, number>();
+    for (const piece of pieces) if (!firstAt.has(piece.takeIndex)) firstAt.set(piece.takeIndex, piece.at);
+
+    const steps: ExportStep[] = [...firstAt.keys()].map((takeIndex, i) => {
+      const at = firstAt.get(takeIndex) ?? 0;
+      const start = starts[takeIndex] ?? 0;
+      return {
+        takeIndex,
+        at,
+        joinAt: i === 0 ? null : at,          // the first take has nothing to join to
+        // The stretch of this take the range holds, in the take's own seconds.
+        local: {
+          from: Math.max(range.from, start) - start,
+          to: Math.min(range.to, start + (takes[takeIndex]?.duration ?? 0)) - start,
+        },
+      };
+    });
+
+    return new ExportPlan(
+      pieces, steps, takes, range.from, range.to, total, settings.audio, settings.fadeSeconds,
+      map, map.keptOf(range.from), starts,
+    );
+  }
+
+  /** Where a take begins on the recording's own timeline. */
+  startOf(takeIndex: number): number {
+    return this.starts[takeIndex] ?? 0;
+  }
+
+  /**
+   * Where a moment of the recording lands in the output file — the kept time,
+   * less where the range starts. This is the expression the exporter reached for
+   * by hand, in one place, so the frame loop has no units to mix up.
+   */
+  outputTimeOf(source: number): number {
+    return this.map.keptOf(source) - this.base;
+  }
+
+  /** Is a different take on the other side of this piece? Then a join is there. */
+  joinsPrev(piece: number): boolean {
+    return piece > 0 && this.pieces[piece].takeIndex !== this.pieces[piece - 1].takeIndex;
+  }
+
+  joinsNext(piece: number): boolean {
+    return piece + 1 < this.pieces.length && this.pieces[piece].takeIndex !== this.pieces[piece + 1].takeIndex;
+  }
+}
