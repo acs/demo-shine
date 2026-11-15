@@ -3,7 +3,7 @@
 
 import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
-import { seekTo, seekWithin, drawGrid } from './ui/preview.js';
+import { seekTo, drawGrid } from './ui/preview.js';
 import { setTimerMs } from './ui/timer.js';
 import { resetTrim, updateSizeUI } from './ui/timeline-ui.js';
 import { cutSeconds, resetMarks } from './ui/marks.js';
@@ -112,29 +112,24 @@ function exportWebM(): Promise<void> {
     rec.start(100);
 
     seekTo(el.rv, s).then(() => {
-      let hopping = false;
-      // Seeking mid-playback stalls on a MediaRecorder WebM, so an export hop
-      // pauses, seeks, waits, then plays on — the same dance the preview does.
-      async function hopCut(to: number): Promise<void> {
-        hopping = true;
-        el.rv.pause();
-        const ok = await seekWithin(el.rv, to, 4000);
-        hopping = false;
-        if (!ok || el.rv.currentTime >= e) { finish(); return; }
-        try { await el.rv.play(); } catch { finish(); return; }
-        requestAnimationFrame(frame);
-      }
-
+      let asked = 0;          // cut end already seeked to, so it is asked for once
+      let stuckAt = 0;        // when the playhead last failed to get out of a cut
       function frame() {
-        if (hopping) { requestAnimationFrame(frame); return; }
         const t = el.rv.currentTime;
         if (t >= e || el.rv.ended || el.rv.paused) { finish(); return; }
         const cut = spanAt(cuts, t);
         if (cut >= 0) {
-          // Trimmed away: jump past it instead of encoding it.
-          void hopCut(Math.min(cuts[cut].e, e));
+          // Trimmed away: jump past it, without pausing, so the capture and its
+          // audio carry straight on. If the element will not come out of the cut,
+          // stop rather than record the whole trimmed region.
+          const to = Math.min(cuts[cut].e, e);
+          if (!el.rv.seeking && asked !== to) { asked = to; el.rv.currentTime = to; }
+          if (!stuckAt) stuckAt = Date.now();
+          if (Date.now() - stuckAt > 5000) { finish(); return; }
+          requestAnimationFrame(frame);
           return;
         }
+        asked = 0; stuckAt = 0;
         ectx?.drawImage(el.rv, 0, 0, ec.width, ec.height);
         const removed = spanLength(cuts, s, t);
         el.encBar.style.width = Math.min(((t - s - removed) / keptDur) * 100, 99).toFixed(1) + '%';
