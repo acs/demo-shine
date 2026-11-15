@@ -27,9 +27,28 @@ import type { TakeRepository } from './TakeRepository.js';
 /** A stretch of one take that survives the trims, in seconds of the recording. */
 export type Segment = { part: number; from: number; to: number };
 
+/**
+ * What just happened to the clip. The view listens for these instead of
+ * re-rendering because it happened to be the caller: the model says what changed,
+ * and everything that shows the clip decides what to do about it.
+ *
+ * Each event carries what a listener needs to react without asking more questions
+ * — `previousTotal` is there so a view holding positions as fractions of the clip
+ * can re-base them itself, which is what the marks do.
+ */
+export type ClipEvent =
+  | { type: 'take-added'; take: Take; index: number; previousTotal: number }
+  | { type: 'trim-approved'; region: Span; removed: number }
+  | { type: 'trim-undone'; region: Span }
+  | { type: 'keep-range'; trim: Trim }
+  | { type: 'cleared' };
+
+export type ClipListener = (event: ClipEvent) => void;
+
 export class Clip {
   private keep = Trim.of(0, 1);
   private lastApproved: { before: SpanSet; region: Span; removed: number } | null = null;
+  private readonly listeners = new Set<ClipListener>();
 
   private constructor(
     private readonly repo: TakeRepository,
@@ -39,6 +58,12 @@ export class Clip {
   /** A clip with nothing in it yet. */
   static empty(takes: TakeRepository): Clip {
     return new Clip(takes, SpanSet.EMPTY);
+  }
+
+  /** Listen for what happens to the clip. Call the returned function to stop. */
+  onChange(listener: ClipListener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
   }
 
   get takes(): TakeRepository {
@@ -74,6 +99,7 @@ export class Clip {
   /** The handles were dragged. */
   keepRange(trim: Trim): void {
     this.keep = trim;
+    this.announce({ type: 'keep-range', trim });
   }
 
   /**
@@ -87,6 +113,7 @@ export class Clip {
     const now = this.total();
     if (before > 0 && now > before) this.removed = this.removed.scaled(before / now);
     this.lastApproved = null;
+    this.announce({ type: 'take-added', take, index: this.repo.count() - 1, previousTotal: before });
     return take;
   }
 
@@ -100,6 +127,7 @@ export class Clip {
     this.removed = this.removed.add(region);
     const removed = before - this.keptLength();
     this.lastApproved = { before: previous, region, removed };
+    this.announce({ type: 'trim-approved', region, removed });
     return removed;
   }
 
@@ -119,6 +147,7 @@ export class Clip {
     if (!last) return null;
     this.removed = last.before;
     this.lastApproved = null;
+    this.announce({ type: 'trim-undone', region: last.region });
     return last.region;
   }
 
@@ -151,5 +180,11 @@ export class Clip {
     this.removed = SpanSet.EMPTY;
     this.keep = Trim.of(0, 1);
     this.lastApproved = null;
+    this.announce({ type: 'cleared' });
+  }
+
+  /** Tell the listeners, on a copy of the set so one may unsubscribe while it runs. */
+  private announce(event: ClipEvent): void {
+    for (const listener of [...this.listeners]) listener(event);
   }
 }
