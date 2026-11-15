@@ -39,6 +39,9 @@ export interface AppState {
   webcamStream: MediaStream | null;   // webcam capture (video only)
   webcamOn: boolean;            // webcam overlay shown/baked into the recording
 
+  micStream: MediaStream | null;      // microphone capture (audio only)
+  micOn: boolean;               // microphone mixed into the recording
+
   captureW: number;
   captureH: number;
 
@@ -73,6 +76,9 @@ export const app: AppState = {
 
   webcamStream: null,
   webcamOn: false,
+
+  micStream: null,
+  micOn: false,
 
   captureW: 1280,
   captureH: 720,
