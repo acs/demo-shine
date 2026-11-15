@@ -1,4 +1,4 @@
-// A recorded part: one press of Record.
+// A recorded take: one press of Record.
 //
 // It has identity — a session's takes are numbered, and the element, the waveform
 // and the export all have to mean the same one — and it has a lifetime: the blob
@@ -6,7 +6,7 @@
 // TakeRepository, which is the only thing that reaches the browser for it.
 //
 // A take has to have a length, because the joined timeline is the sum of them: a
-// zero-length part would make every position after it wrong, so it cannot be
+// zero-length take would make every position after it wrong, so it cannot be
 // constructed.
 
 export class Take {

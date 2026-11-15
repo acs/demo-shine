@@ -25,7 +25,7 @@ import type { Take } from './Take.js';
 import type { TakeRepository } from './TakeRepository.js';
 
 /** A stretch of one take that survives the trims, in seconds of the recording. */
-export type Segment = { part: number; from: number; to: number };
+export type Segment = { takeIndex: number; from: number; to: number };
 
 /**
  * What just happened to the clip. The view listens for these instead of
@@ -168,7 +168,7 @@ export class Clip {
       let end = Math.min(to, takes[index] ? this.repo.startOf(index) + takes[index].duration : to);
       for (const cut of gone.spans) if (cut.s > at + 0.001 && cut.s < end) end = cut.s;
       if (end <= at + 0.001) break;
-      out.push({ part: index, from: at, to: end });
+      out.push({ takeIndex: index, from: at, to: end });
       at = end;
     }
     return out;

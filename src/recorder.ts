@@ -331,7 +331,7 @@ function onCaptureEnded(): void {
   setStatus('ready', keepClip ? 'Ready to export · press Record to share again' : 'Ready');
 }
 
-// A recording just finished: keep it as a part, then open the review on the
+// A recording just finished: keep it as a take, then open the review on the
 // whole joined clip. A second recording is added to the end, so the trims made
 // before it stay put (only the removed regions are re-based, to keep them over
 // the same moments of the recording).
@@ -344,9 +344,9 @@ async function onRecStop(): Promise<void> {
   setPhase('review');
   setStatus('ready', 'Ready to export');
 
-  // Measure this part before it joins the others: its length is where the next
-  // part will start, and the total drives the whole timeline.
-  const duration = (await measurePart(blob)) ?? wallClock;
+  // Measure this take before it joins the others: its length is where the next
+  // take will start, and the total drives the whole timeline.
+  const duration = (await measureTake(blob)) ?? wallClock;
   // The clip announces the take and everything showing the clip reacts — the marks
   // and the handles do so at once. The strip cannot: it is drawn by seeking the
   // element, which only now starts holding the new take.
@@ -368,7 +368,7 @@ async function onRecStop(): Promise<void> {
 }
 
 // The real length of a recorded blob, or null if the browser will not say.
-async function measurePart(blob: Blob): Promise<number | null> {
+async function measureTake(blob: Blob): Promise<number | null> {
   const vid = document.createElement('video');
   vid.preload = 'auto';
   const url = URL.createObjectURL(blob);
