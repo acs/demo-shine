@@ -68,10 +68,11 @@ export function updateSizeUI(): void {
 
 // ── the export's progress ────────────────────────────────────────────────────
 //
-// The export plays the kept range into a canvas in real time, so the timeline
-// shows it the way playback does: the playhead travels across the clip while the
-// header counts down. `from` and `to` are times in the recording; the export runs
-// at the clip's own speed, so what is left of the range is what is left to wait.
+// The export is encoded offline, about ten times faster than the clip, and it
+// says how far it has got as it writes: the playhead travels across the clip and
+// the header counts down how much of it is left to write. `from` and `to` are
+// times in the recording, and what is counted down is clip time rather than the
+// wait — which is what the number beside "ENCODING" means.
 
 // The chip says what the clip holds. The export takes it over while it runs and
 // puts it back afterwards, so what it said is the export's own business and it is
