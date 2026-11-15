@@ -3,6 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  // Always upgrade to HTTPS: screen capture needs a secure context, and some
+  // browsers reject getDisplayMedia even on http://localhost, so there is no
+  // plain-HTTP mode.
+  if (location.protocol === 'http:') {
+    var host = location.hostname + (location.port && location.port !== '80' ? ':' + location.port : '');
+    location.replace('https://' + host + location.pathname + location.search + location.hash);
+  }
+</script>
 <meta name="description" content="Pure browser screen recorder. No extensions. No uploads. WebM screen recording with timeline trimming and audio.">
 <meta property="og:title" content="DemoShine">
 <meta property="og:description" content="Pure browser screen recorder — WebM with trimming and audio. No extensions, no uploads.">
