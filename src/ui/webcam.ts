@@ -54,26 +54,35 @@ export function stopWebcam(): void {
   el.webcamBtn.setAttribute('aria-pressed', 'false');
 }
 
-// Paint the webcam, mirrored, into the bottom-right of a box.
+// Paint the webcam, mirrored, as a circle in the bottom-right of a box.
 export function drawWebcamOverlay(c: CanvasRenderingContext2D, boxX: number, boxY: number, boxW: number, boxH: number): void {
   const v = el.wcv;
   if (!app.webcamOn || v.readyState < 2 || !v.videoWidth) return;
 
-  const w = Math.round(boxW * 0.24);
-  const h = Math.round(w * v.videoHeight / v.videoWidth);
-  const m = Math.round(boxW * 0.03);
-  const x = boxX + boxW - w - m;
-  const y = boxY + boxH - h - m;
+  const d = Math.round(boxW * 0.24);            // circle diameter
+  const m = Math.round(boxW * 0.03);            // margin from the corner
+  const cx = boxX + boxW - m - d / 2;
+  const cy = boxY + boxH - m - d / 2;
+
+  // Scale the video to cover the circle (centre-cropped, no letterboxing).
+  const scale = Math.max(d / v.videoWidth, d / v.videoHeight);
+  const dw = v.videoWidth * scale;
+  const dh = v.videoHeight * scale;
 
   c.save();
-  c.translate(x + w / 2, y + h / 2);
+  c.beginPath();
+  c.arc(cx, cy, d / 2, 0, Math.PI * 2);
+  c.clip();
+  c.translate(cx, cy);
   c.scale(-1, 1);                               // mirror like a selfie
-  c.drawImage(v, -w / 2, -h / 2, w, h);
+  c.drawImage(v, -dw / 2, -dh / 2, dw, dh);
   c.restore();
 
   c.save();
-  c.strokeStyle = 'rgba(255,255,255,0.65)';
-  c.lineWidth = Math.max(1.5, boxW / 420);
-  c.strokeRect(x, y, w, h);
+  c.beginPath();
+  c.arc(cx, cy, d / 2, 0, Math.PI * 2);
+  c.strokeStyle = 'rgba(255,255,255,0.72)';
+  c.lineWidth = Math.max(2, boxW / 260);
+  c.stroke();
   c.restore();
 }
