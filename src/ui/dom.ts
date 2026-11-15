@@ -49,6 +49,7 @@ export const el = {
   helpBtn:   byId<HTMLButtonElement>('help-btn'),
   helpClose: byId<HTMLButtonElement>('help-close'),
   compatWarn: byId<HTMLElement>('compat-warn'),
+  idleHint:  byId<HTMLElement>('idle-hint'),
   metaTheme: byId<HTMLMetaElement>('meta-theme'),
   themeIco:  byId<SVGElement>('theme-ico'),
   themeBtn:  byId<HTMLButtonElement>('theme-btn'),

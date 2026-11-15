@@ -130,6 +130,10 @@ request.
 
 Safari does not support `getDisplayMedia` for screen capture.
 
+Screen capture needs a **secure context**, so the app must be served over
+`https://` (or `http://localhost`). Over plain HTTP on any other host the app
+says so and disables recording.
+
 ---
 
 ## Deploy your own
