@@ -1,6 +1,7 @@
 // Composition root: wires the UI to the use cases and boots the app.
 
 import { el, setStatus, toast } from './ui/dom.js';
+import { showVersion } from './ui/version.js';
 import { onPhaseChange, app, type Phase } from './state.js';
 import { loadPrefs } from './prefs.js';
 import { applyTheme, toggleTheme } from './ui/theme.js';
@@ -32,6 +33,7 @@ function init(): void {
 
   drawGrid();
   startStarfield();
+  showVersion();
   updateTrimUI();
   updateSizeUI();
 

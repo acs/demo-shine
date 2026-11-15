@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write   # the version bump and its tag are committed back to main
   pages: write
   id-token: write
 
@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HUSKY: 0
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -26,6 +28,25 @@ jobs:
         with:
           node-version: 22
           cache: npm
+
+      # Every merge to main is a new version: the patch is bumped, the bump is
+      # pushed back and tagged `vX.Y.Z`, and the build below bakes that number
+      # into the app — so the tag, main's package.json and the number beside the
+      # logo all agree. A push made with GITHUB_TOKEN does not start another run,
+      # and `[skip ci]` says so as well. Bump the minor or major by hand before
+      # merging when a release deserves it: see VERSIONING.md.
+      - name: Bump the version and tag it
+        id: version
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          npm version patch --no-git-tag-version
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          git add package.json package-lock.json
+          git commit -m "chore: bump version to v$VERSION [skip ci]"
+          git tag "v$VERSION"
+          git push --atomic origin HEAD:main "v$VERSION"
 
       - run: npm ci
       - run: npm run build
@@ -47,3 +68,6 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Report the deployed version
+        run: echo "Deployed DemoShine v${{ needs.build.outputs.version }} — ${{ steps.deployment.outputs.page_url }}"

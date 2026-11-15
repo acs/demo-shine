@@ -26,6 +26,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 - **Tab / system audio** — requested on every capture (`audio: true` plus Chrome's `systemAudio: 'include'` hint, so the audio option is offered); the browser owns that checkbox, so the app says so when a share comes back silent, and **Reset** returns to the picker to redo it
 - **Light / dark mode** — full CSS variable theming, persisted to `localStorage`
 - **PWA** — installable as a desktop app, offline-capable for core recording and WebM export
+- **Version on screen** — the deployed build's version sits beside the logo, so it is clear which build a window is running (and whether a reload picked up a new deploy); every merge to `main` bumps it, tags it and deploys — see [VERSIONING.md](VERSIONING.md)
 - **No data leaves your browser** — nothing is uploaded or stored remotely
 
 ---
@@ -89,6 +90,7 @@ demoshine/
 ├── tsconfig.json         # TypeScript config (type-check / editor)
 ├── eslint.config.js      # ESLint (flat config)
 ├── vitest.config.ts      # Test runner config
+├── VERSIONING.md         # How the version is bumped, tagged and shown
 └── .husky/pre-commit     # Runs lint-staged on commit
 ```
 
@@ -155,6 +157,10 @@ Pushing to `main` runs the **Deploy** workflow, which runs `npm run build` and
 publishes `dist/` to GitHub Pages. Enable it once in
 **Settings → Pages → Source → GitHub Actions** (the workflow also attempts to
 enable Pages itself).
+
+The same workflow bumps the patch version, tags it and commits it back to `main`,
+so every deploy has its own number beside the logo — see
+[VERSIONING.md](VERSIONING.md).
 
 To deploy elsewhere, run `npm run build` and publish the `dist/` folder.
 
