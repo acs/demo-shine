@@ -57,10 +57,14 @@ export interface Publication {
   cid: string;
 }
 
-// A minute between polls is too slow to watch and a second is what Bluesky's own
-// example uses; two minutes of processing before we stop asking and say so.
+// A second between polls is what Bluesky's own example uses. The budget follows the
+// clip, because the video service *transcodes* and that is not real time: a flat two
+// minutes is outlived by a ten-minute clip, and the publish would then fail on a
+// video the service was still working on. Twice the clip's length, floored, so even
+// a very short one is given two minutes.
 const POLL_INTERVAL_MS = 1000;
-const MAX_POLLS = 120;
+const MIN_POLLS = 120;
+const POLLS_PER_CLIP_SECOND = 2;
 
 export async function publishToBluesky(
   clip: Clip,
@@ -89,8 +93,10 @@ export async function publishToBluesky(
   deps.onProgress?.({ stage: 'uploading' });
   const uploaded = await deps.service.uploadVideo(video);
 
-  const finished = await waitForVideo(deps, uploaded, wait);
-  if (!finished.blob) throw new Error(whyStillNoVideo(finished));
+  const interval = deps.pollIntervalMs ?? POLL_INTERVAL_MS;
+  const maxPolls = deps.maxPolls ?? Math.max(MIN_POLLS, Math.ceil(plan.total * POLLS_PER_CLIP_SECOND));
+  const finished = await waitForVideo(deps, uploaded, wait, maxPolls, interval);
+  if (!finished.blob) throw new Error(whyStillNoVideo(finished, Math.round((maxPolls * interval) / 60_000)));
 
   deps.onProgress?.({ stage: 'posting' });
   const post = BlueskyPost.of({
@@ -116,9 +122,9 @@ async function waitForVideo(
   deps: PublicationDeps,
   first: VideoJob,
   wait: (ms: number) => Promise<void>,
+  maxPolls: number,
+  interval: number,
 ): Promise<VideoJob> {
-  const maxPolls = deps.maxPolls ?? MAX_POLLS;
-  const interval = deps.pollIntervalMs ?? POLL_INTERVAL_MS;
   let job = first;
   for (let polls = 0; !job.blob && polls <= maxPolls; polls++) {
     if (job.state === 'JOB_STATE_FAILED') return job;
@@ -129,10 +135,10 @@ async function waitForVideo(
   return job;
 }
 
-function whyStillNoVideo(job: VideoJob): string {
+function whyStillNoVideo(job: VideoJob, minutes: number): string {
   if (job.state === 'JOB_STATE_FAILED') {
     return 'Bluesky could not process the video: '
       + (job.message || job.error || job.failureCode || job.state);
   }
-  return 'Bluesky is still processing the video';
+  return `Bluesky is still processing the video after ${minutes} minutes`;
 }
