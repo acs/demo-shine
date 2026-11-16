@@ -87,6 +87,7 @@ can end it:
 | `Dissolve` | the frame held at a join, spent on it | one join |
 | `Meter` | the microphone's level graph and its frame loop | the microphone toggle, not the session |
 | `Countdown` | the 3-2-1, whether it was cancelled, and where to go back to | one countdown |
+| `ExportMenu` | the File/Bluesky menu under the Export button, and the listeners that end it | one opening |
 | `MarkDrag`, `CropDrag` | a gesture in flight | the gesture |
 | `Output`, `Mixer` | the canvas a take is drawn on, and the graph that mixes system audio with the microphone | a take |
 
