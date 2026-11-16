@@ -310,6 +310,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .pub-btn.ghost{background:transparent;border-color:var(--glass-b);color:var(--text-mid);}
 .pub-btn.ghost:hover{background:var(--glass-b);color:var(--text);}
 .pub-status{font-family:var(--font-mono);font-size:11px;color:var(--text-mid);letter-spacing:.04em;line-height:1.5;overflow-wrap:anywhere;}
+.pub-status a{color:var(--blue);}
 .pub-status:empty{display:none;}
 .pub-error{font-family:var(--font-mono);font-size:11px;color:var(--crimson);letter-spacing:.04em;line-height:1.5;overflow-wrap:anywhere;}
 

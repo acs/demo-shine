@@ -84,6 +84,17 @@ export class BlueskyPost {
   }
 }
 
+/**
+ * The web address of a published post, from its AT-URI. `at://<repo>/<collection>/<rkey>`
+ * becomes `bsky.app/profile/<handle>/post/<rkey>`, which is where a person can open
+ * it; the repo — the DID — stands in when the handle is not known.
+ */
+export function postUrl(uri: string, handle?: string | null): string {
+  const repo = uri.replace(/^at:\/\//, '').split('/')[0];
+  const rkey = uri.split('/').pop() ?? '';
+  return `https://bsky.app/profile/${handle || repo}/post/${rkey}`;
+}
+
 // Bluesky counts a post in graphemes, which is what a person sees: an emoji with
 // its modifiers, an accented letter built from two code points. `Intl.Segmenter`
 // knows the boundaries; a code point count is the honest fallback where it is not
