@@ -7,7 +7,8 @@
 
 import { el } from './dom.js';
 import {
-  blueskyAccount, signInToBluesky, signOutOfBluesky, publishClip, type BlueskyAccount, type PublishProgress,
+  blueskyAccount, signInToBluesky, signOutOfBluesky, publishClip,
+  type BlueskyAccount, type PublishedPost, type PublishProgress,
 } from '../publisher.js';
 
 const STAGE: Record<PublishProgress['stage'], string> = {
@@ -87,12 +88,25 @@ class PublishDialog {
     el.pubStatus.textContent = '';
     await publishClip(el.pubText.value, el.pubAlt.value, {
       onProgress: progress => this.status(this.line(progress)),
-      onDone: uri => this.status('Published ✓ ' + uri),
+      onDone: post => this.published(post),
       onError: message => { this.status(''); this.fail(message); },
     });
     this.busy = false;
     el.pubGo.disabled = false;
     el.pubCancel.disabled = false;
+  }
+
+  // A published post is something to open, so it is shown as a link rather than as
+  // the AT-URI it is written at.
+  private published(post: PublishedPost): void {
+    el.pubStatus.textContent = 'Published ✓ ';
+    const link = document.createElement('a');
+    link.href = post.url;
+    link.title = post.uri;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = post.url;
+    el.pubStatus.append(link);
   }
 
   private line(progress: PublishProgress): string {

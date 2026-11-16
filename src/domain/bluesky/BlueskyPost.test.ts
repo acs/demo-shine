@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { AspectRatio } from './AspectRatio.js';
-import { BlueskyPost, type BlobRef, POST_MAX_GRAPHEMES, POST_MAX_LANGS } from './BlueskyPost.js';
+import { BlueskyPost, type BlobRef, POST_MAX_GRAPHEMES, POST_MAX_LANGS, postUrl } from './BlueskyPost.js';
 
 const at = new Date('2026-01-02T03:04:05.000Z');
 const ratio = AspectRatio.of(1280, 720);
@@ -58,5 +58,18 @@ describe('BlueskyPost', () => {
 
   it('refuses more than three languages', () => {
     expect(() => postOf({ langs: ['a', 'b', 'c', 'd'] })).toThrow(new RegExp(String(POST_MAX_LANGS)));
+  });
+});
+
+describe('postUrl', () => {
+  const uri = 'at://did:plc:me/app.bsky.feed.post/3kabc';
+
+  it('points at the post in the web client, by handle', () => {
+    expect(postUrl(uri, 'alice.bsky.social')).toBe('https://bsky.app/profile/alice.bsky.social/post/3kabc');
+  });
+
+  it('falls back to the repo in the uri when the handle is not known', () => {
+    expect(postUrl(uri)).toBe('https://bsky.app/profile/did:plc:me/post/3kabc');
+    expect(postUrl(uri, '')).toBe('https://bsky.app/profile/did:plc:me/post/3kabc');
   });
 });
