@@ -53,10 +53,14 @@ interface JobStatusBody {
   message?: string;
 }
 
-/** What a video-service response can carry: a job, or the finished blob alone. */
-interface VideoServiceBody {
+/**
+ * What a video-service response can carry. `getJobStatus` wraps the job in
+ * `jobStatus`; the upload sends the job bare — Bluesky's own tutorial parses that
+ * response as the status directly; and an already-processed video comes back as an
+ * error that still carries the finished blob.
+ */
+interface VideoServiceBody extends Partial<JobStatusBody> {
   jobStatus?: JobStatusBody;
-  blob?: BlobRef;
   error?: string;
   message?: string;
 }
@@ -134,17 +138,20 @@ export class XrpcBlueskyService implements BlueskyService {
     throw new Error(`Bluesky ${response.status}: ${detail || response.statusText}`);
   }
 
-  // The video service is not the PDS. It answers an already-processed video with
-  // an *error* that still carries the finished blob, so the whole body is read
-  // and the job taken from wherever it is — and anything else becomes a message
-  // that says what came back, rather than the crash a missing field caused.
+  // The video service does not answer the way the PDS does. `getJobStatus` wraps
+  // the job in `jobStatus`, but the *upload* sends it bare, and an already-processed
+  // video comes back as an error that still carries the blob. So the job is taken
+  // from wherever it is, and anything else becomes a message that says what came
+  // back — the body included, since a bare status is what a missing field hid.
   private async jobFrom(response: Response): Promise<VideoJob> {
     const body = await readJson<VideoServiceBody>(response);
-    if (body?.jobStatus) return jobOf(body.jobStatus, body.blob ?? null);
-    if (body?.blob) return jobOf({}, body.blob);
-    const detail = body?.message || body?.error;
-    throw new Error(`Bluesky's video service answered ${response.status}`
-      + (detail ? `: ${detail}` : ' with no job in the response'));
+    const wrapped = body?.jobStatus;
+    const bare = body && (body.jobId || body.state || body.blob) ? body : null;
+    const status = wrapped ?? bare;
+    if (status) return jobOf(status, body?.blob ?? null);
+    const said = body?.message || body?.error;
+    const seen = body ? JSON.stringify(body).slice(0, 200) : 'no JSON body';
+    throw new Error(`Bluesky's video service answered ${response.status}: ${said ?? seen}`);
   }
 }
 
