@@ -16,16 +16,23 @@
 // the `client_id` exactly, so it is a deploy-time fact, not something a dev build
 // can fake: signing in only completes on the deployed app.
 
-import { BrowserOAuthClient } from '@atproto/oauth-client-browser';
+import { BrowserOAuthClient, buildLoopbackClientId } from '@atproto/oauth-client-browser';
 import type { OAuthSession } from '@atproto/oauth-client-browser';
 import type { BlueskyService, VideoJob } from '../application/bluesky-service.js';
 import type { BlobRef, PostRecord } from '../domain/bluesky/BlueskyPost.js';
 import type { PublishableVideo } from '../domain/bluesky/PublishableVideo.js';
 
-const CLIENT_METADATA_URL = 'https://acs.github.io/demo-shine/oauth-client-metadata.json';
+const DEPLOYED_HOST = 'acs.github.io';
+const CLIENT_METADATA_URL = `https://${DEPLOYED_HOST}/demo-shine/oauth-client-metadata.json`;
 const HANDLE_RESOLVER = 'https://bsky.social';
 const VIDEO_SERVICE = 'https://video.bsky.app';
 const SERVICE_TOKEN_MINUTES = 30;
+// The scope the hosted document declares: creating the post, and minting the
+// video upload's service token.
+const OAUTH_SCOPE = 'atproto transition:generic';
+
+// What atproto's own `isLoopbackHost` accepts as a loopback client's host.
+const LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
 
 // What `XrpcBlueskyService` needs of a session — a slice of `OAuthSession`, so a
 // test can stand in for it without the OAuth machinery.
@@ -47,10 +54,17 @@ interface JobStatusBody {
 }
 
 export class XrpcBlueskyService implements BlueskyService {
-  constructor(
-    private readonly session: BlueskySession,
-    private readonly fetchFn: typeof fetch = fetch,
-  ) {}
+  private readonly session: BlueskySession;
+  private readonly fetchFn: typeof fetch;
+
+  constructor(session: BlueskySession, fetchFn: typeof fetch = globalThis.fetch) {
+    this.session = session;
+    // Bound to the global: every call below is `this.fetchFn(...)`, and a bare
+    // `fetch` refuses any receiver but a Window — calling it with the service as
+    // its receiver is what raised "Failed to execute 'fetch' on 'Window':
+    // Illegal invocation", and why the tests (which inject a fake) missed it.
+    this.fetchFn = fetchFn.bind(globalThis);
+  }
 
   async uploadVideo(video: PublishableVideo): Promise<VideoJob> {
     const token = await this.serviceToken();
@@ -131,9 +145,36 @@ export class XrpcBlueskyService implements BlueskyService {
 let clientPromise: Promise<BrowserOAuthClient> | null = null;
 let session: OAuthSession | null = null;
 
+/**
+ * Whether this page is served the one way a sign-in needs no deployed document:
+ * over http, on a loopback host. atproto's loopback client is meant for native
+ * apps, but it is also how a dev server signs in — the authorization server
+ * hard-codes the metadata, so there is no `client_id` URL to host. It is http
+ * only: the scheme and host are what the server checks, and the port is ignored.
+ */
+export function isLoopback(location: { protocol: string; hostname: string }): boolean {
+  return location.protocol === 'http:' && LOOPBACK_HOSTS.includes(location.hostname);
+}
+
+/**
+ * The loopback `client_id` for a location, carrying the scope this app needs —
+ * `buildLoopbackClientId` gives `http://localhost?redirect_uri=…`, and without a
+ * scope the parsed metadata defaults to `atproto` alone, which cannot write.
+ */
+export function loopbackClientId(location: { hostname: string; pathname: string; port: string }, scope: string): string {
+  return `${buildLoopbackClientId(location)}&scope=${encodeURIComponent(scope)}`;
+}
+
 function client(): Promise<BrowserOAuthClient> {
-  clientPromise ??= BrowserOAuthClient.load({ clientId: CLIENT_METADATA_URL, handleResolver: HANDLE_RESOLVER });
+  clientPromise ??= createClient();
   return clientPromise;
+}
+
+function createClient(): Promise<BrowserOAuthClient> {
+  const here = window.location;
+  return isLoopback(here)
+    ? BrowserOAuthClient.load({ clientId: loopbackClientId(here, OAUTH_SCOPE), handleResolver: HANDLE_RESOLVER, allowHttp: true })
+    : BrowserOAuthClient.load({ clientId: CLIENT_METADATA_URL, handleResolver: HANDLE_RESOLVER });
 }
 
 /**
@@ -149,21 +190,58 @@ export async function initBluesky(): Promise<void> {
   }
 }
 
+/**
+ * A handle the way a person types it: trimmed, and without the display `@`. The
+ * `@` is how a mention is shown, not part of the handle — which is domain-like,
+ * `alice.bsky.social` or a custom `alice.com` — and the OAuth server cannot
+ * resolve one that carries it.
+ */
+export function normalizeHandle(handle: string): string {
+  return handle.trim().replace(/^@/, '');
+}
+
 /** Send the person to their authorization server. The promise never resolves. */
 export async function signIn(handle: string): Promise<void> {
-  if (window.location.hostname !== 'acs.github.io') {
-    throw new Error('Bluesky sign-in only completes on the deployed app (acs.github.io)');
+  const here = window.location;
+  if (!isLoopback(here) && here.hostname !== DEPLOYED_HOST) {
+    throw new Error('Bluesky sign-in works on the deployed app, or on a dev server over http at 127.0.0.1');
   }
-  await (await client()).signIn(handle);
+  await (await client()).signIn(normalizeHandle(handle));
 }
 
 export async function signOut(): Promise<void> {
   await session?.signOut();
   session = null;
+  handle = null;
 }
 
 export function blueskyDid(): string | null {
   return session?.did ?? null;
+}
+
+let handle: string | null = null;
+
+/**
+ * The signed-in account's handle — `alice.bsky.social` — because that is what a
+ * person recognises and the DID is not. Resolved once and remembered; null when
+ * there is no session or the account will not say, and the caller falls back to
+ * the DID.
+ */
+export async function blueskyHandle(): Promise<string | null> {
+  if (!session) return null;
+  handle ??= await fetchHandle(session);
+  return handle;
+}
+
+/** The handle behind a DID, asked of the account's own PDS. Null if it will not say. */
+export async function fetchHandle(session: BlueskySession): Promise<string | null> {
+  try {
+    const response = await session.fetchHandler(`/xrpc/com.atproto.repo.describeRepo?repo=${encodeURIComponent(session.did)}`);
+    if (!response.ok) return null;
+    return (await response.json() as { handle?: string }).handle ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** The service the publish use case wants, once there is a session. */
