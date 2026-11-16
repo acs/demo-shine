@@ -142,11 +142,11 @@ npm install
 
 | Command | Does |
 |---|---|
-| `npm run dev` | Starts the Vite dev server at https://localhost:5173 with hot module replacement |
-| `npm run dev:http` | The same over plain HTTP on 127.0.0.1 — the way to sign in to Bluesky without deploying |
+| `npm run dev` | Starts the Vite dev server at **http://127.0.0.1:5173** — plain HTTP on a loopback host — with hot module replacement |
+| `npm run dev:https` | The same over HTTPS with a self-signed certificate, for what needs a secure origin |
 | `npm run build` | Type-checks and builds the production site into `dist/` |
-| `npm run preview` | Serves the built site (`dist/`) over HTTPS with the PWA/service worker active |
-| `npm run preview:http` | The same over plain HTTP on 127.0.0.1 |
+| `npm run preview` | Serves the built site (`dist/`) over plain HTTP on 127.0.0.1, with the PWA/service worker active |
+| `npm run preview:https` | The same over HTTPS |
 | `npm run typecheck` | Type-checks without emitting |
 | `npm run lint` | ESLint (use `npm run lint:fix` to auto-fix) |
 | `npm test` | Runs the Vitest unit tests (`npm run test:watch` to watch) |
@@ -154,16 +154,18 @@ npm install
 The dev server disables the service worker — its cache-first strategy would
 shadow HMR — so use `npm run preview` to exercise the real PWA locally.
 
-HTTPS is on by default, using a self-signed certificate from
-`@vitejs/plugin-basic-ssl`. Browsers will warn until that certificate is
-trusted, and the service worker will not register on an untrusted one — trust
-the certificate (add it to your keychain) for install/offline testing.
+HTTPS is one flag away — `npm run dev:https`, and `preview:https` — using a
+self-signed certificate from `@vitejs/plugin-basic-ssl`. Browsers warn until that
+certificate is trusted, and the service worker will not register on an untrusted
+one — so trust it (add it to your keychain) if you need HTTPS for install or
+offline testing.
 
-The app redirects any `http://` access to `https://`, because screen capture needs
-a secure context — except on a loopback host (`127.0.0.1`, `localhost`, `[::1]`),
-which is a secure context already and the one origin atproto's OAuth lets a dev
-server sign in from. `npm run dev:http` serves over http on `127.0.0.1` for
-exactly that; the sign-in works from there, with no tunnel and nothing deployed.
+Plain HTTP is the default for both servers, on `127.0.0.1`. That is a **secure
+context** already, so screen capture works, and it is the only origin atproto's
+OAuth allows a dev server to sign in from — which is how publishing to Bluesky is
+tested without deploying anything, and without a tunnel. The app still redirects any
+`http://` access to `https://` except on a loopback host, so a deployment reached
+over http is upgraded.
 
 Linting runs on every commit through a Husky pre-commit hook, and the CI
 workflow runs lint, type-check, tests and the build on every push and pull
