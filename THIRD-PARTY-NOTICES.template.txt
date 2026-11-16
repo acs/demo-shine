@@ -23,3 +23,17 @@ Mediabunny {{mediabunny}}
   The MPL is file-level: it covers Mediabunny's own files and not the rest of
   this application, so DemoShine remains MIT. Its full text sits with the source
   (LICENSE in the package) and at https://mozilla.org/MPL/2.0/.
+
+-------------------------------------------------------------------------------
+
+AT Protocol OAuth client for the browser {{@atproto/oauth-client-browser}}
+  (with the @atproto/* and @atproto-labs/* packages it resolves, and core-js
+  {{core-js}})
+  https://github.com/bluesky-social/atproto  ·  https://github.com/zloirock/core-js
+  MIT License
+  Copyright (c) 2023-2025 Bluesky Social PBC  ·  core-js © 2014-2026 Denis Pushkarev
+
+  What it does here: the optional Bluesky sign-in and publishing path. It drives
+  a public-client OAuth flow — PKCE, pushed authorization requests, and DPoP —
+  and signs the account's own requests. It is loaded only when a clip is
+  published, never on a normal load, and never at all if you do not publish.

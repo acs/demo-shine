@@ -60,7 +60,9 @@ Publishing takes the export one step further: the kept range is written as **MP4
 handed to Bluesky's video service, and a post is written that carries the finished
 video. Bluesky takes `video/mp4` and nothing else, so this path does not reuse the
 WebM download — it encodes its own MP4. Everything that needs the network or an
-access token sits behind a port, so the sequencing is tested in node.
+access token sits behind a port, so the sequencing is tested in node. The client
+that holds the session is loaded only when a sign-in comes back or a clip is
+published, so a normal load carries none of it.
 
 | word | what it is | in the code |
 |---|---|---|
@@ -68,6 +70,7 @@ access token sits behind a port, so the sequencing is tested in node.
 | **publishable video** | the MP4 to upload, with its name and the ratio the post shows it at. Bluesky takes `video/mp4` up to 300 MB | `PublishableVideo` |
 | **Bluesky post** | the `app.bsky.feed.post` record that carries the video as an `app.bsky.embed.video` | `BlueskyPost` |
 | **video job** | Bluesky's processing of an uploaded video, watched until it hands back the blob | `VideoJob`, `BlueskyService` (the port) |
+| **Bluesky client** | where publishing's network lives: the OAuth session, and the XRPC calls the use case needs | `XrpcBlueskyService`, `initBluesky()` |
 | **aspect ratio** | the whole-number width:height a post shows its media at | `AspectRatio` |
 
 ## The view, and what has a lifetime
