@@ -205,10 +205,36 @@ export async function signIn(handle: string): Promise<void> {
 export async function signOut(): Promise<void> {
   await session?.signOut();
   session = null;
+  handle = null;
 }
 
 export function blueskyDid(): string | null {
   return session?.did ?? null;
+}
+
+let handle: string | null = null;
+
+/**
+ * The signed-in account's handle — `alice.bsky.social` — because that is what a
+ * person recognises and the DID is not. Resolved once and remembered; null when
+ * there is no session or the account will not say, and the caller falls back to
+ * the DID.
+ */
+export async function blueskyHandle(): Promise<string | null> {
+  if (!session) return null;
+  handle ??= await fetchHandle(session);
+  return handle;
+}
+
+/** The handle behind a DID, asked of the account's own PDS. Null if it will not say. */
+export async function fetchHandle(session: BlueskySession): Promise<string | null> {
+  try {
+    const response = await session.fetchHandler(`/xrpc/com.atproto.repo.describeRepo?repo=${encodeURIComponent(session.did)}`);
+    if (!response.ok) return null;
+    return (await response.json() as { handle?: string }).handle ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** The service the publish use case wants, once there is a session. */

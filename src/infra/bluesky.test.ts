@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isLoopback, loopbackClientId, normalizeHandle, XrpcBlueskyService, type BlueskySession } from './bluesky.js';
+import { fetchHandle, isLoopback, loopbackClientId, normalizeHandle, XrpcBlueskyService, type BlueskySession } from './bluesky.js';
 import { AspectRatio } from '../domain/bluesky/AspectRatio.js';
 import type { PostRecord } from '../domain/bluesky/BlueskyPost.js';
 import { PublishableVideo } from '../domain/bluesky/PublishableVideo.js';
@@ -130,5 +130,18 @@ describe('normalizeHandle', () => {
     expect(normalizeHandle('  @alice.bsky.social ')).toBe('alice.bsky.social');
     expect(normalizeHandle('alice.bsky.social')).toBe('alice.bsky.social');
     expect(normalizeHandle('@alice.com')).toBe('alice.com');   // a custom domain is a handle too
+  });
+});
+
+describe('fetchHandle', () => {
+  it('reads the handle from the account, not the DID', async () => {
+    const session = new FakeSession(() => json({ handle: 'alice.bsky.social', did: 'did:plc:me' }));
+
+    expect(await fetchHandle(session)).toBe('alice.bsky.social');
+    expect(session.calls[0].path).toBe('/xrpc/com.atproto.repo.describeRepo?repo=did%3Aplc%3Ame');
+  });
+
+  it('gives nothing back, so the caller can fall back to the DID', async () => {
+    expect(await fetchHandle(new FakeSession(() => json({}, 500)))).toBeNull();
   });
 });
