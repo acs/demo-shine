@@ -80,6 +80,8 @@ demoshine/
 │   ├── infra/            # Browser boundary adapters
 │   │   ├── takes.ts        # InMemoryTakeRepository — owns the takes' object URLs
 │   │   ├── codecs.ts       # WebM mime / codec selection
+│   │   ├── export-target.ts # which container an export writes (WebM, MP4) and its codecs
+│   │   ├── bluesky.ts      # the OAuth session + XRPC calls; loaded only when publishing
 │   │   └── download.ts     # Blob download trigger
 │   └── ui/               # View layer (DOM) — one module per widget, each exporting the object its state lives on
 │       ├── dom.ts          # Central element registry + status/toast helpers
@@ -105,6 +107,7 @@ demoshine/
 ├── public/               # Copied verbatim into the build
 │   ├── manifest.json       # PWA manifest
 │   ├── sw.js               # Service worker — cache-first offline support
+│   ├── oauth-client-metadata.json # the Bluesky OAuth client_id document
 │   └── icon.svg            # App icon
 ├── vite.config.ts        # Dev server + build config
 ├── tsconfig.json         # TypeScript config (type-check / editor)

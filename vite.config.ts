@@ -13,7 +13,7 @@ const { version } = JSON.parse(readFileSync('package.json', 'utf8')) as { versio
 // go stale the next time a dependency is bumped.
 function thirdPartyNotices(): string {
   return readFileSync('THIRD-PARTY-NOTICES.template.txt', 'utf8')
-    .replace(/\{\{([a-z0-9-]+)\}\}/g, (_match, pkg: string) => {
+    .replace(/\{\{([@a-z0-9/.-]+)\}\}/g, (_match, pkg: string) => {
       const meta = JSON.parse(readFileSync(`node_modules/${pkg}/package.json`, 'utf8')) as { version: string };
       return meta.version;
     });

@@ -86,6 +86,13 @@ function init(): void {
   el.micBtn.addEventListener('click', toggleMic);
   initMic();
 
+  // A Bluesky sign-in only finishes when the authorization server sends us back.
+  // The OAuth client is heavy and only needed then, so it loads on demand: a
+  // normal load reaches for no network and does not carry it in the bundle.
+  const url = new URL(window.location.href);
+  const returning = [url.search, url.hash].some(part => part.includes('code=') || part.includes('error='));
+  if (returning) void import('./infra/bluesky.js').then(({ initBluesky }) => initBluesky());
+
   // Go live as early as the browser allows. getDisplayMedia is gated behind a
   // user gesture + picker, so we (a) try on load, and (b) start on the first
   // interaction anywhere — the capture goes live without the red button.
