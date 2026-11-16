@@ -32,11 +32,10 @@ import {
   Quality, VideoSampleSink, WEBM, WebMOutputFormat,
 } from 'mediabunny';
 import type { ExportPlan } from './domain/clip/ExportPlan.js';
-import { specFor, type ExportTarget, type TargetSpec, type VideoCodecChoice } from './infra/export-target.js';
+import { specFor, videoBitrate, type ExportTarget, type TargetSpec, type VideoCodecChoice } from './infra/export-target.js';
 import { ctx as preview, el } from './ui/dom.js';
 import { dissolve } from './ui/dissolve.js';
 
-const VIDEO_BITRATE  = 4_000_000;   // bits per second
 const AUDIO_BITRATE  = 128_000;
 const KEYFRAME_S     = 2;           // seconds between keyframes, so the file seeks
 const SAMPLE_RATE    = 48_000;
@@ -63,7 +62,7 @@ async function pickVideoCodec(spec: TargetSpec, width: number, height: number): 
   for (const choice of spec.video) {
     for (const probe of choice.probes(width, height)) {
       try {
-        if ((await VideoEncoder.isConfigSupported({ codec: probe, width, height, bitrate: VIDEO_BITRATE })).supported) return choice.name;
+        if ((await VideoEncoder.isConfigSupported({ codec: probe, width, height, bitrate: videoBitrate(width, height) })).supported) return choice.name;
       } catch { /* an unknown codec string: try the next */ }
     }
   }
@@ -141,7 +140,7 @@ export async function exportOffline(plan: ExportPlan, options: OfflineOptions = 
   });
   const video = new CanvasSource(ec, {
     codec,
-    quality: new Quality({ bitrate: VIDEO_BITRATE }),
+    quality: new Quality({ bitrate: videoBitrate(ec.width, ec.height) }),
     keyFrameInterval: KEYFRAME_S,
   });
   output.addVideoTrack(video);

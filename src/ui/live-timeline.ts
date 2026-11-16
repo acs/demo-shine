@@ -104,7 +104,7 @@ export class LiveTimeline {
     el.rFill.style.width = ((head / span) * 100).toFixed(2) + '%';
     el.playhead.style.left = ((head / span) * 100).toFixed(2) + '%';
     el.tLiveTime.textContent = clock(elapsed);
-    el.tSize.textContent = estimateWebmText(head);
+    el.tSize.textContent = estimateWebmText(head, el.cv.width, el.cv.height);
   }
 
   private elapsedSeconds(): number {
