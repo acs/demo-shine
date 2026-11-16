@@ -69,8 +69,14 @@ demoshine/
 │   │   ├── TimelineMap.ts  # Recording time ↔ kept time, in one place
 │   │   ├── Trim.ts         # The keep range, and the slider view of it
 │   │   └── ExportPlan.ts   # What the file will hold, decided before a frame is encoded
+│   ├── domain/bluesky/   # Pure logic for publishing: what a Bluesky post may hold
+│   │   ├── AspectRatio.ts  # width:height, whole numbers, reducible to smallest terms
+│   │   ├── PublishableVideo.ts # the MP4 Bluesky takes, up to 300 MB
+│   │   └── BlueskyPost.ts  # the app.bsky.feed.post record carrying the video embed
 │   ├── application/      # Use cases: the thinking, without a browser
-│   │   └── export-clip.ts  # planExport(clip, settings) → an ExportPlan
+│   │   ├── export-clip.ts  # planExport(clip, settings) → an ExportPlan
+│   │   ├── publish-to-bluesky.ts # publishToBluesky(clip, settings, deps) → a post
+│   │   └── bluesky-service.ts # the port the publish use case reaches Bluesky through
 │   ├── infra/            # Browser boundary adapters
 │   │   ├── takes.ts        # InMemoryTakeRepository — owns the takes' object URLs
 │   │   ├── codecs.ts       # WebM mime / codec selection
