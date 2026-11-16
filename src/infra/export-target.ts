@@ -13,10 +13,11 @@
 
 export type ExportTarget = 'webm' | 'mp4';
 
-/** One video codec Mediabunny knows, and the WebCodecs string that probes it. */
+/** One video codec Mediabunny knows, and the WebCodecs strings that probe it. */
 export interface VideoCodecChoice {
   name: 'vp9' | 'vp8' | 'avc';
-  probe: string;
+  /** The WebCodecs codec strings to try, in order, for a given picture size. */
+  probes: (width: number, height: number) => readonly string[];
 }
 
 export interface TargetSpec {
@@ -27,13 +28,36 @@ export interface TargetSpec {
 
 export function specFor(target: ExportTarget): TargetSpec {
   return target === 'mp4'
-    ? { mime: 'video/mp4', video: [{ name: 'avc', probe: 'avc1.42001f' }], audio: 'aac' }
+    ? { mime: 'video/mp4', video: [{ name: 'avc', probes: avcProbes }], audio: 'aac' }
     : {
         mime: 'video/webm',
         video: [
-          { name: 'vp9', probe: 'vp09.00.10.08' },
-          { name: 'vp8', probe: 'vp8' },
+          { name: 'vp9', probes: () => ['vp09.00.10.08'] },
+          { name: 'vp8', probes: () => ['vp8'] },
         ],
         audio: 'opus',
       };
+}
+
+// AVC is not one codec string: how large a picture it may carry is fixed by the
+// level in the string, and a string whose level is too small is refused outright.
+// That is the bug this table exists to prevent — `avc1.42001f` is level 3.1, good
+// only to 1280x720, so a 1080p or larger capture probed as "cannot encode MP4"
+// while the browser could encode it perfectly well. The level is chosen from the
+// picture's 16x16 macroblocks, and the profiles are tried High, Main, Baseline —
+// the order an encoder is most likely to accept.
+const AVC_LEVELS: ReadonlyArray<{ maxMacroblocks: number; level: string }> = [
+  { maxMacroblocks: 3600, level: '1f' },      // 3.1 — up to 1280x720
+  { maxMacroblocks: 8192, level: '28' },      // 4.0 — up to 1920x1080
+  { maxMacroblocks: 22080, level: '32' },     // 5.0 — up to 2560x1440
+  { maxMacroblocks: 36864, level: '33' },     // 5.1 — up to 4096x2160
+  { maxMacroblocks: 139264, level: '3c' },    // 6.0 — up to 8192x4320
+  { maxMacroblocks: Infinity, level: '3e' },  // 6.2 — beyond
+];
+
+/** The WebCodecs strings to probe AVC at a picture size, the level grown to fit it. */
+export function avcProbes(width: number, height: number): readonly string[] {
+  const macroblocks = Math.ceil(width / 16) * Math.ceil(height / 16);
+  const level = AVC_LEVELS.find(rung => macroblocks <= rung.maxMacroblocks)!.level;
+  return [`avc1.6400${level}`, `avc1.4d00${level}`, `avc1.4200${level}`];
 }
