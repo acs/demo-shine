@@ -183,13 +183,23 @@ export async function initBluesky(): Promise<void> {
   }
 }
 
+/**
+ * A handle the way a person types it: trimmed, and without the display `@`. The
+ * `@` is how a mention is shown, not part of the handle — which is domain-like,
+ * `alice.bsky.social` or a custom `alice.com` — and the OAuth server cannot
+ * resolve one that carries it.
+ */
+export function normalizeHandle(handle: string): string {
+  return handle.trim().replace(/^@/, '');
+}
+
 /** Send the person to their authorization server. The promise never resolves. */
 export async function signIn(handle: string): Promise<void> {
   const here = window.location;
   if (!isLoopback(here) && here.hostname !== DEPLOYED_HOST) {
     throw new Error('Bluesky sign-in works on the deployed app, or on a dev server over http at 127.0.0.1');
   }
-  await (await client()).signIn(handle);
+  await (await client()).signIn(normalizeHandle(handle));
 }
 
 export async function signOut(): Promise<void> {
