@@ -16,7 +16,7 @@ import type { Clip } from '../domain/clip/Clip.js';
 import type { ExportPlan, ExportSettings } from '../domain/clip/ExportPlan.js';
 import type { AspectRatio } from '../domain/bluesky/AspectRatio.js';
 import { BlueskyPost } from '../domain/bluesky/BlueskyPost.js';
-import { PublishableVideo } from '../domain/bluesky/PublishableVideo.js';
+import { PublishableVideo, VIDEO_MAX_SECONDS } from '../domain/bluesky/PublishableVideo.js';
 import type { BlueskyService, VideoJob } from './bluesky-service.js';
 import { planExport } from './export-clip.js';
 
@@ -69,6 +69,11 @@ export async function publishToBluesky(
 ): Promise<Publication> {
   const plan = planExport(clip, settings.export);
   if (!plan) throw new Error('nothing to publish');
+  // Bluesky's ceiling: ten minutes. Refuse here rather than after encoding, where
+  // the video service would say it anyway, having spent the upload.
+  if (plan.total > VIDEO_MAX_SECONDS) {
+    throw new Error(`Bluesky takes videos up to ${VIDEO_MAX_SECONDS / 60} minutes — trim this clip to publish it`);
+  }
 
   const now = deps.now ?? (() => new Date());
   const wait = deps.wait ?? ((ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms)));

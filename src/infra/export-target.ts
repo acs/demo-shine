@@ -71,8 +71,27 @@ export function avcProbes(width: number, height: number): readonly string[] {
 const BITS_PER_PIXEL = 0.12;
 const BITRATE_FLOOR = 4_000_000;
 const BITRATE_CEILING = 24_000_000;
+// A tenth off, so a budget-sized file lands under the limit rather than on it.
+const FIT_MARGIN = 0.9;
 
-export function videoBitrate(width: number, height: number, fps = 30): number {
-  const wanted = Math.round(width * height * fps * BITS_PER_PIXEL);
-  return Math.min(Math.max(wanted, BITRATE_FLOOR), BITRATE_CEILING);
+/** A file that has to fit somewhere: how long it is, and how many bytes it may take. */
+export interface FitBudget {
+  seconds: number;
+  bytes: number;
+}
+
+/**
+ * The bitrate to encode at: from the picture first — screen content needs far more
+ * bits than camera video of the same size — and then, when the file has to fit
+ * somewhere, held under a byte budget for the clip's length. A ten-minute clip at a
+ * picture-sized bitrate does not fit in 300 MB by a factor of five, so the length
+ * has to come into it; the floor wins when even that is not enough, and the caller
+ * is better off refusing a clip that long.
+ */
+export function videoBitrate(width: number, height: number, fit?: FitBudget): number {
+  const wanted = Math.round(width * height * 30 * BITS_PER_PIXEL);
+  const affordable = fit && fit.seconds > 0
+    ? Math.round((fit.bytes * 8 * FIT_MARGIN) / fit.seconds)
+    : Number.POSITIVE_INFINITY;
+  return Math.min(Math.max(Math.min(wanted, affordable), BITRATE_FLOOR), BITRATE_CEILING);
 }

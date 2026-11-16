@@ -14,6 +14,7 @@ import { exportOffline } from './offline-export.js';
 import { publishToBluesky, type PublicationProgress } from './application/publish-to-bluesky.js';
 import { AspectRatio } from './domain/bluesky/AspectRatio.js';
 import { postUrl } from './domain/bluesky/BlueskyPost.js';
+import { VIDEO_MAX_BYTES } from './domain/bluesky/PublishableVideo.js';
 import { FADE_S } from './ui/fade.js';
 import type { ExportPlan } from './domain/clip/ExportPlan.js';
 
@@ -74,6 +75,8 @@ export async function publishClip(text: string, alt: string, handlers: PublishHa
       encode: async (plan: ExportPlan) => {
         const { blob } = await exportOffline(plan, {
           target: 'mp4',
+          // Bluesky's file limit: the bitrate gives way so the file fits.
+          maxBytes: VIDEO_MAX_BYTES,
           onProgress: source => handlers.onProgress?.({ stage: 'encoding', progress: percent(source, plan.total) }),
         });
         return blob;
