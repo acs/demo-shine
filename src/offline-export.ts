@@ -58,11 +58,11 @@ export function offlineAvailable(): boolean {
 // behind it for WebM, H.264 (at a level that fits the picture) for MP4. Asked of
 // WebCodecs directly rather than of Mediabunny: its codec registry is a lot of
 // table for one question, and this is the one it is kept out of the bundle for.
-async function pickVideoCodec(spec: TargetSpec, width: number, height: number): Promise<VideoCodecChoice['name'] | null> {
+async function pickVideoCodec(spec: TargetSpec, width: number, height: number, bitrate: number): Promise<VideoCodecChoice['name'] | null> {
   for (const choice of spec.video) {
     for (const probe of choice.probes(width, height)) {
       try {
-        if ((await VideoEncoder.isConfigSupported({ codec: probe, width, height, bitrate: videoBitrate(width, height) })).supported) return choice.name;
+        if ((await VideoEncoder.isConfigSupported({ codec: probe, width, height, bitrate })).supported) return choice.name;
       } catch { /* an unknown codec string: try the next */ }
     }
   }
@@ -113,6 +113,8 @@ async function renderAudio(plan: ExportPlan): Promise<AudioBuffer | null> {
 export interface OfflineOptions {
   /** Which container to write: the download's WebM, or the MP4 Bluesky takes. */
   target?: ExportTarget;
+  /** The file has to fit in this many bytes, so the bitrate is held under it. */
+  maxBytes?: number;
   onProgress?: (source: number) => void;
 }
 
@@ -130,7 +132,8 @@ export async function exportOffline(plan: ExportPlan, options: OfflineOptions = 
   const ectx = ec.getContext('2d');
   if (!ectx) throw new Error('no 2D context for the export');
 
-  const codec = await pickVideoCodec(spec, ec.width, ec.height);
+  const bitrate = videoBitrate(ec.width, ec.height, options.maxBytes ? { seconds: plan.total, bytes: options.maxBytes } : undefined);
+  const codec = await pickVideoCodec(spec, ec.width, ec.height, bitrate);
   if (!codec) throw new Error(`this browser cannot encode ${target.toUpperCase()} offline`);
   const audio = await renderAudio(plan);
 
@@ -140,7 +143,7 @@ export async function exportOffline(plan: ExportPlan, options: OfflineOptions = 
   });
   const video = new CanvasSource(ec, {
     codec,
-    quality: new Quality({ bitrate: videoBitrate(ec.width, ec.height) }),
+    quality: new Quality({ bitrate }),
     keyFrameInterval: KEYFRAME_S,
   });
   output.addVideoTrack(video);
