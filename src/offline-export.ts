@@ -55,15 +55,17 @@ export function offlineAvailable(): boolean {
   return typeof VideoEncoder === 'function' && typeof AudioEncoder === 'function';
 }
 
-// VP9, the codec the recording itself prefers, with VP8 behind it, or H.264 when
-// the target is MP4. Asked of WebCodecs directly rather than of Mediabunny: its
-// codec registry is a lot of table for one question, and this is the one it is
-// kept out of the bundle for.
+// The first codec the target offers that this browser can encode — VP9 with VP8
+// behind it for WebM, H.264 (at a level that fits the picture) for MP4. Asked of
+// WebCodecs directly rather than of Mediabunny: its codec registry is a lot of
+// table for one question, and this is the one it is kept out of the bundle for.
 async function pickVideoCodec(spec: TargetSpec, width: number, height: number): Promise<VideoCodecChoice['name'] | null> {
-  for (const { name, probe } of spec.video) {
-    try {
-      if ((await VideoEncoder.isConfigSupported({ codec: probe, width, height, bitrate: VIDEO_BITRATE })).supported) return name;
-    } catch { /* an unknown codec string: try the next */ }
+  for (const choice of spec.video) {
+    for (const probe of choice.probes(width, height)) {
+      try {
+        if ((await VideoEncoder.isConfigSupported({ codec: probe, width, height, bitrate: VIDEO_BITRATE })).supported) return choice.name;
+      } catch { /* an unknown codec string: try the next */ }
+    }
   }
   return null;
 }
