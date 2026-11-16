@@ -10,6 +10,10 @@
 // clock goes the same way. One library reads and writes; the file it writes
 // carries the Duration and Cues that MediaRecorder leaves out.
 //
+// The container is a target: WebM for the download, MP4 (H.264/AAC) for the
+// Bluesky path — the only thing Bluesky's video service will take. The codecs
+// follow from it, in src/infra/export-target.ts; the plan is the same either way.
+//
 // What to write is not decided here. It arrives as an `ExportPlan` — the kept
 // stretches, where each lands, where the joins are — built in
 // src/application/export-clip.ts, which is where that thinking belongs and where
@@ -24,10 +28,11 @@
 // to refuse and say so.
 
 import {
-  AudioBufferSource, BufferSource, BufferTarget, CanvasSource, Input, Output, Quality,
-  VideoSampleSink, WEBM, WebMOutputFormat,
+  AudioBufferSource, BufferSource, BufferTarget, CanvasSource, Input, Mp4OutputFormat, Output,
+  Quality, VideoSampleSink, WEBM, WebMOutputFormat,
 } from 'mediabunny';
 import type { ExportPlan } from './domain/clip/ExportPlan.js';
+import { specFor, type ExportTarget, type TargetSpec, type VideoCodecChoice } from './infra/export-target.js';
 import { ctx as preview, el } from './ui/dom.js';
 import { dissolve } from './ui/dissolve.js';
 
@@ -50,17 +55,14 @@ export function offlineAvailable(): boolean {
   return typeof VideoEncoder === 'function' && typeof AudioEncoder === 'function';
 }
 
-// VP9, the codec the recording itself prefers, with VP8 behind it. Asked of
-// WebCodecs directly rather than of Mediabunny: its codec registry is a lot of
-// table for one question, and this is the one it is kept out of the bundle for.
-async function pickVideoCodec(width: number, height: number): Promise<'vp9' | 'vp8' | null> {
-  const wanted = [
-    { codec: 'vp9' as const, probe: 'vp09.00.10.08' },
-    { codec: 'vp8' as const, probe: 'vp8' },
-  ];
-  for (const { codec, probe } of wanted) {
+// VP9, the codec the recording itself prefers, with VP8 behind it, or H.264 when
+// the target is MP4. Asked of WebCodecs directly rather than of Mediabunny: its
+// codec registry is a lot of table for one question, and this is the one it is
+// kept out of the bundle for.
+async function pickVideoCodec(spec: TargetSpec, width: number, height: number): Promise<VideoCodecChoice['name'] | null> {
+  for (const { name, probe } of spec.video) {
     try {
-      if ((await VideoEncoder.isConfigSupported({ codec: probe, width, height, bitrate: VIDEO_BITRATE })).supported) return codec;
+      if ((await VideoEncoder.isConfigSupported({ codec: probe, width, height, bitrate: VIDEO_BITRATE })).supported) return name;
     } catch { /* an unknown codec string: try the next */ }
   }
   return null;
@@ -107,7 +109,16 @@ async function renderAudio(plan: ExportPlan): Promise<AudioBuffer | null> {
   return ctx.startRendering();
 }
 
-export async function exportOffline(plan: ExportPlan, onProgress?: (source: number) => void): Promise<{ blob: Blob; stats: OfflineStats }> {
+export interface OfflineOptions {
+  /** Which container to write: the download's WebM, or the MP4 Bluesky takes. */
+  target?: ExportTarget;
+  onProgress?: (source: number) => void;
+}
+
+export async function exportOffline(plan: ExportPlan, options: OfflineOptions = {}): Promise<{ blob: Blob; stats: OfflineStats }> {
+  const target = options.target ?? 'webm';
+  const onProgress = options.onProgress;
+  const spec = specFor(target);
   const started = performance.now();
   const takes = plan.takes;
   if (!plan.pieces.length) throw new Error('nothing to export');
@@ -118,18 +129,21 @@ export async function exportOffline(plan: ExportPlan, onProgress?: (source: numb
   const ectx = ec.getContext('2d');
   if (!ectx) throw new Error('no 2D context for the export');
 
-  const codec = await pickVideoCodec(ec.width, ec.height);
-  if (!codec) throw new Error('this browser cannot encode WebM offline');
+  const codec = await pickVideoCodec(spec, ec.width, ec.height);
+  if (!codec) throw new Error(`this browser cannot encode ${target.toUpperCase()} offline`);
   const audio = await renderAudio(plan);
 
-  const output = new Output({ format: new WebMOutputFormat(), target: new BufferTarget() });
+  const output = new Output({
+    format: target === 'mp4' ? new Mp4OutputFormat() : new WebMOutputFormat(),
+    target: new BufferTarget(),
+  });
   const video = new CanvasSource(ec, {
     codec,
     quality: new Quality({ bitrate: VIDEO_BITRATE }),
     keyFrameInterval: KEYFRAME_S,
   });
   output.addVideoTrack(video);
-  const sound = audio ? new AudioBufferSource({ codec: 'opus', quality: new Quality({ bitrate: AUDIO_BITRATE }) }) : null;
+  const sound = audio ? new AudioBufferSource({ codec: spec.audio, quality: new Quality({ bitrate: AUDIO_BITRATE }) }) : null;
   if (sound) output.addAudioTrack(sound);
   await output.start();
 
@@ -198,7 +212,7 @@ export async function exportOffline(plan: ExportPlan, onProgress?: (source: numb
 
   const buffer = output.target.buffer;
   if (!buffer) throw new Error('the encoder wrote nothing');
-  const blob = new Blob([buffer], { type: 'video/webm' });
+  const blob = new Blob([buffer], { type: spec.mime });
   const ms = performance.now() - started;
   return { blob, stats: { clip: plan.total, ms, realtime: (plan.total * 1000) / ms, frames, bytes: blob.size } };
 }

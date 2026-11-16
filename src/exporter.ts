@@ -33,7 +33,7 @@ async function exportOfflineHere(): Promise<OfflineStats> {
   const plan = planExport(app.clip, { audio: app.recAudio, fadeSeconds: FADE_S });
   // Nothing to write is the same error the encoder used to raise, on the same path.
   if (!plan) throw new Error('nothing to export');
-  const { blob, stats } = await exportOffline(plan, source => encodingAt(source, plan.to));
+  const { blob, stats } = await exportOffline(plan, { onProgress: source => encodingAt(source, plan.to) });
   dlBlob(blob, 'demoshine-' + ts() + '.webm');
   console.info('DemoShine export', stats);
   return stats;
