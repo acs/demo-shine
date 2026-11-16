@@ -64,6 +64,11 @@ access token sits behind a port, so the sequencing is tested in node. The client
 that holds the session is loaded only when a sign-in comes back or a clip is
 published, so a normal load carries none of it.
 
+Bluesky's own limits — ten minutes and 300 MB — are **Bluesky's**, and only this
+path knows them: nothing limits a recording, the timeline, or an export to a file.
+A clip too long to publish is refused here before anything is encoded, and the
+export's bitrate gives way to the size limit rather than the file growing past it.
+
 | word | what it is | in the code |
 |---|---|---|
 | **publication** | the clip going to Bluesky: writing the MP4, uploading it, waiting for the video service, and posting | `publishToBluesky()` (use case), `Publication` |

@@ -66,8 +66,13 @@ export function avcProbes(width: number, height: number): readonly string[] {
 // long before the bitrate is "enough" for camera video of the same size. A flat
 // 4 Mbps looks fine at 720p and turns a 1440p screen's type to mush, which is
 // exactly what a 3440x1440 recording got. These are bits per pixel per frame at
-// 30fps: floored, so a small picture still looks clean; capped, so a long clip
-// stays within the upload limits (24 Mbps is roughly 180 MB a minute).
+// 30fps.
+//
+// The floor and the ceiling are this app's own bounds on a saved file — the floor
+// keeps a small picture clean, the ceiling keeps an enormous one from writing an
+// enormous file — and not any destination's. A destination with a limit of its own
+// passes it as `fit` below, which bounds this further; nothing here knows what that
+// destination is.
 const BITS_PER_PIXEL = 0.12;
 const BITRATE_FLOOR = 4_000_000;
 const BITRATE_CEILING = 24_000_000;
@@ -83,10 +88,10 @@ export interface FitBudget {
 /**
  * The bitrate to encode at: from the picture first — screen content needs far more
  * bits than camera video of the same size — and then, when the file has to fit
- * somewhere, held under a byte budget for the clip's length. A ten-minute clip at a
- * picture-sized bitrate does not fit in 300 MB by a factor of five, so the length
- * has to come into it; the floor wins when even that is not enough, and the caller
- * is better off refusing a clip that long.
+ * somewhere, held under that destination's byte budget for the clip's length: a long
+ * clip at a picture-sized bitrate can be several times the size of what it is going
+ * into. The floor wins where even the budget cannot be met, and the caller is better
+ * off refusing a clip that long.
  */
 export function videoBitrate(width: number, height: number, fit?: FitBudget): number {
   const wanted = Math.round(width * height * 30 * BITS_PER_PIXEL);
