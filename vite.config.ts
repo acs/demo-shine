@@ -19,10 +19,11 @@ function thirdPartyNotices(): string {
     });
 }
 
-// HTTPS is on by default, using a self-signed certificate from
-// @vitejs/plugin-basic-ssl. Browsers warn until it is trusted, and the service
-// worker will not register on an untrusted certificate. Serve plain HTTP with
-// `--mode http` (npm run dev:http / preview:http).
+// Plain HTTP is the default, on a loopback host: that is a secure context already —
+// screen capture works — and it is the one origin atproto's OAuth lets a dev server
+// sign in from, so publishing to Bluesky works with nothing deployed. HTTPS is there
+// for what needs it, such as the service worker, which will not register on an
+// untrusted certificate: `--mode https`, or `npm run dev:https` / `preview:https`.
 export default defineConfig(({ mode }) => ({
   // Relative asset URLs, so the build works from any base path
   // (localhost root, a GitHub Pages project page, a custom domain).
@@ -30,7 +31,7 @@ export default defineConfig(({ mode }) => ({
   // Baked into the bundle so the app can show which build it is (src/ui/version.ts).
   define: { __APP_VERSION__: JSON.stringify(version) },
   plugins: [
-    ...(mode === 'http' ? [] : [basicSsl()]),
+    ...(mode === 'https' ? [basicSsl()] : []),
     {
       // `version.json` says which version the deployment is serving, for the app
       // to compare its own against and offer a reload when a newer build is out
