@@ -274,8 +274,14 @@
         <span class="pub-as" id="pub-as"></span>
         <button class="pub-link" id="pub-signout">Sign out</button>
       </div>
-      <textarea class="pub-input pub-text" id="pub-text" rows="3" placeholder="Say something about this clip (optional)"></textarea>
-      <input class="pub-input" id="pub-alt" placeholder="Describe the video, for people who cannot see it (optional)">
+      <div class="pub-field">
+        <label class="pub-label" for="pub-text">Post text <span class="pub-hint">what the post says — optional</span></label>
+        <textarea class="pub-input pub-text" id="pub-text" rows="3" placeholder="Say something about this clip"></textarea>
+      </div>
+      <div class="pub-field">
+        <label class="pub-label" for="pub-alt">Video description <span class="pub-hint">alt text, read to people who cannot see it — optional</span></label>
+        <input class="pub-input" id="pub-alt" placeholder="What the video shows">
+      </div>
       <p class="pub-note" style="margin:0">Bluesky takes up to 10 minutes and 300 MB, and re-encodes the video at about 1920 wide — recording a region keeps small text readable.</p>
       <div class="pub-actions">
         <button class="pub-btn ghost" id="pub-cancel">Cancel</button>

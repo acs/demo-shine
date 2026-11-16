@@ -23,6 +23,10 @@ const counts = (stage: PublishProgress['stage']): boolean => stage === 'encoding
 
 class PublishDialog {
   private busy = false;
+  // Set once the clip is on Bluesky: the dialog has said its piece, and there is
+  // nothing left to press — so its controls go quiet rather than invite a second
+  // post of the same clip.
+  private done = false;
 
   init(): void {
     el.pubClose.addEventListener('click', () => this.close());
@@ -41,6 +45,7 @@ class PublishDialog {
 
   async open(): Promise<void> {
     if (this.busy) return;
+    if (this.done) this.startOver();
     this.status('');
     this.fail('');
     el.pubBd.classList.add('on');
@@ -83,22 +88,25 @@ class PublishDialog {
   private async publish(): Promise<void> {
     this.busy = true;
     this.fail('');
-    el.pubGo.disabled = true;
-    el.pubCancel.disabled = true;
     el.pubStatus.textContent = '';
+    this.controls(false);
     await publishClip(el.pubText.value, el.pubAlt.value, {
       onProgress: progress => this.status(this.line(progress)),
-      onDone: post => this.published(post),
+      onDone: post => this.posted(post),
       onError: message => { this.status(''); this.fail(message); },
     });
     this.busy = false;
-    el.pubGo.disabled = false;
-    el.pubCancel.disabled = false;
+    // A failure leaves the dialog usable — try again, or close it. A publish leaves
+    // it spent, and `posted` has already said so.
+    if (!this.done) this.controls(true);
   }
 
   // A published post is something to open, so it is shown as a link rather than as
-  // the AT-URI it is written at.
-  private published(post: PublishedPost): void {
+  // the AT-URI it is written at. The controls go quiet here rather than at the call
+  // site, so the spent state belongs to the fact of being published.
+  private posted(post: PublishedPost): void {
+    this.done = true;
+    this.controls(false);
     el.pubStatus.textContent = 'Published ✓ ';
     const link = document.createElement('a');
     link.href = post.url;
@@ -107,6 +115,25 @@ class PublishDialog {
     link.rel = 'noopener';
     link.textContent = post.url;
     el.pubStatus.append(link);
+  }
+
+  // Everything that could start, or lose, another post of a clip that is already
+  // published: the two buttons, and the text a second post would carry. The close
+  // button, Escape and the backdrop are left alone — those are how you leave.
+  private controls(on: boolean): void {
+    el.pubGo.disabled = !on;
+    el.pubCancel.disabled = !on;
+    el.pubText.disabled = !on;
+    el.pubAlt.disabled = !on;
+  }
+
+  // Opening the dialog again after a publish starts from nothing: the post is made,
+  // and the text would only repeat it.
+  private startOver(): void {
+    this.done = false;
+    el.pubText.value = '';
+    el.pubAlt.value = '';
+    this.controls(true);
   }
 
   private line(progress: PublishProgress): string {
