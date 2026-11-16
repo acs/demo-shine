@@ -7,7 +7,7 @@
 
 import { el } from './dom.js';
 import {
-  blueskyAccount, signInToBluesky, signOutOfBluesky, publishClip, type PublishProgress,
+  blueskyAccount, signInToBluesky, signOutOfBluesky, publishClip, type BlueskyAccount, type PublishProgress,
 } from '../publisher.js';
 
 const STAGE: Record<PublishProgress['stage'], string> = {
@@ -51,14 +51,18 @@ class PublishDialog {
     el.pubBd.classList.remove('on');
   }
 
-  private show(account: string | null): void {
+  private show(account: BlueskyAccount | null): void {
     el.pubSigninView.style.display = account ? 'none' : '';
     el.pubComposeView.style.display = account ? '' : 'none';
-    if (account) el.pubAs.textContent = 'Signed in as ' + account;
+    // The handle is what a person recognises; the DID is the fallback when the
+    // account will not say.
+    if (account) el.pubAs.textContent = 'Signed in as ' + (account.handle ?? account.did);
   }
 
   private async signIn(): Promise<void> {
-    const handle = el.pubHandle.value.trim();
+    // The `@` is how mentions are shown, not part of the handle; the empty check
+    // wants the real thing (the client strips it again, harmlessly).
+    const handle = el.pubHandle.value.trim().replace(/^@/, '');
     if (!handle) { this.fail('Enter your Bluesky handle, like you.bsky.social'); return; }
     this.fail('');
     this.status('Taking you to your server…');

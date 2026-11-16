@@ -4,10 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>
-  // Always upgrade to HTTPS: screen capture needs a secure context, and some
-  // browsers reject getDisplayMedia even on http://localhost, so there is no
-  // plain-HTTP mode.
-  if (location.protocol === 'http:') {
+  // Upgrade to HTTPS: screen capture needs a secure context. Loopback is already
+  // one, and is the only origin atproto's OAuth lets a dev server sign in from,
+  // so http on 127.0.0.1 / localhost / [::1] is left alone; everything else
+  // upgrades.
+  var loopback = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '[::1]';
+  if (location.protocol === 'http:' && !loopback) {
     var host = location.hostname + (location.port && location.port !== '80' ? ':' + location.port : '');
     location.replace('https://' + host + location.pathname + location.search + location.hash);
   }

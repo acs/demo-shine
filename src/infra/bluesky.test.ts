@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { XrpcBlueskyService, type BlueskySession } from './bluesky.js';
+import { fetchHandle, isLoopback, loopbackClientId, normalizeHandle, XrpcBlueskyService, type BlueskySession } from './bluesky.js';
 import { AspectRatio } from '../domain/bluesky/AspectRatio.js';
 import type { PostRecord } from '../domain/bluesky/BlueskyPost.js';
 import { PublishableVideo } from '../domain/bluesky/PublishableVideo.js';
@@ -102,5 +102,62 @@ describe('XrpcBlueskyService', () => {
     const service = new XrpcBlueskyService(session, new FakeFetch(() => json({})).fetch);
 
     await expect(service.uploadVideo(video)).rejects.toThrow(/Bluesky 400: InvalidRequest/);
+  });
+
+  it('calls fetch with no receiver, so a native fetch does not refuse it', async () => {
+    // `fetch` throws "Illegal invocation" for any receiver but a Window, and a
+    // service that calls `this.fetchFn(...)` hands it itself. This stands in for
+    // that: it refuses the same receivers, so the test fails the way the browser
+    // did unless the fetch is bound.
+    const strictFetch = function (this: unknown) {
+      if (this !== globalThis && this != null) {
+        throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation");
+      }
+      return Promise.resolve(json({ jobStatus: { jobId: 'j1', did: 'did:plc:me', state: 'JOB_STATE_CREATED' } }));
+    } as unknown as typeof fetch;
+    const session = new FakeSession(() => json({ token: 'svc' }));
+
+    await expect(new XrpcBlueskyService(session, strictFetch).uploadVideo(video)).resolves.toBeTruthy();
+  });
+});
+
+describe('the loopback client', () => {
+  // Signing in from a dev server, without deploying: atproto hard-codes the
+  // metadata for the loopback client_id, but only over http on a loopback host.
+  it('recognises the one origin that needs no deployed document', () => {
+    expect(isLoopback({ protocol: 'http:', hostname: '127.0.0.1' })).toBe(true);
+    expect(isLoopback({ protocol: 'http:', hostname: 'localhost' })).toBe(true);
+    expect(isLoopback({ protocol: 'http:', hostname: '[::1]' })).toBe(true);
+    expect(isLoopback({ protocol: 'https:', hostname: '127.0.0.1' })).toBe(false);   // http only
+    expect(isLoopback({ protocol: 'http:', hostname: 'acs.github.io' })).toBe(false);
+  });
+
+  it('carries the scope the app needs onto the client id', () => {
+    const id = loopbackClientId({ hostname: '127.0.0.1', pathname: '/', port: '5173' }, 'atproto transition:generic');
+    expect(id.startsWith('http://localhost?')).toBe(true);
+    const params = new URLSearchParams(id.split('?')[1]);
+    expect(params.get('redirect_uri')).toBe('http://127.0.0.1:5173/');
+    expect(params.get('scope')).toBe('atproto transition:generic');
+  });
+});
+
+describe('normalizeHandle', () => {
+  it('takes a handle the way a person types it', () => {
+    expect(normalizeHandle('  @alice.bsky.social ')).toBe('alice.bsky.social');
+    expect(normalizeHandle('alice.bsky.social')).toBe('alice.bsky.social');
+    expect(normalizeHandle('@alice.com')).toBe('alice.com');   // a custom domain is a handle too
+  });
+});
+
+describe('fetchHandle', () => {
+  it('reads the handle from the account, not the DID', async () => {
+    const session = new FakeSession(() => json({ handle: 'alice.bsky.social', did: 'did:plc:me' }));
+
+    expect(await fetchHandle(session)).toBe('alice.bsky.social');
+    expect(session.calls[0].path).toBe('/xrpc/com.atproto.repo.describeRepo?repo=did%3Aplc%3Ame');
+  });
+
+  it('gives nothing back, so the caller can fall back to the DID', async () => {
+    expect(await fetchHandle(new FakeSession(() => json({}, 500)))).toBeNull();
   });
 });

@@ -97,8 +97,11 @@ can end it:
 `Session` is what ends them: `session.reset()` is the whole of "this session is
 over", and the Reset button is only the flow around it.
 
-One module-level `let` is left in `src/` — the toast timer in `ui/dom.ts` — and it
-is deliberate: its lifetime is a single toast, not a session.
+Two spots keep module-level state, both deliberately. The toast timer in
+`ui/dom.ts` lasts a single toast. The Bluesky client in `infra/bluesky.ts` — the
+OAuth client, the session, and the signed-in handle — lasts the page, because
+signing in has to outlive a session reset and be there again on the way back from
+the authorization server.
 
 ## Words we do not use
 
