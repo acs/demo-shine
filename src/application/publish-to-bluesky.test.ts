@@ -169,4 +169,16 @@ describe('publishToBluesky', () => {
       .rejects.toThrow(/still processing/);
     expect(service.polls).toBe(3);          // the first answer plus maxPolls more
   });
+
+  it('waits longer for a longer clip, because the video service transcodes', async () => {
+    const service = new FakeService(
+      { jobId: 'job-1', state: 'JOB_STATE_CREATED' },
+      [{ jobId: 'job-1', state: 'JOB_STATE_ENCODING', progress: 10 }],
+    );
+
+    await expect(publishToBluesky(clipOf(600), settings, deps(service))).rejects.toThrow(/still processing/);
+    // A flat two minutes would have given up on a ten-minute clip that was still being
+    // transcoded, and it would have looked like Bluesky's fault.
+    expect(service.polls).toBeGreaterThan(120);
+  });
 });
