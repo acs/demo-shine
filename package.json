@@ -7,8 +7,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:http": "vite --mode http --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "preview:http": "vite preview --mode http --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

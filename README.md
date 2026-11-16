@@ -143,8 +143,10 @@ npm install
 | Command | Does |
 |---|---|
 | `npm run dev` | Starts the Vite dev server at https://localhost:5173 with hot module replacement |
+| `npm run dev:http` | The same over plain HTTP on 127.0.0.1 — the way to sign in to Bluesky without deploying |
 | `npm run build` | Type-checks and builds the production site into `dist/` |
 | `npm run preview` | Serves the built site (`dist/`) over HTTPS with the PWA/service worker active |
+| `npm run preview:http` | The same over plain HTTP on 127.0.0.1 |
 | `npm run typecheck` | Type-checks without emitting |
 | `npm run lint` | ESLint (use `npm run lint:fix` to auto-fix) |
 | `npm test` | Runs the Vitest unit tests (`npm run test:watch` to watch) |
@@ -157,8 +159,11 @@ HTTPS is on by default, using a self-signed certificate from
 trusted, and the service worker will not register on an untrusted one — trust
 the certificate (add it to your keychain) for install/offline testing.
 
-The app also redirects any `http://` access (localhost included) to `https://`,
-because screen capture needs a secure context — so there is no plain-HTTP mode.
+The app redirects any `http://` access to `https://`, because screen capture needs
+a secure context — except on a loopback host (`127.0.0.1`, `localhost`, `[::1]`),
+which is a secure context already and the one origin atproto's OAuth lets a dev
+server sign in from. `npm run dev:http` serves over http on `127.0.0.1` for
+exactly that; the sign-in works from there, with no tunnel and nothing deployed.
 
 Linting runs on every commit through a Husky pre-commit hook, and the CI
 workflow runs lint, type-check, tests and the build on every push and pull

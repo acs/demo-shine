@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { XrpcBlueskyService, type BlueskySession } from './bluesky.js';
+import { isLoopback, loopbackClientId, XrpcBlueskyService, type BlueskySession } from './bluesky.js';
 import { AspectRatio } from '../domain/bluesky/AspectRatio.js';
 import type { PostRecord } from '../domain/bluesky/BlueskyPost.js';
 import { PublishableVideo } from '../domain/bluesky/PublishableVideo.js';
@@ -102,5 +102,25 @@ describe('XrpcBlueskyService', () => {
     const service = new XrpcBlueskyService(session, new FakeFetch(() => json({})).fetch);
 
     await expect(service.uploadVideo(video)).rejects.toThrow(/Bluesky 400: InvalidRequest/);
+  });
+});
+
+describe('the loopback client', () => {
+  // Signing in from a dev server, without deploying: atproto hard-codes the
+  // metadata for the loopback client_id, but only over http on a loopback host.
+  it('recognises the one origin that needs no deployed document', () => {
+    expect(isLoopback({ protocol: 'http:', hostname: '127.0.0.1' })).toBe(true);
+    expect(isLoopback({ protocol: 'http:', hostname: 'localhost' })).toBe(true);
+    expect(isLoopback({ protocol: 'http:', hostname: '[::1]' })).toBe(true);
+    expect(isLoopback({ protocol: 'https:', hostname: '127.0.0.1' })).toBe(false);   // http only
+    expect(isLoopback({ protocol: 'http:', hostname: 'acs.github.io' })).toBe(false);
+  });
+
+  it('carries the scope the app needs onto the client id', () => {
+    const id = loopbackClientId({ hostname: '127.0.0.1', pathname: '/', port: '5173' }, 'atproto transition:generic');
+    expect(id.startsWith('http://localhost?')).toBe(true);
+    const params = new URLSearchParams(id.split('?')[1]);
+    expect(params.get('redirect_uri')).toBe('http://127.0.0.1:5173/');
+    expect(params.get('scope')).toBe('atproto transition:generic');
   });
 });
