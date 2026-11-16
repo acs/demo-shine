@@ -53,6 +53,18 @@ interface JobStatusBody {
   message?: string;
 }
 
+/**
+ * What a video-service response can carry. `getJobStatus` wraps the job in
+ * `jobStatus`; the upload sends the job bare — Bluesky's own tutorial parses that
+ * response as the status directly; and an already-processed video comes back as an
+ * error that still carries the finished blob.
+ */
+interface VideoServiceBody extends Partial<JobStatusBody> {
+  jobStatus?: JobStatusBody;
+  error?: string;
+  message?: string;
+}
+
 export class XrpcBlueskyService implements BlueskyService {
   private readonly session: BlueskySession;
   private readonly fetchFn: typeof fetch;
@@ -80,14 +92,14 @@ export class XrpcBlueskyService implements BlueskyService {
       },
       body: video.blob,
     });
-    return this.job(await this.ok(response));
+    return this.jobFrom(response);
   }
 
   async videoJob(jobId: string): Promise<VideoJob> {
     const url = new URL('/xrpc/app.bsky.video.getJobStatus', VIDEO_SERVICE);
     url.searchParams.set('jobId', jobId);
     const response = await this.fetchFn(url);
-    return this.job(await this.ok(response));
+    return this.jobFrom(response);
   }
 
   async createPost(record: PostRecord): Promise<{ uri: string; cid: string }> {
@@ -126,17 +138,41 @@ export class XrpcBlueskyService implements BlueskyService {
     throw new Error(`Bluesky ${response.status}: ${detail || response.statusText}`);
   }
 
-  private job(body: unknown): VideoJob {
-    const { jobStatus } = body as { jobStatus: JobStatusBody };
-    return {
-      jobId: jobStatus.jobId,
-      state: jobStatus.state,
-      progress: jobStatus.progress,
-      blob: jobStatus.blob ?? null,
-      error: jobStatus.error,
-      failureCode: jobStatus.failureCode,
-      message: jobStatus.message,
-    };
+  // The video service does not answer the way the PDS does. `getJobStatus` wraps
+  // the job in `jobStatus`, but the *upload* sends it bare, and an already-processed
+  // video comes back as an error that still carries the blob. So the job is taken
+  // from wherever it is, and anything else becomes a message that says what came
+  // back — the body included, since a bare status is what a missing field hid.
+  private async jobFrom(response: Response): Promise<VideoJob> {
+    const body = await readJson<VideoServiceBody>(response);
+    const wrapped = body?.jobStatus;
+    const bare = body && (body.jobId || body.state || body.blob) ? body : null;
+    const status = wrapped ?? bare;
+    if (status) return jobOf(status, body?.blob ?? null);
+    const said = body?.message || body?.error;
+    const seen = body ? JSON.stringify(body).slice(0, 200) : 'no JSON body';
+    throw new Error(`Bluesky's video service answered ${response.status}: ${said ?? seen}`);
+  }
+}
+
+/** The job a video job status describes, with what the body alone can say. */
+function jobOf(status: Partial<JobStatusBody>, blob: BlobRef | null = null): VideoJob {
+  return {
+    jobId: status.jobId ?? '',
+    state: status.state ?? 'JOB_STATE_COMPLETED',
+    progress: status.progress,
+    blob: status.blob ?? blob,
+    error: status.error,
+    failureCode: status.failureCode,
+    message: status.message,
+  };
+}
+
+async function readJson<T>(response: Response): Promise<T | null> {
+  try {
+    return await response.json() as T;
+  } catch {
+    return null;
   }
 }
 

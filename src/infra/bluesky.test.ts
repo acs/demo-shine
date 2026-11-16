@@ -119,6 +119,36 @@ describe('XrpcBlueskyService', () => {
 
     await expect(new XrpcBlueskyService(session, strictFetch).uploadVideo(video)).resolves.toBeTruthy();
   });
+
+  it('reads a job the upload sends on its own, unwrapped', async () => {
+    // The upload answers with the job itself where getJobStatus wraps it in
+    // `{ jobStatus }` — a fresh job, so no blob and nothing to poll yet.
+    const session = new FakeSession(() => json({ token: 'svc' }));
+    const videoFetch = new FakeFetch(() => json({ jobId: 'j1', did: 'did:plc:me', state: 'JOB_STATE_CREATED' }));
+
+    const job = await new XrpcBlueskyService(session, videoFetch.fetch).uploadVideo(video);
+    expect(job).toMatchObject({ jobId: 'j1', state: 'JOB_STATE_CREATED', blob: null });
+  });
+
+  it('says what the video service answered, instead of crashing on a missing field', async () => {
+    const session = new FakeSession(() => json({ token: 'svc' }));
+    const videoFetch = new FakeFetch(() => json({ error: 'RateLimitExceeded', message: 'daily limit reached' }, 429));
+
+    await expect(new XrpcBlueskyService(session, videoFetch.fetch).uploadVideo(video))
+      .rejects.toThrow(/video service answered 429: daily limit reached/);
+  });
+
+  it('takes the blob from an already-processed video, which comes back as an error', async () => {
+    // Bluesky's own warning: a video it has already processed is answered with an
+    // *error* that still carries the blob — no jobId, and nothing to poll.
+    const blob = { $type: 'blob', ref: { $link: 'bafy' }, mimeType: 'video/mp4', size: 10 } as const;
+    const session = new FakeSession(() => json({ token: 'svc' }));
+    const videoFetch = new FakeFetch(() => json({ error: 'already_exists', message: 'already processed', blob }, 409));
+
+    const job = await new XrpcBlueskyService(session, videoFetch.fetch).uploadVideo(video);
+    expect(job.jobId).toBe('');
+    expect(job.blob).toEqual(blob);
+  });
 });
 
 describe('the loopback client', () => {
