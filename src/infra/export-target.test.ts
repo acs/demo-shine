@@ -67,4 +67,11 @@ describe('videoBitrate', () => {
     expect(videoBitrate(3840, 2160)).toBe(24_000_000);
     expect(videoBitrate(7680, 4320)).toBe(24_000_000);
   });
+
+  it('holds under a byte budget, because a long clip at a picture-sized bitrate does not fit', () => {
+    const budget = { bytes: 300_000_000 };
+    expect(videoBitrate(3440, 1440, { ...budget, seconds: 60 })).toBe(17_832_960);    // fits anyway
+    expect(videoBitrate(3440, 1440, { ...budget, seconds: 180 })).toBe(12_000_000);   // 300 MB in 3 min
+    expect(videoBitrate(3440, 1440, { ...budget, seconds: 600 })).toBe(4_000_000);    // the floor, at the ceiling
+  });
 });

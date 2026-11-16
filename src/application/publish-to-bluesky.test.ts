@@ -132,6 +132,13 @@ describe('publishToBluesky', () => {
     expect(service.uploads).toHaveLength(0);
   });
 
+  it('refuses a clip longer than Bluesky takes, before encoding it', async () => {
+    const service = new FakeService({ jobId: 'job-1', state: 'JOB_STATE_CREATED' });
+
+    await expect(publishToBluesky(clipOf(601), settings, deps(service))).rejects.toThrow(/up to 10 minutes/);
+    expect(service.uploads).toHaveLength(0);
+  });
+
   it('refuses a file the encoder wrote that is not an MP4', async () => {
     const service = new FakeService({ jobId: 'job-1', state: 'JOB_STATE_CREATED' });
 

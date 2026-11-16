@@ -11,6 +11,8 @@ import type { AspectRatio } from './AspectRatio.js';
 
 export const VIDEO_MIME = 'video/mp4';
 export const VIDEO_MAX_BYTES = 300_000_000;
+/** Bluesky's ceiling on length: ten minutes, its own client's `VIDEO_MAX_DURATION_MS`. */
+export const VIDEO_MAX_SECONDS = 10 * 60;
 
 export class PublishableVideo {
   private constructor(
