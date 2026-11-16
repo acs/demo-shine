@@ -103,6 +103,22 @@ describe('XrpcBlueskyService', () => {
 
     await expect(service.uploadVideo(video)).rejects.toThrow(/Bluesky 400: InvalidRequest/);
   });
+
+  it('calls fetch with no receiver, so a native fetch does not refuse it', async () => {
+    // `fetch` throws "Illegal invocation" for any receiver but a Window, and a
+    // service that calls `this.fetchFn(...)` hands it itself. This stands in for
+    // that: it refuses the same receivers, so the test fails the way the browser
+    // did unless the fetch is bound.
+    const strictFetch = function (this: unknown) {
+      if (this !== globalThis && this != null) {
+        throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation");
+      }
+      return Promise.resolve(json({ jobStatus: { jobId: 'j1', did: 'did:plc:me', state: 'JOB_STATE_CREATED' } }));
+    } as unknown as typeof fetch;
+    const session = new FakeSession(() => json({ token: 'svc' }));
+
+    await expect(new XrpcBlueskyService(session, strictFetch).uploadVideo(video)).resolves.toBeTruthy();
+  });
 });
 
 describe('the loopback client', () => {

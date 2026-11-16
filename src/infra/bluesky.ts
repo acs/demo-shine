@@ -54,10 +54,17 @@ interface JobStatusBody {
 }
 
 export class XrpcBlueskyService implements BlueskyService {
-  constructor(
-    private readonly session: BlueskySession,
-    private readonly fetchFn: typeof fetch = fetch,
-  ) {}
+  private readonly session: BlueskySession;
+  private readonly fetchFn: typeof fetch;
+
+  constructor(session: BlueskySession, fetchFn: typeof fetch = globalThis.fetch) {
+    this.session = session;
+    // Bound to the global: every call below is `this.fetchFn(...)`, and a bare
+    // `fetch` refuses any receiver but a Window — calling it with the service as
+    // its receiver is what raised "Failed to execute 'fetch' on 'Window':
+    // Illegal invocation", and why the tests (which inject a fake) missed it.
+    this.fetchFn = fetchFn.bind(globalThis);
+  }
 
   async uploadVideo(video: PublishableVideo): Promise<VideoJob> {
     const token = await this.serviceToken();
