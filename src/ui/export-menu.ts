@@ -1,6 +1,6 @@
 // The Export menu: where a clip goes.
 //
-// A small menu under the Export button — a File, or Bluesky. It is a body-level
+// A small menu under the Export button — a WebM or MP4 file, or Bluesky. It is a body-level
 // element rather than a child of the header, because the header clips what
 // overflows it (`.ctrl` is `overflow:hidden`), so a menu inside it would be cut
 // off; it places itself under the button each time it opens, and gives up and
@@ -13,7 +13,10 @@
 import { el } from './dom.js';
 import type { ExportTarget } from '../infra/export-target.js';
 
-type Choose = (target: ExportTarget) => void;
+/** Where the Export menu sends a clip: a file in one of two containers, or Bluesky. */
+export type ExportChoice = ExportTarget | 'bluesky';
+
+type Choose = (choice: ExportChoice) => void;
 
 const GAP = 6;      // between the button and the menu
 const EDGE = 8;     // the least the menu may sit from the window's edge
@@ -36,8 +39,9 @@ class ExportMenu {
 
   init(choose: Choose): void {
     this.choose = choose;
-    el.expFile.addEventListener('click', () => this.pick('webm'));
-    el.expBluesky.addEventListener('click', () => this.pick('mp4'));
+    el.expWebm.addEventListener('click', () => this.pick('webm'));
+    el.expMp4.addEventListener('click', () => this.pick('mp4'));
+    el.expBluesky.addEventListener('click', () => this.pick('bluesky'));
   }
 
   get isOpen(): boolean {
@@ -78,9 +82,9 @@ class ExportMenu {
     window.removeEventListener('resize', this.onResize);
   }
 
-  private pick(target: ExportTarget): void {
+  private pick(choice: ExportChoice): void {
     this.close();
-    this.choose(target);
+    this.choose(choice);
   }
 }
 
