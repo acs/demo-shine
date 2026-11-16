@@ -17,6 +17,7 @@ import { waveform } from './ui/waveform.js';
 import { initRegion } from './ui/region.js';
 import { initWebcam, toggleWebcam } from './ui/webcam.js';
 import { initMic, toggleMic } from './ui/mic.js';
+import { exportMenu } from './ui/export-menu.js';
 
 function init(): void {
   const supported = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
@@ -48,7 +49,8 @@ function init(): void {
 
   el.recBtn.addEventListener('click', toggleRec);
   el.btnReset.addEventListener('click', resetAll);
-  el.btnExp.addEventListener('click', doExport);
+  el.btnExp.addEventListener('click', () => exportMenu.toggle());
+  exportMenu.init(doExport);
   el.playBtn.addEventListener('click', () => playback.toggle());
 
   // Reset is the way back to the share picker — it is how you re-share after

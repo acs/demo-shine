@@ -25,27 +25,31 @@ import { session } from './session.js';
 import { exportOffline, offlineAvailable, type OfflineStats } from './offline-export.js';
 import { planExport } from './application/export-clip.js';
 import { FADE_S } from './ui/fade.js';
+import type { ExportTarget } from './infra/export-target.js';
 
 // The offline export writes the whole file itself, so there is nothing to feed a
 // recorder and nothing to play: it reports how far it has got as it goes, and
 // hands back what it managed so the caller can say it.
-async function exportOfflineHere(): Promise<OfflineStats> {
+async function exportOfflineHere(target: ExportTarget): Promise<OfflineStats> {
   const plan = planExport(app.clip, { audio: app.recAudio, fadeSeconds: FADE_S });
   // Nothing to write is the same error the encoder used to raise, on the same path.
   if (!plan) throw new Error('nothing to export');
-  const { blob, stats } = await exportOffline(plan, { onProgress: source => encodingAt(source, plan.to) });
-  dlBlob(blob, 'demoshine-' + ts() + '.webm');
+  const { blob, stats } = await exportOffline(plan, { target, onProgress: source => encodingAt(source, plan.to) });
+  dlBlob(blob, `demoshine-${ts()}.${target}`);
   console.info('DemoShine export', stats);
   return stats;
 }
 
-export async function doExport(): Promise<void> {
+// The download keeps the WebM; the Bluesky path writes the MP4 it takes. Until
+// the publish use case is wired to the menu, that one saves the file so it can be
+// watched, and says so, rather than pretending it was posted.
+export async function doExport(target: ExportTarget = 'webm'): Promise<void> {
   if (app.phase !== 'review') return;
   // The export is WebCodecs, and now there is nothing behind it: say so plainly
   // rather than fail halfway through with an empty download.
   if (!offlineAvailable()) {
     setStatus('ready', 'Cannot encode here');
-    toast('This browser cannot write WebM — it needs Chrome 94+ or Firefox 130+.', 6000);
+    toast('This browser cannot write video — it needs Chrome 94+ or Firefox 130+.', 6000);
     return;
   }
   playback.pause();
@@ -57,9 +61,9 @@ export async function doExport(): Promise<void> {
   setStatus('proc', 'Encoding…');
   const wasCut = beginEncoding();   // what the chip said before the export took it over
   try {
-    const stats = await exportOfflineHere();
+    const stats = await exportOfflineHere(target);
     setStatus('ready', 'Export complete ✓');
-    toast(`File downloaded successfully — written at ${stats.realtime.toFixed(1)}× real time.`, 4000);
+    toast(exportedMessage(target, stats), 5000);
   } catch (err) {
     console.error(err);
     setStatus('ready', 'Export failed');
@@ -72,6 +76,13 @@ export async function doExport(): Promise<void> {
   el.playBtn.disabled  = false;
   endEncoding(wasCut);
   playback.pause();               // refresh the playhead after the export moved rv
+}
+
+function exportedMessage(target: ExportTarget, stats: OfflineStats): string {
+  const written = `written at ${stats.realtime.toFixed(1)}× real time`;
+  return target === 'mp4'
+    ? `MP4 saved (${written}) — this is the file Bluesky takes. Publishing comes next.`
+    : `File downloaded successfully — ${written}.`;
 }
 
 export function resetAll(): void {

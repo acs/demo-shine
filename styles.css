@@ -252,6 +252,16 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .act-btn.export{background:rgba(59,127,255,.12);color:var(--blue);border-color:rgba(59,127,255,.28);}
 .act-btn.export:not(:disabled):hover{background:rgba(59,127,255,.22);border-color:rgba(59,127,255,.45);}
 
+/* The Export menu — a small popover under the Export button. It lives at the
+   body (the header clips what overflows it) and src/ui/export-menu.ts places it;
+   hidden by visibility rather than display, so it can be measured before it shows. */
+.export-menu{position:fixed;z-index:120;min-width:196px;padding:5px;border-radius:10px;border:1px solid var(--glass-b2);background:var(--surface);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);display:flex;flex-direction:column;gap:2px;opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .16s,transform .16s,visibility 0s linear .16s;}
+.export-menu.on{opacity:1;visibility:visible;transform:translateY(0);transition:opacity .16s,transform .16s,visibility 0s;}
+.export-item{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:8px 12px;border-radius:7px;border:none;background:transparent;color:var(--text);font-family:var(--font-ui);cursor:pointer;transition:background .15s;}
+.export-item:hover{background:var(--glass-b2);}
+.export-item-name{font-size:13px;letter-spacing:.02em;}
+.export-item-note{font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;color:var(--text-mid);}
+
 .deco{position:fixed;pointer-events:none;z-index:0;opacity:.05;}
 
 /* ── HELP MODAL ── */
