@@ -13,6 +13,7 @@ import { el } from './ui/dom.js';
 import { exportOffline } from './offline-export.js';
 import { publishToBluesky, type PublicationProgress } from './application/publish-to-bluesky.js';
 import { AspectRatio } from './domain/bluesky/AspectRatio.js';
+import { postUrl } from './domain/bluesky/BlueskyPost.js';
 import { FADE_S } from './ui/fade.js';
 import type { ExportPlan } from './domain/clip/ExportPlan.js';
 
@@ -22,9 +23,15 @@ const bluesky = () => import('./infra/bluesky.js');
 /** A stage of publishing, with a percentage while there is one to give. */
 export type PublishProgress = PublicationProgress;
 
+/** What a publish leaves behind: the record, and where a person can open it. */
+export interface PublishedPost {
+  uri: string;
+  url: string;
+}
+
 export interface PublishHandlers {
   onProgress?: (progress: PublishProgress) => void;
-  onDone: (uri: string) => void;
+  onDone: (post: PublishedPost) => void;
   onError: (message: string) => void;
 }
 
@@ -53,7 +60,8 @@ export async function signOutOfBluesky(): Promise<void> {
 
 export async function publishClip(text: string, alt: string, handlers: PublishHandlers): Promise<void> {
   try {
-    const service = await (await bluesky()).blueskyService();
+    const api = await bluesky();
+    const service = await api.blueskyService();
     const { uri } = await publishToBluesky(app.clip, {
       export: { audio: app.recAudio, fadeSeconds: FADE_S },
       text,
@@ -72,7 +80,7 @@ export async function publishClip(text: string, alt: string, handlers: PublishHa
       },
       onProgress: handlers.onProgress,
     });
-    handlers.onDone(uri);
+    handlers.onDone({ uri, url: postUrl(uri, await api.blueskyHandle()) });
   } catch (err) {
     handlers.onError((err as Error).message);
   }
