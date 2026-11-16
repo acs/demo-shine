@@ -53,6 +53,22 @@ time. Passing one where the other was meant is the mistake it exists to prevent.
 | **dissolve** | the picture blending from the last frame of a take into the first frames of the next, over the same 80 ms | `DISSOLVE_S` |
 | **crop region** | the rectangle of the screen being recorded — the red box — as fractions of the capture | `app.region` |
 
+## Publishing to Bluesky
+
+Publishing takes the export one step further: the kept range is written as **MP4**,
+handed to Bluesky's video service, and a post is written that carries the finished
+video. Bluesky takes `video/mp4` and nothing else, so this path does not reuse the
+WebM download — it encodes its own MP4. Everything that needs the network or an
+access token sits behind a port, so the sequencing is tested in node.
+
+| word | what it is | in the code |
+|---|---|---|
+| **publication** | the clip going to Bluesky: writing the MP4, uploading it, waiting for the video service, and posting | `publishToBluesky()` (use case), `Publication` |
+| **publishable video** | the MP4 to upload, with its name and the ratio the post shows it at. Bluesky takes `video/mp4` up to 300 MB | `PublishableVideo` |
+| **Bluesky post** | the `app.bsky.feed.post` record that carries the video as an `app.bsky.embed.video` | `BlueskyPost` |
+| **video job** | Bluesky's processing of an uploaded video, watched until it hands back the blob | `VideoJob`, `BlueskyService` (the port) |
+| **aspect ratio** | the whole-number width:height a post shows its media at | `AspectRatio` |
+
 ## The view, and what has a lifetime
 
 Everything else is state that exists for a while and then does not: the strip
