@@ -63,7 +63,7 @@ export function updateSizeUI(): void {
   // Cuts are trimmed away, so they shrink the estimate too.
   const timeline = app.clip.timeline();
   const clip = timeline.keptLength(app.clip.trim.start * app.clip.total(), app.clip.trim.end * app.clip.total());
-  el.tSize.textContent = estimateWebmText(clip);
+  el.tSize.textContent = estimateWebmText(clip, el.cv.width, el.cv.height);
 }
 
 // ── the export's progress ────────────────────────────────────────────────────
