@@ -58,7 +58,9 @@ class PublishDialog {
   }
 
   private async signIn(): Promise<void> {
-    const handle = el.pubHandle.value.trim();
+    // The `@` is how mentions are shown, not part of the handle; the client takes
+    // it out too, but the empty check wants the real thing.
+    const handle = el.pubHandle.value.trim().replace(/^@/, '');
     if (!handle) { this.fail('Enter your Bluesky handle, like you.bsky.social'); return; }
     this.fail('');
     this.status('Taking you to your server…');

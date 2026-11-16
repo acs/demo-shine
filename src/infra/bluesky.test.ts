@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isLoopback, loopbackClientId, XrpcBlueskyService, type BlueskySession } from './bluesky.js';
+import { isLoopback, loopbackClientId, normalizeHandle, XrpcBlueskyService, type BlueskySession } from './bluesky.js';
 import { AspectRatio } from '../domain/bluesky/AspectRatio.js';
 import type { PostRecord } from '../domain/bluesky/BlueskyPost.js';
 import { PublishableVideo } from '../domain/bluesky/PublishableVideo.js';
@@ -122,5 +122,13 @@ describe('the loopback client', () => {
     const params = new URLSearchParams(id.split('?')[1]);
     expect(params.get('redirect_uri')).toBe('http://127.0.0.1:5173/');
     expect(params.get('scope')).toBe('atproto transition:generic');
+  });
+});
+
+describe('normalizeHandle', () => {
+  it('takes a handle the way a person types it', () => {
+    expect(normalizeHandle('  @alice.bsky.social ')).toBe('alice.bsky.social');
+    expect(normalizeHandle('alice.bsky.social')).toBe('alice.bsky.social');
+    expect(normalizeHandle('@alice.com')).toBe('alice.com');   // a custom domain is a handle too
   });
 });
