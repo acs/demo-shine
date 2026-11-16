@@ -30,6 +30,14 @@ export default defineConfig(({ mode }) => ({
   base: './',
   // Baked into the bundle so the app can show which build it is (src/ui/version.ts).
   define: { __APP_VERSION__: JSON.stringify(version) },
+  optimizeDeps: {
+    // The publish client is reached only through a dynamic import — nothing loads it
+    // until a clip is published — so Vite discovers it late, re-optimizes while the
+    // page is live, and leaves that import asking for a dependency URL that no longer
+    // exists: "Failed to fetch dynamically imported module", with a 504 behind it.
+    // Naming it here has it optimized before anything can reference it.
+    include: ['@atproto/oauth-client-browser'],
+  },
   plugins: [
     ...(mode === 'https' ? [basicSsl()] : []),
     {
