@@ -48,7 +48,8 @@ time. Passing one where the other was meant is the mistake it exists to prevent.
 |---|---|---|
 | **segment** | a kept stretch of **one take**, in seconds: `{ takeIndex, from, to }`. What an export is made of | `Clip.segmentsIn()` |
 | **export plan** | the kept stretches placed on the output timeline, with the joins marked where they fall — decided before a frame is encoded, so it can be read and tested without a browser | `ExportPlan`, with `ExportPiece` and `ExportStep` |
-| **export** | writing the kept range as a single WebM, with the joins faded and dissolved | `planExport()` (use case), `exportOffline()` (adapter), driven by `doExport()` (flow) |
+| **export** | writing the kept range as a single file — WebM for the download, MP4 (H.264/AAC) for Bluesky — with the joins faded and dissolved | `planExport()` (use case), `exportOffline()` (adapter), driven by `doExport()` (flow) |
+| **export target** | which container an export writes — `webm` for the download, `mp4` for Bluesky — and the codecs that follow from it | `ExportTarget`, `specFor()` |
 | **fade** | the sound going down over the last 80 ms of a take and back up as the next begins | `FADE_S` |
 | **dissolve** | the picture blending from the last frame of a take into the first frames of the next, over the same 80 ms | `DISSOLVE_S` |
 | **crop region** | the rectangle of the screen being recorded — the red box — as fractions of the capture | `app.region` |
