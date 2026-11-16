@@ -216,7 +216,7 @@
         <div class="help-num">2</div>
         <div class="help-step-body">
           <div class="help-step-title">Hit record</div>
-          <div class="help-step-desc">Press the crimson button to start recording — a 3-second countdown gives you a beat, and pressing the button again during it cancels. Press again to stop. <strong>Press it once more after a recording and the new take is added to the end of the clip</strong>, as many times as you like. The share is kept between takes — so they all come from the same tab, window or screen, and there is no second picker. The timeline is there while you record, filling in with the picture and the sound as they are captured, and it becomes the trim timeline when you stop. The red box over the preview shows exactly what will be recorded: it covers the whole screen by default, drag to pick a smaller region, and click to go back to the full screen. Everything exports as WebM, a small sharp video for PRs, docs and chat, or as the MP4 Bluesky takes.</div>
+          <div class="help-step-desc">Press the crimson button to start recording — a 3-second countdown gives you a beat, and pressing the button again during it cancels. Press again to stop. <strong>Press it once more after a recording and the new take is added to the end of the clip</strong>, as many times as you like. The share is kept between takes — so they all come from the same tab, window or screen, and there is no second picker. The timeline is there while you record, filling in with the picture and the sound as they are captured, and it becomes the trim timeline when you stop. The red box over the preview shows exactly what will be recorded: it covers the whole screen by default, drag to pick a smaller region, and click to go back to the full screen. Everything exports as WebM, a small sharp video for PRs, docs and chat, or as the MP4 that plays anywhere.</div>
         </div>
       </div>
       <div class="help-step">
@@ -229,8 +229,8 @@
       <div class="help-step">
         <div class="help-num">4</div>
         <div class="help-step-body">
-          <div class="help-step-title">Export</div>
-          <div class="help-step-desc">Hit Export and choose where the clip goes: <strong>File</strong> downloads a WebM, <strong>Bluesky</strong> produces the MP4 it takes. Either is encoded faster than real time — the timeline counts down how much is left, and the preview shows the frames as they are written, so you can watch it happen without waiting for it.</div>
+          <div class="help-step-title">Export and publish</div>
+          <div class="help-step-desc">Hit Export to choose where the clip goes: a <strong>WebM</strong> or <strong>MP4</strong> file to download, or <strong>Bluesky</strong> to publish it as a video post (sign in with your handle first). Either file is encoded faster than real time — the timeline counts down how much is left, and the preview shows the frames as they are written, so you can watch it happen without waiting for it.</div>
         </div>
       </div>
       <div class="help-step">
@@ -250,8 +250,39 @@
 
 <!-- EXPORT MENU — at the body, because the header clips what overflows it -->
 <div class="export-menu" id="exp-menu" role="menu" aria-label="Export">
-  <button class="export-item" id="exp-file" role="menuitem"><span class="export-item-name">File</span><span class="export-item-note">WebM download</span></button>
-  <button class="export-item" id="exp-bluesky" role="menuitem"><span class="export-item-name">Bluesky</span><span class="export-item-note">MP4 file, for now</span></button>
+  <button class="export-item" id="exp-webm" role="menuitem"><span class="export-item-name">WebM file</span><span class="export-item-note">Small and sharp — PRs, chat</span></button>
+  <button class="export-item" id="exp-mp4" role="menuitem"><span class="export-item-name">MP4 file</span><span class="export-item-note">Plays anywhere — QuickTime</span></button>
+  <button class="export-item" id="exp-bluesky" role="menuitem"><span class="export-item-name">Bluesky</span><span class="export-item-note">Publish as a video post</span></button>
+</div>
+
+<!-- PUBLISH DIALOG -->
+<div class="pub-bd" id="pub-bd">
+  <div class="pub-panel" role="dialog" aria-modal="true" aria-label="Publish to Bluesky">
+    <button class="pub-close" id="pub-close" aria-label="Close">×</button>
+    <h2 class="pub-title">Publish to Bluesky</h2>
+
+    <div id="pub-signin-view">
+      <p class="pub-note">Sign in with your handle — your server asks you to approve, then brings you back here.</p>
+      <input class="pub-input" id="pub-handle" placeholder="you.bsky.social" autocomplete="username" autocapitalize="off" spellcheck="false">
+      <button class="pub-btn" id="pub-signin">Sign in</button>
+    </div>
+
+    <div id="pub-compose-view" style="display:none">
+      <div class="pub-row">
+        <span class="pub-as" id="pub-as"></span>
+        <button class="pub-link" id="pub-signout">Sign out</button>
+      </div>
+      <textarea class="pub-input pub-text" id="pub-text" rows="3" placeholder="Say something about this clip (optional)"></textarea>
+      <input class="pub-input" id="pub-alt" placeholder="Describe the video, for people who cannot see it (optional)">
+      <div class="pub-actions">
+        <button class="pub-btn ghost" id="pub-cancel">Cancel</button>
+        <button class="pub-btn" id="pub-go">Publish</button>
+      </div>
+    </div>
+
+    <p class="pub-status" id="pub-status"></p>
+    <p class="pub-error" id="pub-error" style="display:none"></p>
+  </div>
 </div>
 <video id="sv" style="display:none" autoplay muted playsinline></video>
 <video id="rv" style="display:none" playsinline preload="auto"></video>

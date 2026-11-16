@@ -18,6 +18,7 @@ import { initRegion } from './ui/region.js';
 import { initWebcam, toggleWebcam } from './ui/webcam.js';
 import { initMic, toggleMic } from './ui/mic.js';
 import { exportMenu } from './ui/export-menu.js';
+import { publishDialog } from './ui/publish-dialog.js';
 
 function init(): void {
   const supported = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
@@ -50,7 +51,11 @@ function init(): void {
   el.recBtn.addEventListener('click', toggleRec);
   el.btnReset.addEventListener('click', resetAll);
   el.btnExp.addEventListener('click', () => exportMenu.toggle());
-  exportMenu.init(doExport);
+  exportMenu.init(choice => {
+    if (choice === 'bluesky') void publishDialog.open();
+    else void doExport(choice);
+  });
+  publishDialog.init();
   el.playBtn.addEventListener('click', () => playback.toggle());
 
   // Reset is the way back to the share picker — it is how you re-share after
@@ -85,6 +90,13 @@ function init(): void {
   // Microphone toggle + level meter (disabled when no mic is present).
   el.micBtn.addEventListener('click', toggleMic);
   initMic();
+
+  // A Bluesky sign-in only finishes when the authorization server sends us back.
+  // The OAuth client is heavy and only needed then, so it loads on demand: a
+  // normal load reaches for no network and does not carry it in the bundle.
+  const url = new URL(window.location.href);
+  const returning = [url.search, url.hash].some(part => part.includes('code=') || part.includes('error='));
+  if (returning) void import('./infra/bluesky.js').then(({ initBluesky }) => initBluesky());
 
   // Go live as early as the browser allows. getDisplayMedia is gated behind a
   // user gesture + picker, so we (a) try on load, and (b) start on the first
