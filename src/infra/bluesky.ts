@@ -53,6 +53,14 @@ interface JobStatusBody {
   message?: string;
 }
 
+/** What a video-service response can carry: a job, or the finished blob alone. */
+interface VideoServiceBody {
+  jobStatus?: JobStatusBody;
+  blob?: BlobRef;
+  error?: string;
+  message?: string;
+}
+
 export class XrpcBlueskyService implements BlueskyService {
   private readonly session: BlueskySession;
   private readonly fetchFn: typeof fetch;
@@ -80,14 +88,14 @@ export class XrpcBlueskyService implements BlueskyService {
       },
       body: video.blob,
     });
-    return this.job(await this.ok(response));
+    return this.jobFrom(response);
   }
 
   async videoJob(jobId: string): Promise<VideoJob> {
     const url = new URL('/xrpc/app.bsky.video.getJobStatus', VIDEO_SERVICE);
     url.searchParams.set('jobId', jobId);
     const response = await this.fetchFn(url);
-    return this.job(await this.ok(response));
+    return this.jobFrom(response);
   }
 
   async createPost(record: PostRecord): Promise<{ uri: string; cid: string }> {
@@ -126,17 +134,38 @@ export class XrpcBlueskyService implements BlueskyService {
     throw new Error(`Bluesky ${response.status}: ${detail || response.statusText}`);
   }
 
-  private job(body: unknown): VideoJob {
-    const { jobStatus } = body as { jobStatus: JobStatusBody };
-    return {
-      jobId: jobStatus.jobId,
-      state: jobStatus.state,
-      progress: jobStatus.progress,
-      blob: jobStatus.blob ?? null,
-      error: jobStatus.error,
-      failureCode: jobStatus.failureCode,
-      message: jobStatus.message,
-    };
+  // The video service is not the PDS. It answers an already-processed video with
+  // an *error* that still carries the finished blob, so the whole body is read
+  // and the job taken from wherever it is — and anything else becomes a message
+  // that says what came back, rather than the crash a missing field caused.
+  private async jobFrom(response: Response): Promise<VideoJob> {
+    const body = await readJson<VideoServiceBody>(response);
+    if (body?.jobStatus) return jobOf(body.jobStatus, body.blob ?? null);
+    if (body?.blob) return jobOf({}, body.blob);
+    const detail = body?.message || body?.error;
+    throw new Error(`Bluesky's video service answered ${response.status}`
+      + (detail ? `: ${detail}` : ' with no job in the response'));
+  }
+}
+
+/** The job a video job status describes, with what the body alone can say. */
+function jobOf(status: Partial<JobStatusBody>, blob: BlobRef | null = null): VideoJob {
+  return {
+    jobId: status.jobId ?? '',
+    state: status.state ?? 'JOB_STATE_COMPLETED',
+    progress: status.progress,
+    blob: status.blob ?? blob,
+    error: status.error,
+    failureCode: status.failureCode,
+    message: status.message,
+  };
+}
+
+async function readJson<T>(response: Response): Promise<T | null> {
+  try {
+    return await response.json() as T;
+  } catch {
+    return null;
   }
 }
 
