@@ -29,10 +29,17 @@ export interface PublishHandlers {
 }
 
 /** The signed-in account, or null. Loads the client on first ask. */
-export async function blueskyAccount(): Promise<string | null> {
-  const { initBluesky, blueskyDid } = await bluesky();
+export interface BlueskyAccount {
+  did: string;
+  handle: string | null;   // null when the account will not say; the DID is the fallback
+}
+
+export async function blueskyAccount(): Promise<BlueskyAccount | null> {
+  const { initBluesky, blueskyDid, blueskyHandle } = await bluesky();
   await initBluesky();
-  return blueskyDid();
+  const did = blueskyDid();
+  if (!did) return null;
+  return { did, handle: await blueskyHandle() };
 }
 
 /** Send the person to their server to approve. The promise never resolves. */
