@@ -1,6 +1,6 @@
 # DemoShine
 
-> Pure browser screen recorder. No extensions. No uploads. No server.
+> Pure browser screen recorder. 100% offline mode — no extensions, no server. Optionally publishes to a video service.
 
 WebM screen recording with region crop, a timeline trimmer, playback with sound, automatic tab/system audio, light/dark mode, and PWA install support — written in TypeScript, tested with Vitest and linted with ESLint.
 
@@ -27,7 +27,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 - **Light / dark mode** — full CSS variable theming, persisted to `localStorage`
 - **PWA** — installable as a desktop app, offline-capable for core recording and WebM export
 - **Version on screen** — the deployed build's version sits beside the logo (in the help panel too), and when a newer build has been deployed the header offers a reload; every merge to `main` bumps it, tags it and deploys — see [VERSIONING.md](VERSIONING.md)
-- **No data leaves your browser** — nothing is uploaded or stored remotely
+- **100% offline mode** — recording, playback and export happen entirely in your browser, and nothing is uploaded or stored on a server. Publishing a clip to a video service is optional, and only happens when you ask
 
 ---
 
@@ -69,8 +69,14 @@ demoshine/
 │   │   ├── TimelineMap.ts  # Recording time ↔ kept time, in one place
 │   │   ├── Trim.ts         # The keep range, and the slider view of it
 │   │   └── ExportPlan.ts   # What the file will hold, decided before a frame is encoded
+│   ├── domain/bluesky/   # Pure logic for publishing: what a Bluesky post may hold
+│   │   ├── AspectRatio.ts  # width:height, whole numbers, reducible to smallest terms
+│   │   ├── PublishableVideo.ts # the MP4 Bluesky takes, up to 300 MB
+│   │   └── BlueskyPost.ts  # the app.bsky.feed.post record carrying the video embed
 │   ├── application/      # Use cases: the thinking, without a browser
-│   │   └── export-clip.ts  # planExport(clip, settings) → an ExportPlan
+│   │   ├── export-clip.ts  # planExport(clip, settings) → an ExportPlan
+│   │   ├── publish-to-bluesky.ts # publishToBluesky(clip, settings, deps) → a post
+│   │   └── bluesky-service.ts # the port the publish use case reaches Bluesky through
 │   ├── infra/            # Browser boundary adapters
 │   │   ├── takes.ts        # InMemoryTakeRepository — owns the takes' object URLs
 │   │   ├── codecs.ts       # WebM mime / codec selection
