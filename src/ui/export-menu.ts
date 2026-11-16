@@ -50,12 +50,19 @@ class ExportMenu {
   }
 
   open(): void {
-    // The menu keeps its layout while hidden, so it can be measured before it is
-    // shown and placed without a flicker.
+    // The menu keeps its layout while hidden, so it can be measured and placed
+    // without a flicker. The Export button sits in the control bar along the
+    // bottom of the window, so there is usually no room below it: the menu opens
+    // upward unless it genuinely fits underneath, and stays inside the window
+    // either way.
     const button = el.btnExp.getBoundingClientRect();
-    const left = Math.max(EDGE, button.right - el.expMenu.offsetWidth);
+    const width = el.expMenu.offsetWidth;
+    const height = el.expMenu.offsetHeight;
+    const roomBelow = window.innerHeight - button.bottom - GAP;
+    const top = roomBelow >= height ? button.bottom + GAP : button.top - height - GAP;
+    const left = Math.max(EDGE, Math.min(button.right - width, window.innerWidth - width - EDGE));
     el.expMenu.style.left = `${Math.round(left)}px`;
-    el.expMenu.style.top = `${Math.round(button.bottom + GAP)}px`;
+    el.expMenu.style.top = `${Math.round(Math.max(EDGE, top))}px`;
     el.expMenu.classList.add('on');
     el.btnExp.setAttribute('aria-expanded', 'true');
     document.addEventListener('click', this.onDocumentClick);
