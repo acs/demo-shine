@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { avcProbes, specFor } from './export-target.js';
+import { avcProbes, specFor, videoBitrate } from './export-target.js';
 
 describe('specFor', () => {
   it('names WebM with the codecs the download has always used', () => {
@@ -49,5 +49,22 @@ describe('avcProbes', () => {
 
   it('offers High, Main and Baseline at that level, in that order', () => {
     expect(avcProbes(1920, 1080)).toEqual(['avc1.640028', 'avc1.4d0028', 'avc1.420028']);
+  });
+});
+
+describe('videoBitrate', () => {
+  it('gives a small picture the floor, where 4 Mbps is already clean', () => {
+    expect(videoBitrate(1280, 720)).toBe(4_000_000);
+    expect(videoBitrate(640, 360)).toBe(4_000_000);
+  });
+
+  it('grows with the picture, which is what a screen of small text needs', () => {
+    expect(videoBitrate(1920, 1080)).toBe(7_464_960);
+    expect(videoBitrate(3440, 1440)).toBe(17_832_960);   // the 1440p screen that blurred
+  });
+
+  it('caps, so a long clip stays within the upload limits', () => {
+    expect(videoBitrate(3840, 2160)).toBe(24_000_000);
+    expect(videoBitrate(7680, 4320)).toBe(24_000_000);
   });
 });

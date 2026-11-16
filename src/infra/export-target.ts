@@ -61,3 +61,18 @@ export function avcProbes(width: number, height: number): readonly string[] {
   const level = AVC_LEVELS.find(rung => macroblocks <= rung.maxMacroblocks)!.level;
   return [`avc1.6400${level}`, `avc1.4d00${level}`, `avc1.4200${level}`];
 }
+
+// Screen content is mostly flat, with small sharp text — and H.264 smears that text
+// long before the bitrate is "enough" for camera video of the same size. A flat
+// 4 Mbps looks fine at 720p and turns a 1440p screen's type to mush, which is
+// exactly what a 3440x1440 recording got. These are bits per pixel per frame at
+// 30fps: floored, so a small picture still looks clean; capped, so a long clip
+// stays within the upload limits (24 Mbps is roughly 180 MB a minute).
+const BITS_PER_PIXEL = 0.12;
+const BITRATE_FLOOR = 4_000_000;
+const BITRATE_CEILING = 24_000_000;
+
+export function videoBitrate(width: number, height: number, fps = 30): number {
+  const wanted = Math.round(width * height * fps * BITS_PER_PIXEL);
+  return Math.min(Math.max(wanted, BITRATE_FLOOR), BITRATE_CEILING);
+}
