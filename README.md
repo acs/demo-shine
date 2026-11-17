@@ -8,7 +8,16 @@ Review your recordings, make quick trims, and publish directly to Bluesky. Or si
 
 No installation. No recording server. Just open DemoShine and start creating.
 
-**[→ Launch DemoShine](https://acs.github.io/demo-shine/)**
+**🚀 Live App**: [https://acs.github.io/demo-shine/](https://acs.github.io/demo-shine/)
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF)](https://vite.dev/)
+[![Vitest](https://img.shields.io/badge/Vitest-5-6E9F18)](https://vitest.dev/)
+[![ESLint](https://img.shields.io/badge/ESLint-10-4B32C3)](https://eslint.org/)
+[![WebCodecs](https://img.shields.io/badge/WebCodecs-export-1B7F79)](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API)
+[![Mediabunny](https://img.shields.io/badge/Mediabunny-1.66-6E56CF)](https://mediabunny.dev/)
+[![PWA](https://img.shields.io/badge/PWA-offline-5A0FC8)](https://web.dev/progressive-web-apps/)
+[![Bluesky](https://img.shields.io/badge/Bluesky-AT_Protocol-0285FF)](https://atproto.com/)
 
 A minute and a half of DemoShine recording, trimming and exporting a clip — recorded with DemoShine itself:
 
