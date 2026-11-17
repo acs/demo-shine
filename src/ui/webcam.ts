@@ -1,8 +1,9 @@
-// Webcam picture-in-picture.
+// The webcam source.
 //
-// A header toggle starts the webcam and shows it, mirrored, in the bottom-right
-// of the recording region. The overlay is drawn both on the live preview and on
-// the recorded canvas, so what you see is exactly what gets recorded.
+// A toggle starts the camera. With the screen on it is a bubble in the
+// bottom-right of the recording region, drawn both on the live preview and on
+// the recorded canvas, so what you see is exactly what gets recorded; with the
+// screen off the camera is the whole picture (recorder.ts).
 
 import { app } from '../state.js';
 import { el, toast } from './dom.js';
@@ -25,9 +26,10 @@ export async function detectWebcam(): Promise<void> {
   if (!has) stopWebcam();
 }
 
-export function toggleWebcam(): void {
+// Async, so the caller can sync the preview once the camera is really on.
+export async function toggleWebcam(): Promise<void> {
   if (app.webcamOn) stopWebcam();
-  else              void startWebcam();
+  else              await startWebcam();
 }
 
 async function startWebcam(): Promise<void> {

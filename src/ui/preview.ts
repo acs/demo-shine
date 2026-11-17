@@ -63,18 +63,23 @@ export function seekWithin(vid: HTMLVideoElement, t: number, ms = 2500): Promise
   });
 }
 
-// Live mirror: show the captured screen on the preview canvas during countdown.
+// Live mirror: show the source that is live on the preview canvas. The screen
+// carries the crop box and the webcam bubble; with the screen off the camera is
+// the whole picture, so nothing is drawn over it.
 export function startMirror(): void {
-  if (app.mirroring) return;             // already showing the live screen
+  if (app.mirroring) return;             // already showing a live source
   app.mirroring = true;
   (function loop() {
     if (!app.mirroring) return;
-    if (el.sv.readyState >= 2) {
+    if (app.screenOn && app.stream && el.sv.readyState >= 2) {
       drawFrame(el.sv);
       drawRegion();
       // Webcam overlay, inside the recording region (what will be recorded).
       drawWebcamOverlay(ctx, app.region.x * el.cv.width, app.region.y * el.cv.height,
                              app.region.w * el.cv.width, app.region.h * el.cv.height);
+    } else if (app.webcamOn && el.wcv.readyState >= 2) {
+      ctx.drawImage(el.wcv, 0, 0, el.cv.width, el.cv.height);
+      el.cv.style.cursor = '';
     }
     app.rafId = requestAnimationFrame(loop);
   })();

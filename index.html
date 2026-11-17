@@ -94,7 +94,7 @@
           <path d="M8 21h8M12 17v4"/>
         </svg>
       </div>
-      <span class="idle-hint">Press record to share your screen</span>
+      <span class="idle-hint">Turn on Screen or Webcam to record</span>
     </div>
 
     <!-- Countdown -->
@@ -116,7 +116,7 @@
   <!-- CONTROLS: the record sources, the record button, and the actions -->
   <div class="ctrl" id="ctrl">
     <div class="srcs" role="group" aria-label="Record sources">
-      <button class="src-btn" id="screen-btn" type="button" aria-pressed="true" title="Share a screen">
+      <button class="src-btn active" id="screen-btn" type="button" aria-pressed="true" title="Screen">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
         </svg>
@@ -211,7 +211,7 @@
         <div class="help-num">1</div>
         <div class="help-step-body">
           <div class="help-step-title">Choose what to record</div>
-          <div class="help-step-desc">When the app opens, your browser asks what to share — pick a screen, window or tab (full screen is preselected) and tick <strong>Share tab audio</strong> / <strong>Share system audio</strong> for sound — the browser decides whether that box is there and whether it starts ticked, so it is worth a look every time. The preview goes live straight away, and the source buttons beside the record button pick what goes in: <strong>Screen</strong> (on by default, and pressing it asks for a share again), <strong>Webcam</strong> for a camera bubble and <strong>Mic</strong> for your voice (both greyed out if there is no device). The mic level shows in the little meter and is mixed with the tab audio, and <strong>Reset</strong> starts a new clip and goes back to the picker.</div>
+          <div class="help-step-desc">When the app opens, your browser asks what to share — pick a screen, window or tab (full screen is preselected) and tick <strong>Share tab audio</strong> / <strong>Share system audio</strong> for sound — the browser decides whether that box is there and whether it starts ticked, so it is worth a look every time. The source buttons beside the record button pick what goes in, and each is a toggle: <strong>Screen</strong> (on by default — turn it off and the share is let go, and nothing reaches for the screen again until you turn it back on), <strong>Webcam</strong> for a camera bubble over the screen, or the whole picture on its own when the screen is off, and <strong>Mic</strong> for your voice (both greyed out if there is no device). The mic level shows in the little meter and is mixed with the tab audio, and <strong>Reset</strong> starts a new clip and goes back to the picker.</div>
         </div>
       </div>
       <div class="help-step">
