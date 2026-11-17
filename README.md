@@ -12,7 +12,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 
 - **Zero dependencies on your machine** — runs entirely in the browser via `getDisplayMedia`
 - **Live preview on start** — the screen capture begins as soon as the app opens (full screen preferred), no need to press record first
-- **Record sources in one row** — Screen, Webcam and Mic sit beside the record button and are independent toggles: Screen on by default, and **turn it off and nothing reaches for the screen** — the webcam then carries the picture on its own, captured and shown without a share. The recording's duration is read off the timeline rather than a separate clock
+- **Record sources in one row** — Screen, Webcam and Mic sit on the left, the record button is centred in the bar, and the sources are out while a take is being set up or records. They are independent toggles: Screen is on by default, and **turn it off and nothing reaches for the screen** — the webcam then carries the picture on its own, captured and shown without a share. The recording's duration is read off the timeline rather than a separate clock
 - **WebM export, encoded offline** — VP9 (VP8 fallback) with Opus audio, written straight from the decoded frames by WebCodecs: about **10× faster than the clip**, it keeps going while the tab is in the background, and the file carries a duration and cue points, so any player can scrub it
 - **Region crop** — a red box over the preview always shows what will be recorded: the whole screen by default, drag to record just part of it, click to reset; while recording the box breathes (red ↔ background)
 - **Webcam** — a source button adds a mirrored bubble in the corner of the recording (disabled when no camera is present), or is **the whole recording** when the screen is off
@@ -99,7 +99,8 @@ demoshine/
 │       ├── size-estimate.ts # What the export will weigh
 │       ├── countdown.ts    # The 3-2-1 overlay, cancellable (Countdown)
 │       ├── mic.ts          # Microphone capture + level meter (Meter)
-│       ├── webcam.ts       # Webcam bubble overlay
+│       ├── webcam.ts       # The webcam source: a bubble, or the whole picture
+│       ├── source-buttons.ts # The source buttons' enabled state
 │       ├── theme.ts        # Light / dark theme
 │       ├── help.ts         # Instructions modal
 │       └── version.ts      # The version badge, and the newer-build offer

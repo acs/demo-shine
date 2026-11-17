@@ -16,6 +16,7 @@ import { waveform } from './ui/waveform.js';
 import { initRegion } from './ui/region.js';
 import { initWebcam, toggleWebcam } from './ui/webcam.js';
 import { initMic, toggleMic } from './ui/mic.js';
+import { initSourceButtons } from './ui/source-buttons.js';
 import { exportMenu } from './ui/export-menu.js';
 import { publishDialog } from './ui/publish-dialog.js';
 
@@ -83,12 +84,15 @@ function init(): void {
 
   // The record sources, independent of one another. Turning the screen off lets
   // the share go; the webcam is the whole picture while the screen is off, so
-  // the preview is synced once it has really started or stopped.
+  // the preview is synced once it has really started or stopped. All three are
+  // out when their device is missing and while a take is being set up or runs
+  // (source-buttons.ts).
+  initSourceButtons();
   el.screenBtn.addEventListener('click', toggleScreen);
   el.webcamBtn.addEventListener('click', async () => { await toggleWebcam(); syncSources(); });
   initWebcam();
 
-  // Microphone toggle + level meter (disabled when no mic is present).
+  // Microphone toggle + level meter.
   el.micBtn.addEventListener('click', toggleMic);
   initMic();
 

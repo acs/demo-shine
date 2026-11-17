@@ -7,9 +7,10 @@
 
 import { app } from '../state.js';
 import { el, toast } from './dom.js';
+import { setCameraPresent } from './source-buttons.js';
 
 export function initWebcam(): void {
-  el.webcamBtn.disabled = true;                 // until we know a camera exists
+  setCameraPresent(false);                      // until we know a camera exists
   if (navigator.mediaDevices) {
     navigator.mediaDevices.addEventListener('devicechange', () => void detectWebcam());
   }
@@ -22,7 +23,7 @@ export async function detectWebcam(): Promise<void> {
     const devices = await navigator.mediaDevices.enumerateDevices();
     has = devices.some(d => d.kind === 'videoinput');
   } catch { /* no mediaDevices / blocked */ }
-  el.webcamBtn.disabled = !has;
+  setCameraPresent(has);
   if (!has) stopWebcam();
 }
 
