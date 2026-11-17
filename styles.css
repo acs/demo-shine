@@ -76,7 +76,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 #compat-warn{display:none;font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;color:var(--amber);padding:4px 10px;border:1px solid rgba(245,158,11,.25);border-radius:6px;background:rgba(245,158,11,.06);}
 #compat-warn.on{display:inline-block;}
 .hdr-actions{display:flex;align-items:center;gap:7px;margin-left:auto;}
+/* The capture's size, shown once there is one. Shown with `.on` for the same
+   reason as the warning above: clearing an inline `display` falls back to this
+   `display:none`, so it never appeared. */
 .res-badge{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--text-mid);padding:4px 10px;border:1px solid var(--glass-b);border-radius:100px;background:var(--glass);display:none;}
+.res-badge.on{display:inline-block;}
 
 .icon-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--glass-b);background:var(--glass);color:var(--text-mid);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-family:var(--font-mono);font-size:13px;font-weight:600;line-height:1;flex-shrink:0;}
 .icon-btn:hover{background:var(--glass-b);color:var(--text);border-color:var(--glass-b2);}
