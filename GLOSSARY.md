@@ -22,7 +22,7 @@ beside it.
 | **take** | **one press of Record**: one MediaRecorder WebM with its own length, played in order with the others | `Take` — id, blob, url, duration |
 | **clip** | all the takes, in order, plus the keep range and what was cut out. What everything else asks what to show and what to export | `Clip`, the aggregate |
 | **take repository** | where a clip's takes come from, and the only owner of their object URLs | `TakeRepository` (the port), `InMemoryTakeRepository` |
-| **record source** | what a take is made of: the shared **screen**, the **webcam** and the **microphone**. Three independent toggles, Screen on by default. A take needs a picture: the screen, or the webcam when the screen is off. With the screen off nothing reaches for a share | the source buttons (`#screen-btn`, `#webcam-btn`, `#mic-btn`) |
+| **record source** | what a take is made of: the shared **screen**, the **webcam** and the **microphone**. Three independent toggles, **all off at start** — nothing is captured until one is pressed. A take needs a picture: the screen, or the webcam when the screen is off. With the screen off nothing reaches for a share | the source buttons (`#screen-btn`, `#webcam-btn`, `#mic-btn`) |
 | **join** | the seam where one take ends and the next begins — where the sound fades and the picture dissolves | `FADE_S`, `DISSOLVE_S` |
 
 A clip's length is **the sum of its takes** — derived, never a field beside them.
