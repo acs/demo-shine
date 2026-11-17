@@ -13,6 +13,7 @@ import { Trim } from '../domain/clip/Trim.js';
 import { keptLengthNow, keptOf, player, sourceOf } from './clip.js';
 import { playback } from './playback.js';
 import { waveform } from './waveform.js';
+import { drawThumb } from './thumbnail.js';
 
 const COUNT = 22;         // thumbnail frames across the strip
 
@@ -120,6 +121,10 @@ export function rebuildTimeline(): void {
 // superseded or the session ends. Nothing else may draw into cells that are no
 // longer there, and a build must not go on moving the element over a clip that has
 // been dropped.
+//
+// Each cell is a picture of the take the frame came from, at that take's own shape
+// (thumbnail.ts): a cropped take is not 16:9, and stretching it into a fixed cell
+// would show a picture the clip does not hold.
 class Strip {
   private generation = 0;
 
@@ -132,7 +137,6 @@ class Strip {
       const wrap = document.createElement('div');
       wrap.className = 'thumb-frame';
       const tc = document.createElement('canvas');
-      tc.width = 80; tc.height = 45;
       wrap.appendChild(tc);
       el.thumbs.appendChild(wrap);
       frames.push({ tc });
@@ -141,7 +145,7 @@ class Strip {
       if (mine !== this.generation) return;     // superseded, or the session ended
       await player.seek(sourceOf((i / COUNT) * keptLengthNow()));
       if (mine !== this.generation) return;
-      frames[i].tc.getContext('2d')?.drawImage(el.rv, 0, 0, 80, 45);
+      drawThumb(frames[i].tc, el.rv, 0, 0, el.rv.videoWidth, el.rv.videoHeight);
     }
   }
 
