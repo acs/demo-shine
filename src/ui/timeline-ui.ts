@@ -13,7 +13,7 @@ import { Trim } from '../domain/clip/Trim.js';
 import { keptLengthNow, keptOf, player, sourceOf } from './clip.js';
 import { playback } from './playback.js';
 import { waveform } from './waveform.js';
-import { drawThumb } from './thumbnail.js';
+import { drawThumb, thumbBox } from './thumbnail.js';
 
 const COUNT = 22;         // thumbnail frames across the strip
 
@@ -137,6 +137,10 @@ class Strip {
       const wrap = document.createElement('div');
       wrap.className = 'thumb-frame';
       const tc = document.createElement('canvas');
+      // Sized to the take in hand, so the first frame does not have to resize it;
+      // each cell is resized again only if its own take turns out a different shape.
+      const { w, h } = thumbBox(el.rv.videoWidth, el.rv.videoHeight);
+      tc.width = w; tc.height = h;
       wrap.appendChild(tc);
       el.thumbs.appendChild(wrap);
       frames.push({ tc });
