@@ -195,7 +195,11 @@ commits, pull requests).
 | Firefox 130+ | ✓ | ✓ | Partial |
 | Safari | ✗ | — | — |
 
-Safari does not support `getDisplayMedia` for screen capture.
+Safari does not support `getDisplayMedia` for screen capture — and **neither does
+any mobile browser** (Chrome or Firefox on Android, Safari on iOS). A phone or
+tablet can still record the **webcam and the microphone**, with the same
+timeline, trimming, export and publishing; the Screen button is out there, and the
+header says why.
 
 The export needs WebCodecs (`VideoEncoder`), so **Firefox 113–129 can record but
 not export** — it arrived in Firefox 130. There is no slower path to fall back to
