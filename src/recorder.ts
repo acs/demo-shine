@@ -11,7 +11,7 @@ import { el, setStatus, toast } from './ui/dom.js';
 import { refreshSourceButtons } from './ui/source-buttons.js';
 import { drawGrid, startMirror, stopMirror, seekWithin } from './ui/preview.js';
 import { countdown } from './ui/countdown.js';
-import { strip } from './ui/timeline-ui.js';
+import { strip, updateSizeUI, updateTrimUI } from './ui/timeline-ui.js';
 import { player } from './ui/clip.js';
 import { playback } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
@@ -469,15 +469,30 @@ async function onRecStop(): Promise<void> {
   // element, which only now starts holding the new take.
   app.clip.addTake(blob, duration);
 
+  // Open on the take that was just recorded, or on the first one for a new clip,
+  // with the playhead at the join or at the trim IN.
+  const park = appending ? previous : app.clip.trim.start * app.clip.total();
+  await openReviewClip(appending ? app.clip.takes.count() - 1 : 0, park);
+}
+
+/**
+ * Open the review on the joined clip: the video holding one take, the timeline
+ * with its waveform and thumbnails, and the playhead parked. A take that just
+ * finished and a clip restored from a page load both land here — the recording
+ * flow and the resume flow — so the sequence lives in one place.
+ */
+export async function openReviewClip(loadIndex: number, park: number): Promise<void> {
   playback.reset();
-  await player.load(appending ? app.clip.takes.count() - 1 : 0);
+  await player.load(loadIndex);
 
   // The clip may be a cropped region, so size the preview canvas to it.
   if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
+  updateTrimUI();
+  updateSizeUI();
+  el.idleOv.classList.add('gone');      // the overlay says "turn a source on"; the clip is picture enough
   void waveform.build(app.clip.takes.all());
   // Building the thumbnails seeks through the clip; once that is done, park the
-  // playhead at the trim IN, or at the join when a recording was just added.
-  const park = appending ? previous : app.clip.trim.start * app.clip.total();
+  // playhead.
   void strip.build().then(() => playback.seek(park));
   el.timeline.classList.add('on');
   el.btnExp.style.display   = '';

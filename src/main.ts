@@ -19,6 +19,7 @@ import { initMic, toggleMic } from './ui/mic.js';
 import { initSourceButtons, setScreenAvailable } from './ui/source-buttons.js';
 import { exportMenu } from './ui/export-menu.js';
 import { publishDialog } from './ui/publish-dialog.js';
+import { watchClip, resumeClip } from './resume.js';
 
 function init(): void {
   // Not every browser can share a screen: no mobile browser implements
@@ -71,6 +72,13 @@ function init(): void {
   // Click the timeline to play from that point, mark a section and trim it.
   initTimelineMarks();
   initTimeline();   // the timeline listens to the clip
+
+  // The clip outlives the page. It is kept written down as it changes — a reload
+  // or a new version comes back to it, and the trip a Bluesky sign-in takes is
+  // only the one that forced it — and a stored clip is opened back into the
+  // review on the way in. Reset is what lets it go.
+  watchClip();
+  void resumeClip();
 
   // PWA install prompt
   window.addEventListener('beforeinstallprompt', e => {

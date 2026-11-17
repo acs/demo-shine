@@ -18,6 +18,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 - **Webcam** — a source button adds a mirrored bubble in the corner of the recording (disabled when no camera is present), or is **the whole recording** when the screen is off
 - **Microphone** — a source button (disabled when no mic) with a live level meter; its audio is **mixed with the tab/system audio** in the recording
 - **Add more takes** — pressing Record after a recording appends the new one to the end of the clip; the share is kept between takes, so there is no second picker and **every take in a clip comes from the same source** (the same tab, window or screen). **A short fade either side of the join, and a dissolve across it**, soften the change from one take to the next. Reset starts a new clip; if a source ends, turn it back on and the next take still adds on
+- **Your recording is not lost to a reload** — the clip is kept in the browser (IndexedDB) as it changes, so a page reload, an update, or the trip a Bluesky sign-in takes all come back to it, opened straight into the review; Reset is what starts a new clip and lets the old one go
 - **Live timeline** — the timeline is there while a take records, filling in with the picture and the sound as they are captured (drawn from the live preview and the recorded stream's own levels, never by decoding the half-written file), and it becomes the trim timeline on stop
 - **Timeline trimmer** — drag IN/OUT handles to keep a range, then **click twice to select a section and approve it with the green check** (or by clicking inside it), with a **red cross** to leave it in and an **undo** to put it back. **An approved trim leaves the timeline**, which closes up over it, so the timeline always shows what the export will hold — the strip, the waveform, the handles and the playhead all follow. **Drag a mark or the selected section** (whole, or by an edge) to reposition it, with the clip playing under it as it moves
 - **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
@@ -57,6 +58,7 @@ demoshine/
 │   ├── prefs.ts          # User preferences (localStorage)
 │   ├── recorder.ts       # The recording flow (getDisplayMedia + MediaRecorder) — needs a real picker
 │   ├── exporter.ts       # The export and reset flows: buttons, status line, phase
+│   ├── resume.ts         # Keeping the clip across a page load: write it down, read it back
 │   ├── offline-export.ts # The export's browser half: decode, draw, encode, mux
 │   ├── util.ts           # Tiny shared helpers (sleep)
 │   ├── globals.d.ts      # Ambient types (prefixed AudioContext, captureStream)
@@ -80,6 +82,7 @@ demoshine/
 │   │   └── bluesky-service.ts # the port the publish use case reaches Bluesky through
 │   ├── infra/            # Browser boundary adapters
 │   │   ├── takes.ts        # InMemoryTakeRepository — owns the takes' object URLs
+│   │   ├── clip-store.ts   # IndexedDB — where a clip outlives the page
 │   │   ├── codecs.ts       # WebM mime / codec selection
 │   │   ├── export-target.ts # which container an export writes (WebM, MP4) and its codecs
 │   │   ├── bluesky.ts      # the OAuth session + XRPC calls; loaded only when publishing
@@ -122,8 +125,8 @@ demoshine/
 
 The split is a hexagonal one: `domain/` is pure and `application/` holds the
 use cases (both run in node, with tests beside them), `infra/` and `ui/` are the
-adapters that reach the browser and the DOM, and `recorder.ts` / `exporter.ts` are
-the flows that `main.ts` composes. Each `ui/` module exports the object its state
+adapters that reach the browser and the DOM, and `recorder.ts` / `exporter.ts` /
+`resume.ts` are the flows that `main.ts` composes. Each `ui/` module exports the object its state
 lives on, and `session.ts` is what ends those lifetimes — the vocabulary is in
 [GLOSSARY.md](GLOSSARY.md), and where a rule belongs is in
 [`.agents/skills/domain-model`](.agents/skills/domain-model/SKILL.md). It is

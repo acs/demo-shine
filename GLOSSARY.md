@@ -27,6 +27,19 @@ beside it.
 
 A clip's length is **the sum of its takes** — derived, never a field beside them.
 
+## Keeping the recording
+
+A clip lives in the page. The one thing that takes it away is the walk out to
+Bluesky to sign in, so the clip is written down before that trip and read back on
+the way in — and, because the writing is not only for that trip, a reload or a new
+version comes back to it too. Only Reset lets it go.
+
+| word | what it is | in the code |
+|---|---|---|
+| **clip snapshot** | everything a clip is made of, written down: its takes (the recording bytes and their lengths), its keep range, its cuts | `ClipSnapshot`, `Clip.snapshot()` |
+| **restore** | rebuilding a clip from a snapshot and opening the review on it. Nothing is announced: it is a load, not a change | `Clip.restore()`, `resumeClip()` |
+| **clip store** | where a snapshot outlives the page: IndexedDB, the only store here that takes a Blob. Written as the clip changes, read at startup, dropped at Reset | `src/infra/clip-store.ts`, `src/resume.ts` |
+
 ## Trimming
 
 | word | what it is | in the code |
@@ -103,11 +116,13 @@ can end it:
 `Session` is what ends them: `session.reset()` is the whole of "this session is
 over", and the Reset button is only the flow around it.
 
-Two spots keep module-level state, both deliberately. The toast timer in
+A few spots keep module-level state, all deliberately. The toast timer in
 `ui/dom.ts` lasts a single toast. The Bluesky client in `infra/bluesky.ts` — the
 OAuth client, the session, and the signed-in handle — lasts the page, because
 signing in has to outlive a session reset and be there again on the way back from
-the authorization server.
+the authorization server. The clip store in `infra/clip-store.ts` — its IndexedDB
+connection, and the writes queued one behind another — lasts the page too, because
+what it holds is the one thing that has to outlive it.
 
 ## Words we do not use
 
