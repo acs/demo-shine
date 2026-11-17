@@ -16,18 +16,20 @@ import { waveform } from './ui/waveform.js';
 import { initRegion } from './ui/region.js';
 import { initWebcam, toggleWebcam } from './ui/webcam.js';
 import { initMic, toggleMic } from './ui/mic.js';
-import { initSourceButtons } from './ui/source-buttons.js';
+import { initSourceButtons, setScreenAvailable } from './ui/source-buttons.js';
 import { exportMenu } from './ui/export-menu.js';
 import { publishDialog } from './ui/publish-dialog.js';
 
 function init(): void {
-  const supported = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
-  if (!supported) {
-    el.compatWarn.style.display = '';
-    setStatus('', 'Not supported');
-  } else {
-    setStatus('ready', 'Ready');
-  }
+  // Not every browser can share a screen: no mobile browser implements
+  // getDisplayMedia, and neither does Safari on macOS. That is not "not
+  // supported" — the webcam and the mic still work — so the header says what is
+  // missing and the Screen button is out (source-buttons.ts). A browser with no
+  // mediaDevices at all is a different thing, and is said plainly.
+  const hasMedia = !!navigator.mediaDevices;
+  const canShare = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
+  if (hasMedia && !canShare) el.compatWarn.classList.add('on');
+  setStatus(hasMedia ? 'ready' : '', hasMedia ? 'Ready' : 'Not supported');
 
   // Apply persisted preferences.
   const prefs = loadPrefs();
@@ -87,6 +89,7 @@ function init(): void {
   // the preview is synced once it has really started or stopped. All three are
   // out when their device is missing and while a take is being set up or runs
   // (source-buttons.ts).
+  setScreenAvailable(canShare);
   initSourceButtons();
   el.screenBtn.addEventListener('click', toggleScreen);
   el.webcamBtn.addEventListener('click', async () => { await toggleWebcam(); syncSources(); });
