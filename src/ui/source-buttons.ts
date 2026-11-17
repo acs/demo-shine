@@ -13,10 +13,10 @@ import { app, onPhaseChange, type Phase } from '../state.js';
 import { el } from './dom.js';
 
 // What the page knows about the sources: whether a camera or microphone is
-// there at all, and whether this browser can share a screen. No mobile browser
-// implements getDisplayMedia, so a phone or tablet can record the webcam and the
-// mic but has no screen source — and the Screen button says so rather than
-// sitting there as a dead end.
+// there at all, and whether this browser can share a screen. Chrome and Firefox
+// on Android do not implement getDisplayMedia, so a phone or tablet there can
+// record the webcam and the mic but has no screen source — and the Screen button
+// says so rather than sitting there as a dead end.
 const sources = { camera: false, mic: false, screen: true };
 
 // A take in flight owns the sources: it is not to be switched under it.
