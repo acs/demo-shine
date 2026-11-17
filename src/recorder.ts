@@ -73,6 +73,7 @@ export function syncSources(): void {
   if (!hasPicture()) {
     stopMirror();
     drawGrid();
+    el.resBadge.classList.remove('on');   // no source: no size to report
     el.idleOv.classList.remove('gone');
     el.recBtn.disabled = false;
     el.recLbl.textContent = 'Record';
@@ -96,7 +97,7 @@ function sizePreviewToScreen(): void {
   el.cv.width = app.captureW;
   el.cv.height = app.captureH;
   el.resBadge.textContent = `${app.captureW} × ${app.captureH}`;
-  el.resBadge.style.display = '';
+  el.resBadge.classList.add('on');
 }
 
 // The webcam is the whole picture when the screen is off, so the preview takes
@@ -174,7 +175,7 @@ export async function startCapture(force = false): Promise<void> {
     el.cv.height = app.captureH;
 
     el.resBadge.textContent = `${app.captureW} × ${app.captureH}`;
-    el.resBadge.style.display = '';
+    el.resBadge.classList.add('on');
 
     startMirror();                       // live preview on the canvas
     el.idleOv.classList.add('gone');
@@ -189,7 +190,7 @@ export async function startCapture(force = false): Promise<void> {
     // out, and the webcam keeps the preview if it is on. The phase is left
     // behind first, so syncSources is free to set it.
     app.screenOn = false;
-    el.resBadge.style.display = 'none';
+    el.resBadge.classList.remove('on');
     setPhase('idle');
     syncSources();
     if (e.name && e.name !== 'NotAllowedError') toast('Could not start: ' + e.name, 4000);
@@ -433,7 +434,7 @@ function onCaptureEnded(): void {
   if (counting) countdown.cancel();
   app.screenOn = false;      // the share is gone: the screen is no longer a source
   releaseDisplay();
-  el.resBadge.style.display = 'none';
+  el.resBadge.classList.remove('on');
   el.recLbl.textContent = 'Record';
   // A finished clip is kept: recording more just needs a source again. The
   // webcam and the microphone are the user's own toggles and are left alone.
