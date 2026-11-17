@@ -140,10 +140,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .tl-act.undo:hover{background:var(--glass-b);color:var(--text);}
 .tl-act svg{pointer-events:none;}
 
-/* The check and the cross, sitting on the selected section itself */
+/* The scissors and the undo, sitting on the selected section itself */
 .tl-acts{position:absolute;top:50%;transform:translate(-50%,-50%);display:inline-flex;gap:5px;padding:3px 5px;border-radius:999px;background:rgba(6,7,16,.74);border:1px solid var(--glass-b2);pointer-events:auto;box-shadow:0 2px 12px rgba(0,0,0,.5);}
 .tl-acts .tl-act{width:17px;height:17px;}
-.tl-acts .tl-act svg{width:10px;height:10px;}
+.tl-acts .tl-act svg{width:11px;height:11px;}
 
 /* Marks and cut regions over the track */
 .tl-track{position:relative;padding-top:14px;}

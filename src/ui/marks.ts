@@ -10,8 +10,8 @@
 //
 //   click                     drop a mark (and play from there)
 //   click again               bound the section between the two marks
-//   ✓ / click inside it       approve it — the section becomes a cut and leaves
-//   ✗                         leave it in; the selection is dropped
+//   scissors / click inside   approve it — the section becomes a cut and leaves
+//   undo                      leave it in; the selection is dropped
 //   drag a mark / the section  move what is selected; the clip plays under it
 //
 // An approved trim is taken out of the timeline and what is left closes up, so
@@ -71,7 +71,7 @@ function followTheClip(event: ClipEvent): void {
 export function initTimelineMarks(): void {
   app.clip.onChange(followTheClip);
   el.timeline.addEventListener('click', onTimelineClick);
-  el.tlMarks.addEventListener('click', onActionClick);     // the check and the cross
+  el.tlMarks.addEventListener('click', onActionClick);     // the scissors and the undo
   el.trimUndo.addEventListener('click', undoTrim);
   el.tlMarks.addEventListener('pointerdown', evt => drag.down(evt));
   window.addEventListener('pointermove', evt => drag.move(evt));
@@ -105,9 +105,9 @@ export function renderMarks(): void {
     const centre = (keptOf(section.s * d) + keptOf(section.e * d)) / 2 / Math.max(0.001, keptLengthNow()) * 100;
     html += `<span class="tl-acts" style="left:${Math.max(7, Math.min(93, centre)).toFixed(2)}%">`
           + `<button class="tl-act ok" data-act="trim" title="Trim this section out" aria-label="Trim this section out">`
-          + `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg></button>`
-          + `<button class="tl-act no" data-act="keep" title="Leave this section in" aria-label="Leave this section in">`
-          + `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`
+          + `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88"/><path d="M14.47 14.48L20 20"/><path d="M8.12 8.12L12 12"/></svg></button>`
+          + `<button class="tl-act no" data-act="keep" title="Undo the selection" aria-label="Undo the selection">`
+          + `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-5"/></svg></button>`
           + `</span>`;
   }
   app.marks.forEach((m, i) => {
@@ -136,7 +136,7 @@ function pctWidth(section: Span): string {
   return (((keptOf(section.e * app.clip.total()) - keptOf(section.s * app.clip.total())) / kept) * 100).toFixed(3) + '%';
 }
 
-// The check and the cross are drawn with the section, so they are read here
+// The scissors and the undo are drawn with the section, so they are read here
 // rather than bound to an element that is replaced on every repaint.
 function onActionClick(evt: MouseEvent): void {
   const act = (evt.target as HTMLElement | null)?.closest<HTMLElement>('.tl-act');
@@ -148,7 +148,7 @@ function onActionClick(evt: MouseEvent): void {
 
 // ── Approving, dismissing, undoing ───────────────────────────────────────────
 
-// The green check: take the section out. The timeline closes up over it, and the
+// The scissors: take the section out. The timeline closes up over it, and the
 // playhead lands where the section was.
 function approveTrim(): void {
   if (!canEdit()) return;
@@ -158,7 +158,7 @@ function approveTrim(): void {
   afterEdits(section.s * app.clip.total());        // a time in the recording
 }
 
-// The red cross: leave the section in and drop the selection.
+// The undo: leave the section in and drop the selection.
 function dismissSelection(): void {
   app.marks = [];
   renderMarks();
