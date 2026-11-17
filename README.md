@@ -11,8 +11,8 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 ## Features
 
 - **Zero dependencies on your machine** — runs entirely in the browser via `getDisplayMedia`
-- **Live preview on start** — the screen capture begins as soon as the app opens (full screen preferred), no need to press record first
-- **Record sources in one row** — Screen, Webcam and Mic sit on the left, the record button is centred in the bar, and the sources are out while a take is being set up or records. They are independent toggles: Screen is on by default, and **turn it off and nothing reaches for the screen** — the webcam then carries the picture on its own, captured and shown without a share. The recording's duration is read off the timeline rather than a separate clock
+- **Nothing captured until you ask** — every source starts off, so the app never opens a screen picker on its own; press **Screen** or **Webcam** to start one, and Record with nothing on says so
+- **Record sources in one row** — Screen, Webcam and Mic sit on the left, the record button is centred in the bar, and the sources are out while a take is being set up or records. They are independent toggles, **all off at start**: press Screen to share, and press it again to let the share go — nothing reaches for the screen after that — or Webcam, which carries the picture on its own when the screen is off. The recording's duration is read off the timeline rather than a separate clock
 - **WebM export, encoded offline** — VP9 (VP8 fallback) with Opus audio, written straight from the decoded frames by WebCodecs: about **10× faster than the clip**, it keeps going while the tab is in the background, and the file carries a duration and cue points, so any player can scrub it
 - **Region crop** — a red box over the preview always shows what will be recorded: the whole screen by default, drag to record just part of it, click to reset; while recording the box breathes (red ↔ background)
 - **Webcam** — a source button adds a mirrored bubble in the corner of the recording (disabled when no camera is present), or is **the whole recording** when the screen is off
@@ -34,7 +34,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 
 ## Usage
 
-1. Open [DemoShine](https://acs.github.io/demo-shine/) in Chrome or Edge — **Screen** is on by default, so the picker opens and the screen goes live in the preview (full screen is preselected; tick **Share tab audio** / **Share system audio** for sound). If the browser will not open the picker until you click, press **Screen**; press it again to turn the screen off, and **Webcam** then carries the picture on its own. **Reset** goes back to the picker if you forget the audio
+1. Open [DemoShine](https://acs.github.io/demo-shine/) in Chrome or Edge — nothing is captured yet. Press **Screen** to pick a screen, window or tab (full screen is preselected; tick **Share tab audio** / **Share system audio** for sound), or **Webcam** to record the camera on its own. Pressing Screen again lets the share go, and **Reset** goes back to the picker if you forget the audio
 2. The red box over the preview shows what will be recorded — the whole screen by default; drag to record only a region, and click to go back to the full screen
 3. Press the red button to record — a 3-second countdown runs, and pressing the button again during it cancels; press it again to stop
 4. Press Record again to add another take to the end of the clip — the timeline then holds every take, and the trims you already made are kept
