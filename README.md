@@ -12,10 +12,11 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 
 - **Zero dependencies on your machine** — runs entirely in the browser via `getDisplayMedia`
 - **Live preview on start** — the screen capture begins as soon as the app opens (full screen preferred), no need to press record first
+- **Record sources in one row** — Screen, Webcam and Mic sit beside the record button, Screen on by default (pressing it asks for a share again), and the recording's duration is read off the timeline rather than a separate clock
 - **WebM export, encoded offline** — VP9 (VP8 fallback) with Opus audio, written straight from the decoded frames by WebCodecs: about **10× faster than the clip**, it keeps going while the tab is in the background, and the file carries a duration and cue points, so any player can scrub it
 - **Region crop** — a red box over the preview always shows what will be recorded: the whole screen by default, drag to record just part of it, click to reset; while recording the box breathes (red ↔ background)
-- **Webcam overlay** — a header toggle adds a mirrored webcam bubble in the corner of the recording (disabled when no camera is present)
-- **Microphone** — a header toggle (disabled when no mic) with a live level meter; its audio is **mixed with the tab/system audio** in the recording
+- **Webcam overlay** — a source button adds a mirrored webcam bubble in the corner of the recording (disabled when no camera is present)
+- **Microphone** — a source button (disabled when no mic) with a live level meter; its audio is **mixed with the tab/system audio** in the recording
 - **Add more takes** — pressing Record after a recording appends the new one to the end of the clip; the share is kept between takes, so there is no second picker and **every take in a clip comes from the same source** (the same tab, window or screen). **A short fade either side of the join, and a dissolve across it**, soften the change from one take to the next. Reset starts a new clip; if the share ends, Record asks for another one and the next take still adds on
 - **Live timeline** — the timeline is there while a take records, filling in with the picture and the sound as they are captured (drawn from the live preview and the recorded stream's own levels, never by decoding the half-written file), and it becomes the trim timeline on stop
 - **Timeline trimmer** — drag IN/OUT handles to keep a range, then **click twice to select a section and approve it with the green check** (or by clicking inside it), with a **red cross** to leave it in and an **undo** to put it back. **An approved trim leaves the timeline**, which closes up over it, so the timeline always shows what the export will hold — the strip, the waveform, the handles and the playhead all follow. **Drag a mark or the selected section** (whole, or by an edge) to reposition it, with the clip playing under it as it moves
@@ -96,7 +97,6 @@ demoshine/
 │       ├── dissolve.ts     # Short dissolves at the joins between takes (Dissolve)
 │       ├── waveform.ts     # The audio track under the strip (Waveform)
 │       ├── size-estimate.ts # What the export will weigh
-│       ├── timer.ts        # Recording clock
 │       ├── countdown.ts    # The 3-2-1 overlay, cancellable (Countdown)
 │       ├── mic.ts          # Microphone capture + level meter (Meter)
 │       ├── webcam.ts       # Webcam bubble overlay

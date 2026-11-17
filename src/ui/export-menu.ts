@@ -1,10 +1,10 @@
 // The Export menu: where a clip goes.
 //
-// A small menu under the Export button — a WebM or MP4 file, or Bluesky. It is a body-level
-// element rather than a child of the header, because the header clips what
-// overflows it (`.ctrl` is `overflow:hidden`), so a menu inside it would be cut
-// off; it places itself under the button each time it opens, and gives up and
-// closes if the window changes size underneath it.
+// A small menu under the Export button — a WebM or MP4 file, or Bluesky. It is a
+// body-level element rather than a child of the control row, so nothing in the
+// layout can clip it; it places itself under the button each time it opens
+// (above it when there is no room below), and gives up and closes if the window
+// changes size underneath it.
 //
 // It owns its own open state and the listeners that end it — a click outside, an
 // Escape, a choice — so the button only asks it to toggle, and the flow is handed
@@ -55,10 +55,9 @@ class ExportMenu {
 
   open(): void {
     // The menu keeps its layout while hidden, so it can be measured and placed
-    // without a flicker. The Export button sits in the control bar along the
-    // bottom of the window, so there is usually no room below it: the menu opens
-    // upward unless it genuinely fits underneath, and stays inside the window
-    // either way.
+    // without a flicker. The Export button sits in the control row under the
+    // preview: the menu opens downward when it fits, upward otherwise, and stays
+    // inside the window either way.
     const button = el.btnExp.getBoundingClientRect();
     const width = el.expMenu.offsetWidth;
     const height = el.expMenu.offsetHeight;
