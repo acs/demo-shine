@@ -10,7 +10,7 @@ import { startStarfield } from './ui/starfield.js';
 import { drawGrid } from './ui/preview.js';
 import { initTimeline, onTrim, updateTrimUI, updateSizeUI } from './ui/timeline-ui.js';
 import { initTimelineMarks } from './ui/marks.js';
-import { toggleRec, startCapture } from './recorder.js';
+import { toggleRec, startCapture, toggleScreen } from './recorder.js';
 import { doExport, resetAll } from './exporter.js';
 import { playback } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
@@ -83,7 +83,9 @@ function init(): void {
   // Drag on the preview to crop the recording to a region.
   initRegion();
 
-  // Webcam picture-in-picture toggle (disabled when no camera is present).
+  // The record sources. Screen asks for a share (again), and is shown live while
+  // one is held; webcam and mic are toggles (disabled when no device is present).
+  el.screenBtn.addEventListener('click', toggleScreen);
   el.webcamBtn.addEventListener('click', toggleWebcam);
   initWebcam();
 

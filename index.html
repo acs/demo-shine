@@ -75,18 +75,6 @@
           <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
         </svg>
       </button>
-      <button class="icon-btn" id="webcam-btn" aria-label="Toggle webcam" aria-pressed="false" title="Webcam" disabled>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-        </svg>
-      </button>
-      <button class="icon-btn" id="mic-btn" aria-label="Toggle microphone" aria-pressed="false" title="Microphone" disabled>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-        </svg>
-      </button>
-      <div class="vu" id="vu" aria-hidden="true"><div class="vu-fill" id="vu-fill"></div></div>
       <button class="icon-btn" id="help-btn" aria-label="Show instructions" title="Instructions">?</button>
       <div class="status-chip">
         <div class="s-dot" id="s-dot"></div>
@@ -122,7 +110,52 @@
     <div class="rec-badge" id="rec-badge">
       <div class="rec-badge-dot"></div>
       <span>REC</span>
-      <span id="rec-clock" style="margin-left:6px;color:rgba(255,255,255,.5)">00:00</span>
+    </div>
+  </div>
+
+  <!-- CONTROLS: the record sources, the record button, and the actions -->
+  <div class="ctrl" id="ctrl">
+    <div class="srcs" role="group" aria-label="Record sources">
+      <button class="src-btn" id="screen-btn" type="button" aria-pressed="true" title="Share a screen">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        </svg>
+        <span>Screen</span>
+        <span class="src-pin"></span>
+      </button>
+      <button class="src-btn" id="webcam-btn" type="button" aria-pressed="false" title="Webcam" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+        </svg>
+        <span>Webcam</span>
+        <span class="src-pin"></span>
+      </button>
+      <button class="src-btn" id="mic-btn" type="button" aria-pressed="false" title="Microphone" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+        <span>Mic</span>
+        <span class="src-pin"></span>
+      </button>
+      <div class="vu" id="vu" aria-hidden="true"><div class="vu-fill" id="vu-fill"></div></div>
+    </div>
+
+    <div class="rec-cell">
+      <div class="rec-btn-wrap">
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3" id="ring-3"></div>
+        <button id="rec-btn" aria-label="Start or stop recording">
+          <div class="rec-btn-core"></div>
+        </button>
+      </div>
+      <span class="rec-btn-lbl" id="rec-lbl">Record</span>
+    </div>
+
+    <div class="ctrl-actions">
+      <button class="act-btn" id="btn-reset" style="display:none">Reset</button>
+      <button class="act-btn export" id="btn-exp" style="display:none" aria-haspopup="menu" aria-expanded="false">Export ▾</button>
     </div>
   </div>
 
@@ -165,40 +198,7 @@
     </div>
   </div>
 
-  <!-- CONTROLLER -->
-  <div class="ctrl" id="ctrl">
-    <div class="ctrl-aperture"></div>
-    <div class="ctrl-glow"></div>
-
-    <!-- LEFT (empty: balances the row so the record button stays centred) -->
-    <div class="ctrl-spacer" aria-hidden="true"></div>
-
-    <!-- CENTER -->
-    <div class="ctrl-center">
-      <div class="rec-btn-wrap">
-        <div class="ring ring-1"></div>
-        <div class="ring ring-2"></div>
-        <div class="ring ring-3" id="ring-3"></div>
-        <button id="rec-btn" aria-label="Start or stop recording">
-          <div class="rec-btn-core"></div>
-        </button>
-      </div>
-      <span class="rec-btn-lbl" id="rec-lbl">Record</span>
-    </div>
-
-    <!-- RIGHT -->
-    <div class="ctrl-right">
-      <div class="timer">
-        <span id="tmr">00:00</span><span class="timer-ms">.<span id="tmr-ms">00</span></span>
-      </div>
-      <div class="action-row">
-        <button class="act-btn" id="btn-reset"  style="display:none">Reset</button>
-        <button class="act-btn export" id="btn-exp" style="display:none" aria-haspopup="menu" aria-expanded="false">Export ▾</button>
-      </div>
-    </div>
-
   </div>
-</div>
 
 <!-- HELP MODAL -->
 <div class="help-bd" id="help-bd">
@@ -211,14 +211,14 @@
         <div class="help-num">1</div>
         <div class="help-step-body">
           <div class="help-step-title">Choose what to record</div>
-          <div class="help-step-desc">When the app opens, your browser asks what to share — pick a screen, window or tab (full screen is preselected) and tick <strong>Share tab audio</strong> / <strong>Share system audio</strong> for sound — the browser decides whether that box is there and whether it starts ticked, so it is worth a look every time. The preview goes live straight away, and <strong>Reset</strong> takes you back to the picker if you forgot the audio. Use the camera button in the header to add a webcam bubble and the microphone button for your voice (both greyed out if there is no device); the mic level shows in the little meter and is mixed with the tab audio.</div>
+          <div class="help-step-desc">When the app opens, your browser asks what to share — pick a screen, window or tab (full screen is preselected) and tick <strong>Share tab audio</strong> / <strong>Share system audio</strong> for sound — the browser decides whether that box is there and whether it starts ticked, so it is worth a look every time. The preview goes live straight away, and the source buttons beside the record button pick what goes in: <strong>Screen</strong> (on by default, and pressing it asks for a share again), <strong>Webcam</strong> for a camera bubble and <strong>Mic</strong> for your voice (both greyed out if there is no device). The mic level shows in the little meter and is mixed with the tab audio, and <strong>Reset</strong> starts a new clip and goes back to the picker.</div>
         </div>
       </div>
       <div class="help-step">
         <div class="help-num">2</div>
         <div class="help-step-body">
           <div class="help-step-title">Hit record</div>
-          <div class="help-step-desc">Press the crimson button to start recording — a 3-second countdown gives you a beat, and pressing the button again during it cancels. Press again to stop. <strong>Press it once more after a recording and the new take is added to the end of the clip</strong>, as many times as you like. The share is kept between takes — so they all come from the same tab, window or screen, and there is no second picker. The timeline is there while you record, filling in with the picture and the sound as they are captured, and it becomes the trim timeline when you stop. The red box over the preview shows exactly what will be recorded: it covers the whole screen by default, drag to pick a smaller region, and click to go back to the full screen. Everything exports as WebM, a small sharp video for PRs, docs and chat, or as the MP4 that plays anywhere.</div>
+          <div class="help-step-desc">Press the crimson button beside the sources to start recording — a 3-second countdown gives you a beat, and pressing the button again during it cancels. Press again to stop. <strong>Press it once more after a recording and the new take is added to the end of the clip</strong>, as many times as you like. The share is kept between takes — so they all come from the same tab, window or screen, and there is no second picker. The timeline is there while you record, filling in with the picture and the sound as they are captured, and the recording's duration counts along on it; it becomes the trim timeline when you stop. The red box over the preview shows exactly what will be recorded: it covers the whole screen by default, drag to pick a smaller region, and click to go back to the full screen. Everything exports as WebM, a small sharp video for PRs, docs and chat, or as the MP4 that plays anywhere.</div>
         </div>
       </div>
       <div class="help-step">

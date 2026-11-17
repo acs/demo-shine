@@ -23,7 +23,6 @@
 import { app } from './state.js';
 import { el } from './ui/dom.js';
 import { drawGrid } from './ui/preview.js';
-import { setTimerMs } from './ui/timer.js';
 import { strip, updateSizeUI } from './ui/timeline-ui.js';
 import { player } from './ui/clip.js';
 import { drag } from './ui/marks.js';
@@ -64,7 +63,6 @@ export class Session {
     el.btnExp.style.display = 'none';
     el.resBadge.style.display = 'none';
 
-    setTimerMs(0);
     playback.reset();
     waveform.clear();
     updateSizeUI();

@@ -30,7 +30,6 @@ export interface AppState {
   marks: number[];              // 0..1, up to two pending marks bounding the section to cut —
                                 // the half-made selection, which the view owns
 
-  timerIv: number | null;       // record-clock interval id
   startAt: number | null;       // recording start timestamp
   rafId: number | null;         // mirror render loop id
   mirroring: boolean;
@@ -65,7 +64,6 @@ export const app: AppState = {
 
   marks: [],
 
-  timerIv: null,
   startAt: null,
   rafId: null,
   mirroring: false,
