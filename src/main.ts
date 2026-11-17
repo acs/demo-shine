@@ -6,7 +6,6 @@ import { onPhaseChange, app, type Phase } from './state.js';
 import { loadPrefs } from './prefs.js';
 import { applyTheme, toggleTheme } from './ui/theme.js';
 import { toggleHelp, helpBdClick } from './ui/help.js';
-import { startStarfield } from './ui/starfield.js';
 import { drawGrid } from './ui/preview.js';
 import { initTimeline, onTrim, updateTrimUI, updateSizeUI } from './ui/timeline-ui.js';
 import { initTimelineMarks } from './ui/marks.js';
@@ -34,7 +33,6 @@ function init(): void {
   if (prefs.theme && prefs.theme !== document.documentElement.dataset.theme) applyTheme(prefs.theme);
 
   drawGrid();
-  startStarfield();
   initVersion();
   updateTrimUI();
   updateSizeUI();
