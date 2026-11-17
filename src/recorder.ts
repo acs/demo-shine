@@ -1,13 +1,14 @@
 // Capture + recording.
 //
-// The three sources are independent toggles: the screen (a share, on by default),
-// the webcam and the microphone. A take needs a picture — the screen, or the
-// webcam when the screen is off — and the preview always shows whichever source
-// is live, so the red button only starts and stops the recording. Nothing here
-// reaches for the screen while the Screen button is off.
+// The three sources are independent toggles — the screen (a share), the webcam
+// and the microphone — and all of them start off. A take needs a picture: the
+// screen, or the webcam when the screen is off; the preview always shows
+// whichever source is live, so the red button only starts and stops the
+// recording. Nothing here reaches for the screen while the Screen button is off.
 
 import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
+import { refreshSourceButtons } from './ui/source-buttons.js';
 import { drawGrid, startMirror, stopMirror, seekWithin } from './ui/preview.js';
 import { countdown } from './ui/countdown.js';
 import { strip } from './ui/timeline-ui.js';
@@ -61,18 +62,12 @@ export function toggleScreen(): void {
   void startCapture(true);
 }
 
-// The Screen button's own state: lit while the screen is a source.
-function updateSourceButtons(): void {
-  el.screenBtn.classList.toggle('active', app.screenOn);
-  el.screenBtn.setAttribute('aria-pressed', app.screenOn ? 'true' : 'false');
-}
-
 // What the preview shows and where the phase belongs, decided in one place after
 // any source changes: a share taken or let go, the webcam switched on or off.
 // While a clip is being reviewed the preview is the clip's, and a take in flight
 // owns it — neither is disturbed.
 export function syncSources(): void {
-  updateSourceButtons();
+  refreshSourceButtons();
   if (busy() || app.phase === 'review') return;
 
   if (!hasPicture()) {
@@ -185,7 +180,7 @@ export async function startCapture(force = false): Promise<void> {
     el.idleOv.classList.add('gone');
     el.recBtn.disabled = false;
     el.recLbl.textContent = 'Record';
-    updateSourceButtons();
+    refreshSourceButtons();
     setPhase('live');
     setStatus('ready', `Live · ${app.captureW}×${app.captureH}`);
   } catch (err) {
@@ -424,7 +419,7 @@ export function releaseDisplay(): void {
   app.stream.getTracks().forEach(t => t.stop());
   app.stream = null;
   el.sv.srcObject = null;
-  updateSourceButtons();
+  refreshSourceButtons();
 }
 
 // The user clicked the browser's "Stop sharing" chip, or the shared surface went
