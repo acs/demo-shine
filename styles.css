@@ -215,12 +215,12 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .src-btn:hover:not(:disabled){background:var(--glass-b);color:var(--text);border-color:var(--glass-b2);}
 .src-btn:active:not(:disabled){transform:scale(.97);}
 .src-btn:disabled{opacity:.35;cursor:not-allowed;}
-/* Screen is the default source and cannot be turned off, so it always reads as
-   selected; the pin says whether the share is actually live. Webcam and Mic are
-   toggles, so their own active state lights them. */
-.src-btn.active,#screen-btn{color:var(--text);border-color:rgba(229,62,62,.42);background:rgba(229,62,62,.12);}
+/* A source is lit while it is on, and its pin with it. The three are
+   independent: the screen can be turned off, and the webcam then carries the
+   picture on its own. */
+.src-btn.active{color:var(--text);border-color:rgba(229,62,62,.42);background:rgba(229,62,62,.12);}
 .src-pin{width:6px;height:6px;border-radius:50%;background:var(--text-dim);flex-shrink:0;transition:background .2s,box-shadow .2s;}
-.src-btn.active .src-pin,.src-btn.live .src-pin{background:var(--green);box-shadow:0 0 6px var(--green);}
+.src-btn.active .src-pin{background:var(--green);box-shadow:0 0 6px var(--green);}
 
 /* Microphone level meter, beside the Mic button: a thin vertical bar that rises
    with the voice — green at the foot through to red at the top. The gradient is
