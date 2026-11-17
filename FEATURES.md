@@ -6,7 +6,7 @@ capabilities; this is the whole list, in the order they tend to matter.
 - **Zero dependencies on your machine** — runs entirely in the browser via `getDisplayMedia`
 - **Nothing captured until you ask** — every source starts off, so the app never opens a screen picker on its own; press **Screen** or **Webcam** to start one, and Record with nothing on says so
 - **Record sources in one row** — Screen, Webcam and Mic sit on the left, the record button is centred in the bar, and the sources are out while a take is being set up or records. They are independent toggles, **all off at start**: press Screen to share, and press it again to let the share go — nothing reaches for the screen after that — or Webcam, which carries the picture on its own when the screen is off. The recording's duration is read off the timeline rather than a separate clock
-- **WebM export, encoded offline** — VP9 (VP8 fallback) with Opus audio, written straight from the decoded frames by WebCodecs: about **10× faster than the clip**, it keeps going while the tab is in the background, and the file carries a duration and cue points, so any player can scrub it
+- **Export to WebM or MP4, encoded offline** — WebM is VP9 (VP8 fallback) with Opus audio, MP4 is H.264 with AAC; both are written straight from the decoded frames by WebCodecs: about **10× faster than the clip**, it keeps going while the tab is in the background, and the file carries a duration and cue points, so any player can scrub it
 - **Region crop** — a red box over the preview always shows what will be recorded: the whole screen by default, drag to record just part of it, click to reset; while recording the box breathes (red ↔ background)
 - **Webcam** — a source button adds a mirrored bubble in the corner of the recording (disabled when no camera is present), or is **the whole recording** when the screen is off
 - **Microphone** — a source button (disabled when no mic) with a live level meter; its audio is **mixed with the tab/system audio** in the recording
@@ -19,6 +19,6 @@ capabilities; this is the whole list, in the order they tend to matter.
 - **Audio track** — a waveform of the recording under the thumbnails, shown when the clip has sound
 - **Tab / system audio** — requested on every capture (`audio: true` plus Chrome's `systemAudio: 'include'` hint, so the audio option is offered); the browser owns that checkbox, so the app says so when a share comes back silent, and **New** returns to the picker to redo it
 - **Light / dark mode** — full CSS variable theming, persisted to `localStorage`
-- **PWA** — installable as a desktop app, offline-capable for core recording and WebM export
+- **PWA** — installable as a desktop app, offline-capable for core recording and export
 - **Version on screen** — the deployed build's version sits beside the logo (in the help panel too), and when a newer build has been deployed the header offers a reload; every merge to `main` bumps it, tags it and deploys — see [VERSIONING.md](VERSIONING.md)
 - **100% offline mode** — recording, playback and export happen entirely in your browser, and nothing is uploaded or stored on a server. Publishing a clip to a video service is optional, and only happens when you ask
