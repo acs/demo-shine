@@ -6,6 +6,10 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 
 **[→ Launch DemoShine](https://acs.github.io/demo-shine/)**
 
+A minute and a half of DemoShine recording, trimming and exporting a clip — recorded with DemoShine itself:
+
+https://github.com/user-attachments/assets/81f83dc4-a036-4e10-a398-b36ceca93122
+
 ---
 
 ## Features
