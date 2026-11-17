@@ -27,7 +27,6 @@ import { strip, updateSizeUI } from './ui/timeline-ui.js';
 import { player } from './ui/clip.js';
 import { drag } from './ui/marks.js';
 import { crop } from './ui/region.js';
-import { countdown } from './ui/countdown.js';
 import { playback } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
 import { liveTimeline } from './ui/live-timeline.js';
@@ -47,7 +46,6 @@ export class Session {
     strip.cancel();
     drag.cancel();
     crop.cancel();
-    countdown.cancel();
     exportMenu.close();   // the menu points at a clip that is about to be gone
     // The element was holding a take that no longer exists: let go of it rather
     // than revoke its URL a second time.
