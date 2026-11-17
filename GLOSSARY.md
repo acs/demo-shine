@@ -55,6 +55,7 @@ writing the recording again.
 | **keep range** *(also: trim, IN–OUT)* | the range that is kept, dragged with the two handles, as a fraction of the clip | `Clip.trim`, a `Trim` |
 | **span** | a range, half-open: `[s, e)`. The smallest thing a timeline is made of | `Span` |
 | **timeline** | the strip under the preview, drawn in **kept time** — a cut has no width on it | `ui/timeline-ui.ts`, `ui/live-timeline.ts` |
+| **thumbnail** | one cell of the strip: a small picture of a frame, at the take's own shape. A crop's picture is not 16:9, and stretching it into a fixed cell would show a picture the clip does not hold | `thumbBox()`, `drawThumb()` in `ui/thumbnail.ts` |
 | **recording time** | where a moment is *in the recording* | `TimelineMap.sourceOf()` |
 | **kept time** | where that moment *appears on the timeline* | `TimelineMap.keptOf()` |
 

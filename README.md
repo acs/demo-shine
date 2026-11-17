@@ -87,6 +87,7 @@ demoshine/
 │       ├── region.ts       # Crop-region selection + overlay (CropDrag)
 │       ├── timeline-ui.ts  # IN/OUT handles, size estimate, the thumbnail strip (Strip)
 │       ├── live-timeline.ts # The strip and the levels while a take records (LiveTimeline)
+│       ├── thumbnail.ts    # The shape of a strip cell: a frame at the picture's own aspect
 │       ├── clip.ts         # The joined clip, played as one timeline (Player)
 │       ├── marks.ts        # Marks and sections: click, drag (MarkDrag), overlay
 │       ├── playback.ts     # Playback on the preview, skipping the cuts (Playback)
