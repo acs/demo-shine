@@ -10,7 +10,7 @@ import { drawGrid } from './ui/preview.js';
 import { initTimeline, onTrim, updateTrimUI, updateSizeUI } from './ui/timeline-ui.js';
 import { initTimelineMarks } from './ui/marks.js';
 import { toggleRec, toggleScreen, syncSources } from './recorder.js';
-import { doExport, resetAll } from './exporter.js';
+import { doExport, startNewSession } from './exporter.js';
 import { playback } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
 import { initRegion } from './ui/region.js';
@@ -19,6 +19,7 @@ import { initMic, toggleMic } from './ui/mic.js';
 import { initSourceButtons, setScreenAvailable } from './ui/source-buttons.js';
 import { exportMenu } from './ui/export-menu.js';
 import { publishDialog } from './ui/publish-dialog.js';
+import { watchClip, resumeClip } from './resume.js';
 
 function init(): void {
   // Not every browser can share a screen: no mobile browser implements
@@ -50,7 +51,7 @@ function init(): void {
   el.helpBd.addEventListener('click', helpBdClick);
 
   el.recBtn.addEventListener('click', toggleRec);
-  el.btnReset.addEventListener('click', resetAll);
+  el.btnNew.addEventListener('click', startNewSession);
   el.btnExp.addEventListener('click', () => exportMenu.toggle());
   exportMenu.init(choice => {
     if (choice === 'bluesky') void publishDialog.open();
@@ -59,18 +60,26 @@ function init(): void {
   publishDialog.init();
   el.playBtn.addEventListener('click', () => playback.toggle());
 
-  // Reset is the way back to the share picker — it is how you re-share after
+  // New is the way back to the share picker — it is how you re-share after
   // forgetting to tick "share audio" — so it is offered while a capture is live
   // ("waiting to record") as well as while a clip is being reviewed. It stays
   // hidden during the countdown and the recording, where a press would be read
   // as "stop" instead.
-  const showReset = (phase: Phase) => { el.btnReset.style.display = phase === 'live' || phase === 'review' ? '' : 'none'; };
-  onPhaseChange(showReset);
-  showReset(app.phase);
+  const showNew = (phase: Phase) => { el.btnNew.style.display = phase === 'live' || phase === 'review' ? '' : 'none'; };
+  onPhaseChange(showNew);
+  showNew(app.phase);
 
   // Click the timeline to play from that point, mark a section and trim it.
   initTimelineMarks();
   initTimeline();   // the timeline listens to the clip
+
+  // The clip outlives the page. It is kept written down as it changes — a reload
+  // or a new version comes back to it, and the trip a Bluesky sign-in takes is
+  // only the one that forced it — and a stored clip is opened back into the
+  // review on the way in. The session is over at New, or when the clip is
+  // exported, and the kept copy goes with it.
+  watchClip();
+  void resumeClip();
 
   // PWA install prompt
   window.addEventListener('beforeinstallprompt', e => {

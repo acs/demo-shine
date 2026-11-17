@@ -28,6 +28,18 @@ import type { TakeRepository } from './TakeRepository.js';
 export type Segment = { takeIndex: number; from: number; to: number };
 
 /**
+ * A clip written down: the takes it is made of (the recording bytes and the
+ * length each one has), its keep range, and its cuts. `snapshot()` gives one and
+ * `restore()` takes one back, and it is the shape a store persists — the blobs
+ * are the recordings themselves.
+ */
+export interface ClipSnapshot {
+  takes: ReadonlyArray<{ blob: Blob; duration: number }>;
+  trim: { start: number; end: number };
+  cuts: ReadonlyArray<{ s: number; e: number }>;
+}
+
+/**
  * What just happened to the clip. The view listens for these instead of
  * re-rendering because it happened to be the caller: the model says what changed,
  * and everything that shows the clip decides what to do about it.
@@ -172,6 +184,32 @@ export class Clip {
       at = end;
     }
     return out;
+  }
+
+  /**
+   * Everything this clip is made of, so it can be written down and read back:
+   * its takes, its keep range, and its cuts.
+   */
+  snapshot(): ClipSnapshot {
+    return {
+      takes: this.repo.all().map(take => ({ blob: take.blob, duration: take.duration })),
+      trim: { start: this.keep.start, end: this.keep.end },
+      cuts: this.removed.spans.map(span => ({ s: span.s, e: span.e })),
+    };
+  }
+
+  /**
+   * Rebuild this clip from a snapshot — the takes, the keep range, the cuts.
+   * Nothing is announced: a restore is a load rather than a change to a clip
+   * already on screen, and the flow that restores sets the view up itself. The
+   * takes already in the repository are dropped, object URLs and all.
+   */
+  restore(snapshot: ClipSnapshot): void {
+    this.repo.clear();
+    for (const take of snapshot.takes) this.repo.add(take.blob, take.duration);
+    this.keep = Trim.of(snapshot.trim.start, snapshot.trim.end);
+    this.removed = SpanSet.of(snapshot.cuts);
+    this.lastApproved = null;
   }
 
   /** The session is over. */
