@@ -184,6 +184,12 @@ export async function startCapture(force = false): Promise<void> {
     refreshSourceButtons();
     setPhase('live');
     setStatus('ready', `Live · ${app.captureW}×${app.captureH}`);
+
+    // The display picker is a window of its own, and on macOS the page can come
+    // back without the DemoShine window focused: the next press of Record would
+    // only focus it, and a second press would be needed to record. Ask for the
+    // window back now the share is live, so one press records.
+    window.focus();
   } catch (err) {
     const e = err as { name?: string };
     // No share was had, so the screen is no longer a source: the button goes
