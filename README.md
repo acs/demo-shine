@@ -1,4 +1,6 @@
-# DemoShine
+# 🎬 DemoShine
+
+**🚀 Live App**: [https://acs.github.io/demo-shine/](https://acs.github.io/demo-shine/)
 
 Capture. Create. Share.
 
@@ -7,8 +9,6 @@ DemoShine is a lightweight video studio that runs entirely in your browser. Reco
 Review your recordings, make quick trims, and publish directly to Bluesky. Or simply export your video to a file.
 
 No installation. No recording server. Just open DemoShine and start creating.
-
-**🚀 Live App**: [https://acs.github.io/demo-shine/](https://acs.github.io/demo-shine/)
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF)](https://vite.dev/)
