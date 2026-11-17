@@ -12,7 +12,12 @@
 import { app, onPhaseChange, type Phase } from '../state.js';
 import { el } from './dom.js';
 
-const present = { camera: false, mic: false };   // whether a device is there at all
+// What the page knows about the sources: whether a camera or microphone is
+// there at all, and whether this browser can share a screen. No mobile browser
+// implements getDisplayMedia, so a phone or tablet can record the webcam and the
+// mic but has no screen source — and the Screen button says so rather than
+// sitting there as a dead end.
+const sources = { camera: false, mic: false, screen: true };
 
 // A take in flight owns the sources: it is not to be switched under it.
 function locked(phase: Phase): boolean {
@@ -27,22 +32,31 @@ function locked(phase: Phase): boolean {
  */
 export function refreshSourceButtons(): void {
   const off = locked(app.phase);
-  el.screenBtn.disabled = off;
+  el.screenBtn.disabled = off || !sources.screen;
   el.screenBtn.classList.toggle('active', app.screenOn);
   el.screenBtn.setAttribute('aria-pressed', app.screenOn ? 'true' : 'false');
-  el.webcamBtn.disabled = off || !present.camera;
-  el.micBtn.disabled = off || !present.mic;
+  el.screenBtn.title = sources.screen
+    ? 'Screen'
+    : 'Screen capture is not available in this browser — record the webcam instead';
+  el.webcamBtn.disabled = off || !sources.camera;
+  el.micBtn.disabled = off || !sources.mic;
 }
 
 /** A camera was found (or went away). */
 export function setCameraPresent(has: boolean): void {
-  present.camera = has;
+  sources.camera = has;
   refreshSourceButtons();
 }
 
 /** A microphone was found (or went away). */
 export function setMicPresent(has: boolean): void {
-  present.mic = has;
+  sources.mic = has;
+  refreshSourceButtons();
+}
+
+/** This browser can (or cannot) share a screen at all. */
+export function setScreenAvailable(has: boolean): void {
+  sources.screen = has;
   refreshSourceButtons();
 }
 
