@@ -13,7 +13,6 @@ export const el = {
   cv:        byId<HTMLCanvasElement>('preview'),
   sv:        byId<HTMLVideoElement>('sv'),
   rv:        byId<HTMLVideoElement>('rv'),
-  sf:        byId<HTMLCanvasElement>('sf'),
   idleOv:    byId<HTMLElement>('idle-ov'),
   badge:     byId<HTMLElement>('rec-badge'),
   timeline:  byId<HTMLElement>('timeline'),

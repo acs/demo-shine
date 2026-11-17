@@ -102,8 +102,7 @@ demoshine/
 │       ├── webcam.ts       # Webcam bubble overlay
 │       ├── theme.ts        # Light / dark theme
 │       ├── help.ts         # Instructions modal
-│       ├── version.ts      # The version badge, and the newer-build offer
-│       └── starfield.ts    # Background animation
+│       └── version.ts      # The version badge, and the newer-build offer
 ├── public/               # Copied verbatim into the build
 │   ├── manifest.json       # PWA manifest
 │   ├── sw.js               # Service worker — cache-first offline support

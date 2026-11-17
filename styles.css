@@ -39,7 +39,6 @@
   --idle-bd:rgba(0,0,0,0.08);
   --cd-bg:rgba(236,240,250,0.75);
 }
-[data-theme="light"] #sf{opacity:0;}
 [data-theme="light"] .deco{opacity:.05;filter:invert(1);}
 [data-theme="light"] .act-btn:not(:disabled):hover{background:rgba(0,0,0,.06);}
 [data-theme="light"] .rec-badge{background:rgba(255,255,255,.75);}
@@ -48,9 +47,6 @@
 [data-theme="light"] .tl-sel em{color:#7A1010;background:rgba(255,255,255,.82);}
 
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font-ui);transition:background .3s;}
-
-/* ── STARFIELD ── */
-#sf{position:fixed;inset:0;z-index:0;pointer-events:none;transition:opacity .4s;}
 
 /* ── SCENE ── */
 .scene{position:fixed;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;padding:14px 22px 0;}
