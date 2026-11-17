@@ -112,17 +112,23 @@ export class LiveTimeline {
   }
 
   // The picture going into the recording right now: the share, cropped to the
-  // region, with the webcam bubble on it — what the recorder is being fed.
+  // region, with the webcam bubble on it — or the camera alone when the screen
+  // is off. What the recorder is being fed.
   private grab(): HTMLCanvasElement {
     const c = blank();
     const ctx = c.getContext('2d');
-    if (!ctx || el.sv.readyState < 2) return c;
-    const r = app.region;
-    const sx = Math.round(r.x * app.captureW), sy = Math.round(r.y * app.captureH);
-    const sw = Math.max(1, Math.round(r.w * app.captureW)), sh = Math.max(1, Math.round(r.h * app.captureH));
+    if (!ctx) return c;
     try {
-      ctx.drawImage(el.sv, sx, sy, sw, sh, 0, 0, CELL_W, CELL_H);
-      drawWebcamOverlay(ctx, 0, 0, CELL_W, CELL_H);
+      if (app.screenOn && app.stream) {
+        if (el.sv.readyState < 2) return c;
+        const r = app.region;
+        const sx = Math.round(r.x * app.captureW), sy = Math.round(r.y * app.captureH);
+        const sw = Math.max(1, Math.round(r.w * app.captureW)), sh = Math.max(1, Math.round(r.h * app.captureH));
+        ctx.drawImage(el.sv, sx, sy, sw, sh, 0, 0, CELL_W, CELL_H);
+        drawWebcamOverlay(ctx, 0, 0, CELL_W, CELL_H);
+      } else if (app.webcamOn && el.wcv.readyState >= 2) {
+        ctx.drawImage(el.wcv, 0, 0, CELL_W, CELL_H);
+      }
     } catch { /* a frame that is not ready — the next tick will have it */ }
     return c;
   }
