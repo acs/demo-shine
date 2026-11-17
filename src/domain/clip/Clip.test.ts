@@ -106,6 +106,51 @@ describe('Clip', () => {
   });
 });
 
+describe('Clip, written down and read back', () => {
+  it('snapshots its takes, keep range and cuts', () => {
+    const clip = clipOf(4, 6);
+    clip.keepRange(Trim.of(0.1, 0.9));
+    clip.approve(Span.of(0.2, 0.3));
+    const snap = clip.snapshot();
+    expect(snap.takes.map(t => t.duration)).toEqual([4, 6]);
+    expect(snap.trim).toEqual({ start: 0.1, end: 0.9 });
+    expect(snap.cuts.map(c => [c.s, c.e])).toEqual([[0.2, 0.3]]);
+  });
+
+  it('restores a clip from a snapshot, as long and as trimmed as it was', () => {
+    const clip = Clip.empty(new FakeTakes());
+    clip.restore({
+      takes: [{ blob: new Blob(['a']), duration: 4 }, { blob: new Blob(['b']), duration: 6 }],
+      trim: { start: 0.1, end: 0.9 },
+      cuts: [{ s: 0.2, e: 0.3 }],
+    });
+    expect(clip.total()).toBe(10);
+    expect(clip.takes.count()).toBe(2);
+    expect(clip.trim.start).toBe(0.1);
+    expect(clip.trim.end).toBe(0.9);
+    expect(clip.cuts.spans.map(c => [c.s, c.e])).toEqual([[0.2, 0.3]]);
+    expect(clip.canUndo()).toBe(false);
+  });
+
+  it('comes back the same the second time round', () => {
+    const clip = clipOf(5, 5);
+    clip.approve(Span.of(0.1, 0.2));
+    clip.keepRange(Trim.of(0.25, 0.75));
+    const snap = clip.snapshot();
+    clip.clear();
+    clip.restore(snap);
+    expect(clip.snapshot()).toEqual(snap);
+  });
+
+  it('announces nothing when it is restored', () => {
+    const clip = clipOf(4);
+    const seen: string[] = [];
+    clip.onChange(event => seen.push(event.type));
+    clip.restore({ takes: [{ blob: new Blob(['x']), duration: 2 }], trim: { start: 0, end: 1 }, cuts: [] });
+    expect(seen).toEqual([]);
+  });
+});
+
 describe('Clip, announcing what changed', () => {
   it('says a take arrived, with where it landed and how long the clip was before', () => {
     const clip = Clip.empty(new FakeTakes());
