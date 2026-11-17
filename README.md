@@ -24,7 +24,6 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 - **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
 - **Export progress on the timeline** — the playhead travels across the clip as it is written, with the frames shown on the preview and how much of the clip is left to write counted down; nothing runs off a bottom bar
 - **Audio track** — a waveform of the recording under the thumbnails, shown when the clip has sound
-- **3-second countdown** — the live preview stays visible behind it, and pressing record again during it cancels
 - **Tab / system audio** — requested on every capture (`audio: true` plus Chrome's `systemAudio: 'include'` hint, so the audio option is offered); the browser owns that checkbox, so the app says so when a share comes back silent, and **New** returns to the picker to redo it
 - **Light / dark mode** — full CSS variable theming, persisted to `localStorage`
 - **PWA** — installable as a desktop app, offline-capable for core recording and WebM export
@@ -37,7 +36,7 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 
 1. Open [DemoShine](https://acs.github.io/demo-shine/) in Chrome or Edge — nothing is captured yet. Press **Screen** to pick a screen, window or tab (full screen is preselected; tick **Share tab audio** / **Share system audio** for sound), or **Webcam** to record the camera on its own. Pressing Screen again lets the share go, and **New** goes back to the picker if you forget the audio
 2. The red box over the preview shows what will be recorded — the whole screen by default; drag to record only a region, and click to go back to the full screen
-3. Press the red button to record — a 3-second countdown runs, and pressing the button again during it cancels; press it again to stop
+3. Press the red button to record — it starts at once; press it again to stop
 4. Press Record again to add another take to the end of the clip — the timeline then holds every take, and the trims you already made are kept
 5. The timeline holds a playback control and an audio track
 6. Play it back, drag the **blue IN** and **red OUT** handles to keep a range, or click anywhere on the timeline to play from that moment. To cut a section out, click where it starts and where it ends, then press the **green check** (or click inside the shaded section): it leaves the timeline and the rest closes up. The **red cross** leaves the section in, and the small **undo** arrow brings back what you just trimmed. Marks and the selected section can be dragged to reposition them
@@ -60,7 +59,7 @@ demoshine/
 │   ├── exporter.ts       # The export and new-session flows: buttons, status line, phase
 │   ├── resume.ts         # Keeping the clip across a page load: write it down, read it back
 │   ├── offline-export.ts # The export's browser half: decode, draw, encode, mux
-│   ├── util.ts           # Tiny shared helpers (sleep)
+│   ├── util.ts           # Tiny shared helpers (clampToClip)
 │   ├── globals.d.ts      # Ambient types (prefixed AudioContext, captureStream)
 │   ├── vite-env.d.ts     # Vite client types
 │   ├── domain/clip/      # Pure logic — no DOM, no browser APIs; a test beside every rule
@@ -100,7 +99,6 @@ demoshine/
 │       ├── dissolve.ts     # Short dissolves at the joins between takes (Dissolve)
 │       ├── waveform.ts     # The audio track under the strip (Waveform)
 │       ├── size-estimate.ts # What the export will weigh
-│       ├── countdown.ts    # The 3-2-1 overlay, cancellable (Countdown)
 │       ├── mic.ts          # Microphone capture + level meter (Meter)
 │       ├── webcam.ts       # The webcam source: a bubble, or the whole picture
 │       ├── source-buttons.ts # The source buttons' enabled state

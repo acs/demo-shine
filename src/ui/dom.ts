@@ -56,8 +56,6 @@ export const el = {
   tClip:     byId<HTMLElement>('t-clip'),
   toastEl:   byId<HTMLElement>('toast'),
   resBadge:  byId<HTMLElement>('res-badge'),
-  cdOv:      byId<HTMLElement>('cd-ov'),
-  cdNum:     byId<HTMLElement>('cd-num'),
   tSize:     byId<HTMLElement>('t-size'),
   tCut:      byId<HTMLElement>('t-cut'),
   tLabels:   byId<HTMLElement>('t-labels'),
