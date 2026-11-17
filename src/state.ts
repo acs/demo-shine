@@ -7,7 +7,7 @@
 import { Clip } from './domain/clip/Clip.js';
 import { InMemoryTakeRepository } from './infra/takes.js';
 
-export type Phase = 'idle' | 'starting' | 'live' | 'countdown' | 'recording' | 'review' | 'encoding';
+export type Phase = 'idle' | 'starting' | 'live' | 'recording' | 'review' | 'encoding';
 
 // A rectangular crop, normalised to 0..1 of the capture.
 export interface Rect {

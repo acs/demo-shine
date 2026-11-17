@@ -63,8 +63,8 @@ function init(): void {
   // New is the way back to the share picker — it is how you re-share after
   // forgetting to tick "share audio" — so it is offered while a capture is live
   // ("waiting to record") as well as while a clip is being reviewed. It stays
-  // hidden during the countdown and the recording, where a press would be read
-  // as "stop" instead.
+  // hidden while the recording runs, where a press would be read as "stop"
+  // instead.
   const showNew = (phase: Phase) => { el.btnNew.style.display = phase === 'live' || phase === 'review' ? '' : 'none'; };
   onPhaseChange(showNew);
   showNew(app.phase);

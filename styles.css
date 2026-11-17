@@ -20,7 +20,6 @@
   --font-mono:'JetBrains Mono','SF Mono',monospace;
   --idle-bg:rgba(6,7,16,0.93);
   --idle-bd:rgba(255,255,255,0.08);
-  --cd-bg:rgba(0,0,0,0.65);
 }
 
 /* ── LIGHT OVERRIDES ── */
@@ -37,7 +36,6 @@
   --crimson-glow:rgba(229,62,62,0.28);
   --idle-bg:rgba(236,240,250,0.94);
   --idle-bd:rgba(0,0,0,0.08);
-  --cd-bg:rgba(236,240,250,0.75);
 }
 [data-theme="light"] .deco{opacity:.05;filter:invert(1);}
 [data-theme="light"] .act-btn:not(:disabled):hover{background:rgba(0,0,0,.06);}
@@ -113,14 +111,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .rec-badge{position:absolute;top:10px;right:10px;display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:4px;background:rgba(0,0,0,.72);backdrop-filter:blur(8px);border:1px solid rgba(229,62,62,.3);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--crimson);opacity:0;transition:opacity .3s;pointer-events:none;}
 .rec-badge.on{opacity:1;}
 .rec-badge-dot{width:5px;height:5px;border-radius:50%;background:var(--crimson);animation:blink 1s infinite;}
-
-/* ── COUNTDOWN ── */
-.cd-ov{position:absolute;inset:0;border-radius:10px;background:var(--cd-bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:10;}
-.cd-ring{width:100px;height:100px;border-radius:50%;border:2px solid rgba(229,62,62,.3);position:absolute;animation:cd-ring-pulse 1s ease-in-out infinite;}
-@keyframes cd-ring-pulse{0%,100%{transform:scale(1);opacity:.3}50%{transform:scale(1.1);opacity:.6}}
-.cd-num{font-family:var(--font-ui);font-size:68px;font-weight:800;color:var(--crimson);line-height:1;position:relative;z-index:1;text-shadow:0 0 40px var(--crimson-glow);}
-.cd-hint{font-family:var(--font-mono);font-size:10px;letter-spacing:.2em;color:var(--text-mid);text-transform:uppercase;}
-@keyframes cd-pop{0%{opacity:0;transform:scale(1.5)}15%{opacity:1;transform:scale(1)}82%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.65)}}
 
 /* ── TIMELINE ── */
 .timeline{width:100%;max-width:1160px;flex-shrink:0;background:var(--surface-2);backdrop-filter:blur(20px);border:1px solid var(--glass-b);border-radius:12px;padding:11px 16px;margin-bottom:9px;opacity:0;transform:translateY(8px);transition:opacity .35s,transform .35s;pointer-events:none;}

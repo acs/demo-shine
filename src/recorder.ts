@@ -10,7 +10,6 @@ import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
 import { refreshSourceButtons } from './ui/source-buttons.js';
 import { drawGrid, startMirror, stopMirror, seekWithin } from './ui/preview.js';
-import { countdown } from './ui/countdown.js';
 import { strip, updateSizeUI, updateTrimUI } from './ui/timeline-ui.js';
 import { player } from './ui/clip.js';
 import { playback } from './ui/playback.js';
@@ -27,12 +26,11 @@ export function hasPicture(): boolean {
 
 // A take in flight owns the preview and the phase, so nothing else may move them.
 function busy(): boolean {
-  return app.phase === 'starting' || app.phase === 'countdown' || app.phase === 'recording' || app.phase === 'encoding';
+  return app.phase === 'starting' || app.phase === 'recording' || app.phase === 'encoding';
 }
 
 export async function toggleRec(): Promise<void> {
   if (app.phase === 'starting' || app.phase === 'encoding') return;
-  if (app.phase === 'countdown') return cancelRecordingCountdown();
   if (app.phase === 'recording') return stopRec();
   if (app.phase === 'live')      return startRecording();
   if (app.phase === 'review') {
@@ -108,25 +106,6 @@ function useWebcamSize(): void {
   app.captureW = w;
   app.captureH = h;
   sizePreviewToScreen();
-}
-
-// Pressing record during the countdown aborts it and the pending recording,
-// returning to the live preview.
-function cancelRecordingCountdown(): void {
-  countdown.cancel();
-  // Back to whatever was on screen before the countdown: the clip being
-  // reviewed, not the live screen (its timeline is only live in 'review').
-  const back = countdown.returnsTo;
-  setPhase(back);
-  el.recBtn.disabled = false;
-  el.recLbl.textContent = 'Record';
-  if (back === 'review') {
-    stopMirror();
-    playback.seek(player.time());
-    setStatus('ready', 'Ready to export');
-  } else {
-    setStatus('ready', `Live · ${app.captureW}×${app.captureH}`);
-  }
 }
 
 // Acquire the display and show it live on the preview. Called on load; also the
@@ -338,14 +317,9 @@ function buildAudioTracks(): MediaStreamTrack[] {
   return mixer.mix(sys, mic);
 }
 
-async function startRecording(): Promise<void> {
+function startRecording(): void {
   if (!hasPicture() || (app.phase !== 'live' && app.phase !== 'review')) return;
   const appending = !app.clip.takes.isEmpty();
-  const was = app.phase;               // where a cancelled countdown returns to
-  setPhase('countdown');
-  el.recBtn.disabled = false;          // stays clickable: a press cancels
-  el.recLbl.textContent = 'Cancel';
-  setStatus('proc', appending ? 'Get ready to add…' : 'Get ready…');
   if (appending) toast('Recording will be added to the end', 3000);
 
   // Show what is about to be recorded. When this take follows another one, the
@@ -356,19 +330,6 @@ async function startRecording(): Promise<void> {
     el.cv.width  = app.captureW;
     el.cv.height = app.captureH;
     startMirror();
-  }
-  const ready = await countdown.run(was);
-
-  if (!ready) return;                                     // cancelled by a press
-  if (!hasPicture()) {                                    // the source ended meanwhile
-    el.recBtn.disabled = false;
-    el.recLbl.textContent = 'Record';
-    // A finished clip is kept, so land back on it rather than on an empty app.
-    const keepClip = !app.clip.takes.isEmpty();
-    setPhase(keepClip ? 'review' : 'idle');
-    setStatus('ready', keepClip ? 'Ready to export · turn a source on to record again' : 'Ready');
-    toast('The source ended — turn one on to record again', 4000);
-    return;
   }
 
   const recStream = buildRecordingStream();
@@ -428,10 +389,8 @@ export function releaseDisplay(): void {
 function onCaptureEnded(): void {
   if (app.phase === 'recording') { stopRec(); return; }
   const inReview = app.phase === 'review';
-  const counting = app.phase === 'countdown';
-  if (!inReview && app.phase !== 'live' && !counting) return;
+  if (!inReview && app.phase !== 'live') return;
 
-  if (counting) countdown.cancel();
   app.screenOn = false;      // the share is gone: the screen is no longer a source
   releaseDisplay();
   el.resBadge.classList.remove('on');

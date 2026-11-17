@@ -113,7 +113,6 @@ can end it:
 | `Waveform` | the bars decoded from the clip's sound | the clip |
 | `Dissolve` | the frame held at a join, spent on it | one join |
 | `Meter` | the microphone's level graph and its frame loop | the microphone toggle, not the session |
-| `Countdown` | the 3-2-1, whether it was cancelled, and where to go back to | one countdown |
 | `ExportMenu` | the File/Bluesky menu under the Export button, and the listeners that end it | one opening |
 | `MarkDrag`, `CropDrag` | a gesture in flight | the gesture |
 | `Output`, `Mixer` | the canvas a take is drawn on, and the graph that mixes system audio with the microphone | a take |
@@ -137,9 +136,9 @@ what it holds is the one thing that has to outlive it.
   **cut**.
 - **real-time export** — the path that played the clip and recorded the canvas.
   Removed; the export is encoded offline (`git show f73a121`).
-- **a flag kept beside the thing it describes** — `countdownAborted` beside the
-  countdown's own `cancelled`, `wasCut` beside what the chip already said, a
-  `cropRaf` in app state beside the loop that owns it. Ask the object.
+- **a flag kept beside the thing it describes** — `wasCut` beside what the chip
+  already said, a `cropRaf` in app state beside the loop that owns it. Ask the
+  object.
 
 ## Keeping it alive
 

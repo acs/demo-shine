@@ -14,7 +14,7 @@ as working because `npm run lint`, `npm run typecheck` and `npm run build` passe
 |---|---|
 | a rule in `src/domain/` | a **unit test**, in node, next to the file |
 | anything drawn, played, encoded or wired to the DOM | a **browser harness** on the running dev server |
-| the recorder's flow (screen share, countdown, a take arriving) | a **real session**, by the user — no harness can start a share |
+| the recorder's flow (screen share, a take arriving) | a **real session**, by the user — no harness can start a share |
 
 Say which level a change got, in the pull request, in those words.
 
