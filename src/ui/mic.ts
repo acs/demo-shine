@@ -11,6 +11,7 @@
 
 import { app } from '../state.js';
 import { el, toast } from './dom.js';
+import { setMicPresent } from './source-buttons.js';
 
 export class Meter {
   private ctx: AudioContext | null = null;
@@ -59,7 +60,7 @@ export class Meter {
 export const meter = new Meter();
 
 export function initMic(): void {
-  el.micBtn.disabled = true;                    // until we know a mic exists
+  setMicPresent(false);                         // until we know a mic exists
   if (navigator.mediaDevices) {
     navigator.mediaDevices.addEventListener('devicechange', () => void detectMic());
   }
@@ -72,7 +73,7 @@ export async function detectMic(): Promise<void> {
     const devices = await navigator.mediaDevices.enumerateDevices();
     has = devices.some(d => d.kind === 'audioinput');
   } catch { /* no mediaDevices / blocked */ }
-  el.micBtn.disabled = !has;
+  setMicPresent(has);
   if (!has) stopMic();
 }
 
