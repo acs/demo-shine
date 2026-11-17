@@ -42,13 +42,13 @@ The headline capabilities; the **[full list is in FEATURES.md](FEATURES.md)**.
 
 ## Usage
 
-1. Open [DemoShine](https://acs.github.io/demo-shine/) in Chrome or Edge — nothing is captured yet. Press **Screen** to pick a screen, window or tab (full screen is preselected; tick **Share tab audio** / **Share system audio** for sound), or **Webcam** to record the camera on its own. Pressing Screen again lets the share go, and **New** goes back to the picker if you forget the audio
+1. Open [DemoShine](https://acs.github.io/demo-shine/) — nothing is captured yet. Press **Screen** to pick a screen, window or tab (full screen is preselected; tick **Share tab audio** / **Share system audio** for sound), or **Webcam** to record the camera on its own — **Mic** adds the microphone to either. Pressing a source again lets it go, and **New** goes back to the picker if you forget the audio
 2. The red box over the preview shows what will be recorded — the whole screen by default; drag to record only a region, and click to go back to the full screen
 3. Press the red button to record — it starts at once; press it again to stop
 4. Press Record again to add another take to the end of the clip — the timeline then holds every take, and the trims you already made are kept
 5. The timeline holds a playback control and an audio track
 6. Play it back, drag the **blue IN** and **red OUT** handles to keep a range, or click anywhere on the timeline to play from that moment. To cut a section out, click where it starts and where it ends, then press the **scissors** (or click inside the shaded section): it leaves the timeline and the rest closes up. The **undo** on the section drops the selection, and the **undo** in the header brings back what you just trimmed. Marks and the selected section can be dragged to reposition them
-7. Click **Export ↓** to encode and download — the timeline fills as it writes and counts down how much of the clip is left to write (it is encoded offline, over the kept range only, roughly ten times faster than the clip)
+7. Press **Export ▾** and pick where the clip goes — a **WebM** file (small and sharp), an **MP4** file (plays anywhere), or **Bluesky** to publish it as a video post. The encode runs offline, over the kept range only, roughly ten times faster than the clip, and the timeline counts down how much is left to write
 
 ---
 
@@ -199,22 +199,33 @@ commits, pull requests).
 
 ## Browser support
 
-| Browser | Recording | Export | Audio |
-|---|---|---|---|
-| Chrome 94+ | ✓ | ✓ | ✓ |
-| Edge 94+ | ✓ | ✓ | ✓ |
-| Firefox 130+ | ✓ | ✓ | Partial |
-| Safari | ✗ | — | — |
+| Browser | Screen capture | Screen audio | Webcam & mic | Export |
+|---|---|---|---|---|
+| Chrome 94+ · Edge 94+ | ✓ | ✓ | ✓ | ✓ |
+| Firefox 130+ | ✓ | ✗ | ✓ | ✓ |
+| Safari 26+ (macOS) | ✓ | ✗ | ✓ | ✓ |
+| Chrome (Android) | ✗ | ✗ | ✓ | ✓ |
+| Firefox (Android) | ✗ | ✗ | ✓ | ✗ |
+| Safari (iOS 27+) | ✓ | ✗ | ✓ | ✓ |
 
-Safari does not support `getDisplayMedia` for screen capture — and **neither does
-any mobile browser** (Chrome or Firefox on Android, Safari on iOS). A phone or
-tablet can still record the **webcam and the microphone**, with the same
-timeline, trimming, export and publishing; the Screen button is out there, and the
-header says why.
+Screen capture needs `getDisplayMedia`. **No mobile browser had it until Safari 27
+on iOS** — Chrome and Firefox on Android still cannot share a screen. A phone or
+tablet records the **webcam and the microphone** instead, with the same timeline,
+trimming and export; the Screen button is out there, and the header says why.
 
-The export needs WebCodecs (`VideoEncoder`), so **Firefox 113–129 can record but
-not export** — it arrived in Firefox 130. There is no slower path to fall back to
-any more, and the app says so rather than failing halfway.
+The export needs WebCodecs (`VideoEncoder` and `AudioEncoder`): Chrome and Edge
+94+, Firefox 130+ and Safari 26+. **Firefox 113–129 can record but not export** —
+it arrived in Firefox 130 — and Firefox on Android cannot export at all. There is
+no slower path to fall back to any more, and the app says so rather than failing
+halfway.
+
+Screen audio is Chrome and Edge only, and even there the browser and the
+operating system decide: Windows and ChromeOS offer system audio, elsewhere it is
+the shared tab's own sound. The microphone is unaffected.
+
+Safari is the newest of the four and the least tested: WebM recording arrived in
+Safari 18.4 and `AudioEncoder` in 26, so **26 or later** is the floor. On macOS
+the first share also asks for **Screen Recording** permission in System Settings.
 
 ---
 
