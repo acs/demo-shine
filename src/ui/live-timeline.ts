@@ -24,10 +24,9 @@ import { estimateWebmText } from './size-estimate.js';
 import { drawWebcamOverlay } from './webcam.js';
 import { keptLengthNow, keptOf } from './clip.js';
 import { waveform } from './waveform.js';
+import { drawThumb, thumbBox } from './thumbnail.js';
 
 const CELLS     = 22;     // the same strip the review builds
-const CELL_W    = 80;
-const CELL_H    = 45;
 const SAMPLE_MS = 80;     // how often the audio is read
 const DRAW_MS   = 250;    // how often the strip and the waveform are repainted
 const PER_CELL  = 2;      // frames kept per cell, so a relayout has one to pick
@@ -113,21 +112,20 @@ export class LiveTimeline {
 
   // The picture going into the recording right now: the share, cropped to the
   // region, with the webcam bubble on it — or the camera alone when the screen
-  // is off. What the recorder is being fed.
+  // is off. What the recorder is being fed, at the shape it is being fed at.
   private grab(): HTMLCanvasElement {
-    const c = blank();
-    const ctx = c.getContext('2d');
-    if (!ctx) return c;
+    const c = document.createElement('canvas');
     try {
       if (app.screenOn && app.stream) {
         if (el.sv.readyState < 2) return c;
         const r = app.region;
         const sx = Math.round(r.x * app.captureW), sy = Math.round(r.y * app.captureH);
         const sw = Math.max(1, Math.round(r.w * app.captureW)), sh = Math.max(1, Math.round(r.h * app.captureH));
-        ctx.drawImage(el.sv, sx, sy, sw, sh, 0, 0, CELL_W, CELL_H);
-        drawWebcamOverlay(ctx, 0, 0, CELL_W, CELL_H);
+        drawThumb(c, el.sv, sx, sy, sw, sh);
+        const ctx = c.getContext('2d');
+        if (ctx) drawWebcamOverlay(ctx, 0, 0, c.width, c.height);
       } else if (app.webcamOn && el.wcv.readyState >= 2) {
-        ctx.drawImage(el.wcv, 0, 0, CELL_W, CELL_H);
+        drawThumb(c, el.wcv, 0, 0, el.wcv.videoWidth, el.wcv.videoHeight);
       }
     } catch { /* a frame that is not ready — the next tick will have it */ }
     return c;
@@ -140,13 +138,14 @@ export class LiveTimeline {
       const canvas = cellCanvas(i);
       const ctx = canvas?.getContext('2d');
       if (!canvas || !ctx) continue;
-      ctx.clearRect(0, 0, CELL_W, CELL_H);
 
       // the middle of the time this cell stands for
       const mid = (((i + 0.5) / CELLS) * span);
-      if (mid > head) continue;                        // still to come
-      const frame = mid < this.prevKept ? this.sourceNear(mid) : this.takeNear(mid);
-      if (frame) ctx.drawImage(frame, 0, 0, CELL_W, CELL_H);
+      // The frame's own shape decides the cell's, so a cropped take is not
+      // stretched into the last cell's shape; a cell with nothing yet is cleared.
+      const frame = mid > head ? null : (mid < this.prevKept ? this.sourceNear(mid) : this.takeNear(mid));
+      if (frame && frame.width && frame.height) drawThumb(canvas, frame, 0, 0, frame.width, frame.height);
+      else ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
   }
 
@@ -236,20 +235,22 @@ export class LiveTimeline {
 // ── helpers that hold nothing ──────────────────────────────────────────────
 
 function blank(): HTMLCanvasElement {
+  const { w, h } = thumbBox(16, 9);
   const c = document.createElement('canvas');
-  c.width = CELL_W; c.height = CELL_H;
+  c.width = w; c.height = h;
   return c;
 }
 
-// Keep what the review strip was showing, to draw the cells over the clip.
+// Keep what the review strip was showing, to draw the cells over the clip. Each
+// copied frame keeps its own shape, so a cropped clip's cells are not stretched.
 function copyStrip(): HTMLCanvasElement[] {
-  return Array.from(el.thumbs.children).map(frame => {
-    const c = blank();
+  const out: HTMLCanvasElement[] = [];
+  for (const frame of Array.from(el.thumbs.children)) {
     const src = frame.querySelector('canvas');
-    const ctx = c.getContext('2d');
-    if (src && ctx) ctx.drawImage(src, 0, 0, CELL_W, CELL_H);
-    return c;
-  });
+    if (!src) continue;
+    out.push(drawThumb(document.createElement('canvas'), src, 0, 0, src.width, src.height));
+  }
+  return out;
 }
 
 // The nearest saved frame to a time, in either half of the clip.
