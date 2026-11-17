@@ -83,12 +83,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .icon-btn:active{transform:scale(.92);}
 .icon-btn:disabled{opacity:.35;cursor:not-allowed;}
 .icon-btn:disabled:hover{background:var(--glass);color:var(--text-mid);border-color:var(--glass-b);}
-.icon-btn.active{color:var(--crimson);border-color:rgba(229,62,62,.42);background:rgba(229,62,62,.1);}
-
-/* Microphone level meter */
-.vu{position:relative;width:44px;height:6px;border-radius:3px;overflow:hidden;display:none;background:linear-gradient(90deg,var(--green),var(--amber),var(--crimson));flex-shrink:0;}
-.vu.on{display:block;}
-.vu-fill{position:absolute;top:0;right:0;bottom:0;width:100%;background:var(--bg);transition:width .06s linear;}
 .icon-btn svg{pointer-events:none;}
 
 .status-chip{display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:100px;background:var(--glass);border:1px solid var(--glass-b);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--text-mid);user-select:none;flex-shrink:0;}
@@ -212,39 +206,51 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .timeline.encoding .tl-marks{display:none;}
 .timeline.recording .thumb-frame{background:var(--glass);}
 
-/* ── CONTROLLER ── */
-.ctrl{width:100%;max-width:1160px;flex-shrink:0;background:var(--surface);backdrop-filter:blur(40px) saturate(1.6);-webkit-backdrop-filter:blur(40px) saturate(1.6);border:1px solid var(--glass-b);border-bottom:none;border-radius:20px 20px 0 0;padding:18px 30px 26px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:20px;position:relative;overflow:hidden;}
-.ctrl-aperture{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:200px;height:200px;border-radius:50%;background:conic-gradient(rgba(229,62,62,.04) 0deg 55deg,transparent 55deg 70deg,rgba(229,62,62,.04) 70deg 125deg,transparent 125deg 140deg,rgba(229,62,62,.04) 140deg 195deg,transparent 195deg 210deg,rgba(229,62,62,.04) 210deg 265deg,transparent 265deg 280deg,rgba(229,62,62,.04) 280deg 335deg,transparent 335deg 350deg,rgba(229,62,62,.04) 350deg 360deg);pointer-events:none;}
-.ctrl-glow{position:absolute;top:0;left:20%;right:20%;height:1px;background:linear-gradient(90deg,transparent,var(--crimson),transparent);opacity:0;transition:opacity .5s;}
-.ctrl.recording .ctrl-glow{opacity:1;}
-.ctrl.recording{border-color:rgba(229,62,62,.2);}
+/* ── CONTROLS ── */
+/* One row under the preview: what to record, the record button, then the
+   actions. The recording's duration is not here — it is on the timeline. */
+.ctrl{width:100%;max-width:1160px;flex-shrink:0;display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--surface-2);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--glass-b);border-radius:12px;padding:9px 14px;margin-bottom:9px;position:relative;transition:border-color .3s;}
+.ctrl.recording{border-color:rgba(229,62,62,.25);}
 
-/* LEFT — empty spacer, so the grid's centre column stays centred */
-.ctrl-spacer{min-width:0;}
+/* The record sources: what goes into the take. Screen is on by default. */
+.srcs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;}
+.src-btn{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:9px;border:1px solid var(--glass-b);background:var(--glass);color:var(--text-mid);cursor:pointer;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;transition:all .2s;white-space:nowrap;-webkit-tap-highlight-color:transparent;}
+.src-btn svg{flex-shrink:0;pointer-events:none;}
+.src-btn:hover:not(:disabled){background:var(--glass-b);color:var(--text);border-color:var(--glass-b2);}
+.src-btn:active:not(:disabled){transform:scale(.97);}
+.src-btn:disabled{opacity:.35;cursor:not-allowed;}
+/* Screen is the default source and cannot be turned off, so it always reads as
+   selected; the pin says whether the share is actually live. Webcam and Mic are
+   toggles, so their own active state lights them. */
+.src-btn.active,#screen-btn{color:var(--text);border-color:rgba(229,62,62,.42);background:rgba(229,62,62,.12);}
+.src-pin{width:6px;height:6px;border-radius:50%;background:var(--text-dim);flex-shrink:0;transition:background .2s,box-shadow .2s;}
+.src-btn.active .src-pin,.src-btn.live .src-pin{background:var(--green);box-shadow:0 0 6px var(--green);}
 
-/* CENTER */
-.ctrl-center{display:flex;flex-direction:column;align-items:center;gap:10px;position:relative;z-index:2;justify-self:center;}
+/* Microphone level meter, beside the Mic button */
+.vu{position:relative;width:44px;height:6px;border-radius:3px;overflow:hidden;display:none;background:linear-gradient(90deg,var(--green),var(--amber),var(--crimson));flex-shrink:0;}
+.vu.on{display:block;}
+.vu-fill{position:absolute;top:0;right:0;bottom:0;width:100%;background:var(--bg);transition:width .06s linear;}
+
+/* The record button, beside the sources */
+.rec-cell{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;}
 .rec-btn-wrap{position:relative;}
 .ring{position:absolute;border-radius:50%;border:1px solid rgba(229,62,62,.15);pointer-events:none;}
-.ring-1{inset:-12px;animation:ring-pulse 2.5s ease-in-out infinite;}
-.ring-2{inset:-22px;animation:ring-pulse 2.5s ease-in-out .6s infinite;}
-.ring-3{inset:-34px;animation:ring-pulse 2.5s ease-in-out 1.2s infinite;opacity:0;}
+.ring-1{inset:-8px;animation:ring-pulse 2.5s ease-in-out infinite;}
+.ring-2{inset:-15px;animation:ring-pulse 2.5s ease-in-out .6s infinite;}
+.ring-3{inset:-22px;animation:ring-pulse 2.5s ease-in-out 1.2s infinite;opacity:0;}
 @keyframes ring-pulse{0%,100%{opacity:.15;transform:scale(1)}50%{opacity:.4;transform:scale(1.02)}}
-#rec-btn{position:relative;z-index:1;width:78px;height:78px;border-radius:50%;background:radial-gradient(circle at 38% 32%,#FF5252 0%,#B91C1C 70%);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 0 var(--crimson-glow),0 6px 32px rgba(229,62,62,.4),inset 0 1px 0 rgba(255,255,255,.18),inset 0 -2px 4px rgba(0,0,0,.3);transition:transform .15s cubic-bezier(.34,1.56,.64,1),box-shadow .3s;-webkit-tap-highlight-color:transparent;}
-#rec-btn:hover:not(:disabled){transform:scale(1.06);box-shadow:0 0 0 10px rgba(229,62,62,.07),0 6px 44px rgba(229,62,62,.55),inset 0 1px 0 rgba(255,255,255,.18),inset 0 -2px 4px rgba(0,0,0,.3);}
+#rec-btn{position:relative;z-index:1;width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 38% 32%,#FF5252 0%,#B91C1C 70%);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 0 var(--crimson-glow),0 4px 22px rgba(229,62,62,.4),inset 0 1px 0 rgba(255,255,255,.18),inset 0 -2px 4px rgba(0,0,0,.3);transition:transform .15s cubic-bezier(.34,1.56,.64,1),box-shadow .3s;-webkit-tap-highlight-color:transparent;}
+#rec-btn:hover:not(:disabled){transform:scale(1.06);box-shadow:0 0 0 8px rgba(229,62,62,.07),0 4px 30px rgba(229,62,62,.55),inset 0 1px 0 rgba(255,255,255,.18),inset 0 -2px 4px rgba(0,0,0,.3);}
 #rec-btn:active:not(:disabled){transform:scale(.94);}
 #rec-btn:disabled{opacity:.55;cursor:not-allowed;}
 #rec-btn.recording{animation:btn-throb 1.6s ease-in-out infinite;}
-@keyframes btn-throb{0%,100%{box-shadow:0 0 0 0 rgba(229,62,62,.5),0 6px 32px rgba(229,62,62,.4),inset 0 1px 0 rgba(255,255,255,.18)}50%{box-shadow:0 0 0 20px rgba(229,62,62,0),0 6px 50px rgba(229,62,62,.7),inset 0 1px 0 rgba(255,255,255,.18)}}
-.rec-btn-core{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.22);transition:border-radius .22s cubic-bezier(.34,1.56,.64,1),width .22s,height .22s;}
-#rec-btn.recording .rec-btn-core{border-radius:6px;width:20px;height:20px;}
-.rec-btn-lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;color:var(--text-dim);text-transform:uppercase;}
+@keyframes btn-throb{0%,100%{box-shadow:0 0 0 0 rgba(229,62,62,.5),0 4px 22px rgba(229,62,62,.4),inset 0 1px 0 rgba(255,255,255,.18)}50%{box-shadow:0 0 0 16px rgba(229,62,62,0),0 4px 36px rgba(229,62,62,.7),inset 0 1px 0 rgba(255,255,255,.18)}}
+.rec-btn-core{width:19px;height:19px;border-radius:50%;background:rgba(255,255,255,.22);transition:border-radius .22s cubic-bezier(.34,1.56,.64,1),width .22s,height .22s;}
+#rec-btn.recording .rec-btn-core{border-radius:5px;width:15px;height:15px;}
+.rec-btn-lbl{font-family:var(--font-mono);font-size:9px;letter-spacing:.16em;color:var(--text-dim);text-transform:uppercase;}
 
-/* RIGHT */
-.ctrl-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px;justify-self:end;min-width:0;}
-.timer{font-family:var(--font-mono);font-size:30px;font-weight:300;letter-spacing:.04em;color:var(--text);line-height:1;}
-.timer-ms{font-size:17px;color:var(--text-dim);font-weight:300;}
-.action-row{display:flex;gap:7px;}
+/* Reset and Export, at the end of the row */
+.ctrl-actions{margin-left:auto;display:flex;gap:7px;flex-shrink:0;}
 .act-btn{padding:7px 16px;border-radius:8px;border:1px solid var(--glass-b);background:var(--glass);color:var(--text-mid);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;cursor:pointer;transition:all .2s;white-space:nowrap;}
 .act-btn:not(:disabled):hover{background:rgba(255,255,255,.07);color:var(--text);border-color:var(--glass-b2);}
 .act-btn:active:not(:disabled){transform:scale(.97);}
@@ -318,5 +324,5 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .pub-error{font-family:var(--font-mono);font-size:11px;color:var(--crimson);letter-spacing:.04em;line-height:1.5;overflow-wrap:anywhere;}
 
 /* ── TOAST ── */
-.toast{position:fixed;bottom:145px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--surface);border:1px solid var(--glass-b2);border-radius:8px;padding:9px 18px;z-index:100;font-family:var(--font-mono);font-size:11px;letter-spacing:.07em;color:var(--text-mid);opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;white-space:nowrap;}
+.toast{position:fixed;bottom:130px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--surface);border:1px solid var(--glass-b2);border-radius:8px;padding:9px 18px;z-index:100;font-family:var(--font-mono);font-size:11px;letter-spacing:.07em;color:var(--text-mid);opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;white-space:nowrap;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}

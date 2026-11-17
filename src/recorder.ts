@@ -9,9 +9,8 @@ import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
 import { startMirror, stopMirror, seekWithin } from './ui/preview.js';
 import { countdown } from './ui/countdown.js';
-import { startTimer, stopTimer, setTimerMs } from './ui/timer.js';
 import { strip } from './ui/timeline-ui.js';
-import { keptLengthNow, player } from './ui/clip.js';
+import { player } from './ui/clip.js';
 import { playback } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
@@ -35,6 +34,22 @@ export async function toggleRec(): Promise<void> {
     toast('The share ended — choose a screen to keep recording', 4000);
     return startCapture(true);
   }
+}
+
+// The Screen source button: the share is what a take is made of, so this is the
+// one source that is not optional. Pressing it always ends up at the picker —
+// the current share is let go of first, so it is also how a share made without
+// audio is redone without starting the session over.
+export function toggleScreen(): void {
+  if (app.phase === 'starting' || app.phase === 'countdown' || app.phase === 'recording' || app.phase === 'encoding') return;
+  if (app.stream) releaseDisplay();
+  void startCapture(true);
+}
+
+// Whether the Screen share is live, shown by the pin on its button. The button
+// itself stays lit: screen is the default source and is always one.
+function setScreenLive(on: boolean): void {
+  el.screenBtn.classList.toggle('live', on);
 }
 
 // Pressing record during the countdown aborts it and the pending recording,
@@ -107,6 +122,7 @@ export async function startCapture(force = false): Promise<void> {
     el.idleOv.classList.add('gone');
     el.recBtn.disabled = false;
     el.recLbl.textContent = 'Record';
+    setScreenLive(true);
     setPhase('live');
     setStatus('ready', `Live · ${app.captureW}×${app.captureH}`);
   } catch (err) {
@@ -115,6 +131,7 @@ export async function startCapture(force = false): Promise<void> {
     el.idleOv.classList.remove('gone');
     el.resBadge.style.display = 'none';
     el.recBtn.disabled = false;
+    setScreenLive(false);
     setPhase('idle');
     setStatus('ready', 'Ready');
     // NotAllowedError just means "cancelled / needs a gesture" — the idle hint
@@ -310,7 +327,6 @@ async function startRecording(): Promise<void> {
   el.badge.classList.add('on');
   el.recLbl.textContent = 'Stop';
   setStatus('rec', `REC · ${app.captureW}×${app.captureH}`);
-  startTimer();
 }
 
 export function stopRec(): void {
@@ -320,7 +336,6 @@ export function stopRec(): void {
   liveTimeline.stop();         // the review rebuilds the timeline from the file
   // The share is kept: reviewing a clip and then pressing Record again adds to
   // it, which should not cost another trip through the picker.
-  stopTimer();
   stopMirror();
   el.recBtn.classList.remove('recording');
   el.ring3.style.opacity = '0';
@@ -340,6 +355,7 @@ export function releaseDisplay(): void {
   app.stream = null;
   el.sv.srcObject = null;
   stopMirror();
+  setScreenLive(false);
 }
 
 // The user clicked the browser's "Stop sharing" chip, or the shared surface went
@@ -390,7 +406,6 @@ async function onRecStop(): Promise<void> {
   // The clip may be a cropped region, so size the preview canvas to it.
   if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
   void waveform.build(app.clip.takes.all());
-  setTimerMs(keptLengthNow() * 1000);
   // Building the thumbnails seeks through the clip; once that is done, park the
   // playhead at the trim IN, or at the join when a recording was just added.
   const park = appending ? previous : app.clip.trim.start * app.clip.total();
