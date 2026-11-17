@@ -5,8 +5,9 @@
 // browser away and back — and everything the page held in memory goes with it.
 // The takes are the recording itself, the most valuable thing here, so the clip
 // is written down as it changes and read back when the app starts: a reload, a
-// sign-in, or picking up a new version all come back to the clip, and only Reset
-// lets it go.
+// sign-in, or picking up a new version all come back to the clip. The session is
+// over at New, or when the clip is exported — the file written, the post
+// published — and the kept copy goes with it.
 //
 // This is the flow around the store (src/infra/clip-store.ts): when to write,
 // when to read, and what the app looks like once it has. The store knows nothing
@@ -70,6 +71,17 @@ function why(err: unknown): string {
   const e = err as { name?: string; message?: string } | null;
   if (e?.name === 'QuotaExceededError') return 'there is no room left in this browser';
   return e?.message || 'the browser refused to write it';
+}
+
+/**
+ * The clip has gone somewhere — a file written, or a post published. The session
+ * is over, so the copy kept for a reload goes with it. The clip itself stays on
+ * screen: work on it again and it is kept again.
+ */
+export function forgetClip(): void {
+  clearTimeout(saveTimer);
+  saveTimer = undefined;
+  void clearClip();
 }
 
 /**

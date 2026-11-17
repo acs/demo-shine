@@ -11,7 +11,7 @@
 import { app } from './state.js';
 import { el } from './ui/dom.js';
 import { exportOffline } from './offline-export.js';
-import { persistClip } from './resume.js';
+import { persistClip, forgetClip } from './resume.js';
 import { publishToBluesky, type PublicationProgress } from './application/publish-to-bluesky.js';
 import { AspectRatio } from './domain/bluesky/AspectRatio.js';
 import { postUrl } from './domain/bluesky/BlueskyPost.js';
@@ -90,6 +90,9 @@ export async function publishClip(text: string, alt: string, handlers: PublishHa
       },
       onProgress: handlers.onProgress,
     });
+    // The post is written: the clip has gone somewhere, so the session is over
+    // and the copy kept for a reload goes with it.
+    forgetClip();
     handlers.onDone({ uri, url: postUrl(uri, await api.blueskyHandle()) });
   } catch (err) {
     handlers.onError((err as Error).message);
