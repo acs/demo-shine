@@ -1,10 +1,13 @@
-// The source buttons' enabled state, in one place.
+// The source buttons' own state, in one place.
 //
 // A button is out when its device is not there, and all three are out while a
 // take is being set up or runs — switching a source mid-take would change what
 // is being recorded. The device facts arrive from webcam.ts and mic.ts, which
-// watch for devices coming and going; the lock comes from the phase. Keeping
-// both here is what stops them fighting over the same attribute.
+// watch for devices coming and going; the lock comes from the phase, and the
+// Screen button is lit while the screen is a source. Keeping it here is what
+// stops the two fighting over the same attribute — and what makes the opening
+// state come from the model rather than from the markup, so the Screen button
+// is out on first access.
 
 import { app, onPhaseChange, type Phase } from '../state.js';
 import { el } from './dom.js';
@@ -16,9 +19,17 @@ function locked(phase: Phase): boolean {
   return phase === 'starting' || phase === 'countdown' || phase === 'recording';
 }
 
-function refresh(): void {
+/**
+ * Every source button's own state: out when its device is missing or a take is
+ * in flight, and the Screen button lit while it is a source. Called on every
+ * phase change and whenever a source is switched, so a button never keeps a
+ * stale state — the opening one included.
+ */
+export function refreshSourceButtons(): void {
   const off = locked(app.phase);
   el.screenBtn.disabled = off;
+  el.screenBtn.classList.toggle('active', app.screenOn);
+  el.screenBtn.setAttribute('aria-pressed', app.screenOn ? 'true' : 'false');
   el.webcamBtn.disabled = off || !present.camera;
   el.micBtn.disabled = off || !present.mic;
 }
@@ -26,16 +37,16 @@ function refresh(): void {
 /** A camera was found (or went away). */
 export function setCameraPresent(has: boolean): void {
   present.camera = has;
-  refresh();
+  refreshSourceButtons();
 }
 
 /** A microphone was found (or went away). */
 export function setMicPresent(has: boolean): void {
   present.mic = has;
-  refresh();
+  refreshSourceButtons();
 }
 
 export function initSourceButtons(): void {
-  onPhaseChange(refresh);
-  refresh();
+  onPhaseChange(refreshSourceButtons);
+  refreshSourceButtons();
 }
