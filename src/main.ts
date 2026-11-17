@@ -9,7 +9,7 @@ import { toggleHelp, helpBdClick } from './ui/help.js';
 import { drawGrid } from './ui/preview.js';
 import { initTimeline, onTrim, updateTrimUI, updateSizeUI } from './ui/timeline-ui.js';
 import { initTimelineMarks } from './ui/marks.js';
-import { toggleRec, startCapture, toggleScreen, syncSources } from './recorder.js';
+import { toggleRec, toggleScreen, syncSources } from './recorder.js';
 import { doExport, resetAll } from './exporter.js';
 import { playback } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
@@ -103,10 +103,9 @@ function init(): void {
   const returning = [url.search, url.hash].some(part => part.includes('code=') || part.includes('error='));
   if (returning) void import('./infra/bluesky.js').then(({ initBluesky }) => initBluesky());
 
-  // The screen is a source by default, so try for a share on load — the browser
-  // may open the picker, or refuse until the Screen button is pressed, which is
-  // the only other thing that reaches for the screen.
-  if (supported) void startCapture();
+  // Nothing is captured on load: every source starts off, and the Screen and
+  // Webcam buttons are what start one. A take needs a picture, so Record with
+  // nothing on says so rather than reaching for the screen.
 
   // Service worker: off under Vite's dev server, whose cache-first strategy
   // would shadow HMR; on for builds and `vite preview` (a real, installable,
