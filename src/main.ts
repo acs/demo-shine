@@ -9,7 +9,7 @@ import { toggleHelp, helpBdClick } from './ui/help.js';
 import { drawGrid } from './ui/preview.js';
 import { initTimeline, onTrim, updateTrimUI, updateSizeUI } from './ui/timeline-ui.js';
 import { initTimelineMarks } from './ui/marks.js';
-import { toggleRec, startCapture, toggleScreen } from './recorder.js';
+import { toggleRec, startCapture, toggleScreen, syncSources } from './recorder.js';
 import { doExport, resetAll } from './exporter.js';
 import { playback } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
@@ -81,10 +81,11 @@ function init(): void {
   // Drag on the preview to crop the recording to a region.
   initRegion();
 
-  // The record sources. Screen asks for a share (again), and is shown live while
-  // one is held; webcam and mic are toggles (disabled when no device is present).
+  // The record sources, independent of one another. Turning the screen off lets
+  // the share go; the webcam is the whole picture while the screen is off, so
+  // the preview is synced once it has really started or stopped.
   el.screenBtn.addEventListener('click', toggleScreen);
-  el.webcamBtn.addEventListener('click', toggleWebcam);
+  el.webcamBtn.addEventListener('click', async () => { await toggleWebcam(); syncSources(); });
   initWebcam();
 
   // Microphone toggle + level meter (disabled when no mic is present).
@@ -98,13 +99,10 @@ function init(): void {
   const returning = [url.search, url.hash].some(part => part.includes('code=') || part.includes('error='));
   if (returning) void import('./infra/bluesky.js').then(({ initBluesky }) => initBluesky());
 
-  // Go live as early as the browser allows. getDisplayMedia is gated behind a
-  // user gesture + picker, so we (a) try on load, and (b) start on the first
-  // interaction anywhere — the capture goes live without the red button.
-  const startOnGesture = () => { if (supported) void startCapture(); };
+  // The screen is a source by default, so try for a share on load — the browser
+  // may open the picker, or refuse until the Screen button is pressed, which is
+  // the only other thing that reaches for the screen.
   if (supported) void startCapture();
-  window.addEventListener('pointerdown', startOnGesture, { once: true });
-  window.addEventListener('keydown', startOnGesture, { once: true });
 
   // Service worker: off under Vite's dev server, whose cache-first strategy
   // would shadow HMR; on for builds and `vite preview` (a real, installable,

@@ -94,7 +94,8 @@ function toCanvas(e: PointerEvent): { x: number; y: number } {
 }
 
 function onDown(e: PointerEvent): void {
-  if (app.phase !== 'live') return;
+  // A crop is a crop of the screen: with the screen off there is nothing to crop.
+  if (app.phase !== 'live' || !app.screenOn) return;
   const p = toCanvas(e);
   crop.begin(p.x, p.y);
   try { el.cv.setPointerCapture(e.pointerId); } catch { /* not capturable */ }

@@ -1,55 +1,117 @@
-// Screen capture + recording.
+// Capture + recording.
 //
-// The capture is acquired as soon as the app opens (full screen preferred) and
-// shown live on the preview, so the red button only starts/stops the recording.
-// If the browser requires a user gesture first, the red button falls back to
-// acquiring the capture.
+// The three sources are independent toggles: the screen (a share, on by default),
+// the webcam and the microphone. A take needs a picture — the screen, or the
+// webcam when the screen is off — and the preview always shows whichever source
+// is live, so the red button only starts and stops the recording. Nothing here
+// reaches for the screen while the Screen button is off.
 
 import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
-import { startMirror, stopMirror, seekWithin } from './ui/preview.js';
+import { drawGrid, startMirror, stopMirror, seekWithin } from './ui/preview.js';
 import { countdown } from './ui/countdown.js';
 import { strip } from './ui/timeline-ui.js';
 import { player } from './ui/clip.js';
 import { playback } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
 import { FULL, isFullRegion } from './ui/region.js';
-import { drawWebcamOverlay, stopWebcam } from './ui/webcam.js';
+import { drawWebcamOverlay } from './ui/webcam.js';
 import { liveTimeline } from './ui/live-timeline.js';
-import { stopMic } from './ui/mic.js';
 import { getBestMime } from './infra/codecs.js';
+
+// A take needs a picture: the screen share, or the webcam when the screen is off.
+export function hasPicture(): boolean {
+  return (app.screenOn && !!app.stream) || (app.webcamOn && !!app.webcamStream);
+}
+
+// A take in flight owns the preview and the phase, so nothing else may move them.
+function busy(): boolean {
+  return app.phase === 'starting' || app.phase === 'countdown' || app.phase === 'recording' || app.phase === 'encoding';
+}
 
 export async function toggleRec(): Promise<void> {
   if (app.phase === 'starting' || app.phase === 'encoding') return;
   if (app.phase === 'countdown') return cancelRecordingCountdown();
-  if (app.phase === 'idle')      return startCapture();
-  if (app.phase === 'live')      return startRecording();
   if (app.phase === 'recording') return stopRec();
+  if (app.phase === 'live')      return startRecording();
   if (app.phase === 'review') {
-    // Recording again adds to the end of what is already there. The share is
-    // kept while reviewing, so this usually needs no picker. When it is gone —
-    // the shared window was closed, or Chrome's "Stop sharing" was pressed —
-    // ask for another one; the next press records and adds to the end.
-    if (app.stream) return startRecording();
-    toast('The share ended — choose a screen to keep recording', 4000);
-    return startCapture(true);
+    // Recording again adds to the end of what is already there, from whatever
+    // source is live — the kept share, or the webcam when the screen is off.
+    if (hasPicture()) return startRecording();
+    toast('Turn on Screen or Webcam to keep recording', 4000);
+    return;
   }
+  // Idle: nothing is live, and pressing Record never reaches for the screen on
+  // its own — the Screen button is what asks for a share.
+  toast('Turn on Screen or Webcam first', 4000);
 }
 
-// The Screen source button: the share is what a take is made of, so this is the
-// one source that is not optional. Pressing it always ends up at the picker —
-// the current share is let go of first, so it is also how a share made without
-// audio is redone without starting the session over.
+// The Screen source button: on exactly while a share is held (or being asked
+// for). Turning it off lets the share go, and the webcam — if it is on — takes
+// the preview. Nothing reaches for the screen again until it is turned back on.
 export function toggleScreen(): void {
-  if (app.phase === 'starting' || app.phase === 'countdown' || app.phase === 'recording' || app.phase === 'encoding') return;
-  if (app.stream) releaseDisplay();
+  if (busy()) return;
+  if (app.screenOn) {
+    app.screenOn = false;
+    releaseDisplay();
+    syncSources();
+    return;
+  }
+  app.screenOn = true;
   void startCapture(true);
 }
 
-// Whether the Screen share is live, shown by the pin on its button. The button
-// itself stays lit: screen is the default source and is always one.
-function setScreenLive(on: boolean): void {
-  el.screenBtn.classList.toggle('live', on);
+// The Screen button's own state: lit while the screen is a source.
+function updateSourceButtons(): void {
+  el.screenBtn.classList.toggle('active', app.screenOn);
+  el.screenBtn.setAttribute('aria-pressed', app.screenOn ? 'true' : 'false');
+}
+
+// What the preview shows and where the phase belongs, decided in one place after
+// any source changes: a share taken or let go, the webcam switched on or off.
+// While a clip is being reviewed the preview is the clip's, and a take in flight
+// owns it — neither is disturbed.
+export function syncSources(): void {
+  updateSourceButtons();
+  if (busy() || app.phase === 'review') return;
+
+  if (!hasPicture()) {
+    stopMirror();
+    drawGrid();
+    el.idleOv.classList.remove('gone');
+    el.recBtn.disabled = false;
+    el.recLbl.textContent = 'Record';
+    setPhase('idle');
+    setStatus('ready', 'Ready');
+    return;
+  }
+
+  if (app.screenOn && app.stream) sizePreviewToScreen();
+  else useWebcamSize();
+
+  if (!app.mirroring) startMirror();
+  el.idleOv.classList.add('gone');
+  el.recBtn.disabled = false;
+  el.recLbl.textContent = 'Record';
+  setPhase('live');
+  setStatus('ready', `Live · ${app.captureW}×${app.captureH}`);
+}
+
+function sizePreviewToScreen(): void {
+  el.cv.width = app.captureW;
+  el.cv.height = app.captureH;
+  el.resBadge.textContent = `${app.captureW} × ${app.captureH}`;
+  el.resBadge.style.display = '';
+}
+
+// The webcam is the whole picture when the screen is off, so the preview takes
+// the camera's own size rather than the screen's.
+function useWebcamSize(): void {
+  const w = el.wcv.videoWidth, h = el.wcv.videoHeight;
+  if (!w || !h) return;
+  app.captureW = w;
+  app.captureH = h;
+  sizePreviewToScreen();
 }
 
 // Pressing record during the countdown aborts it and the pending recording,
@@ -74,9 +136,10 @@ function cancelRecordingCountdown(): void {
 // Acquire the display and show it live on the preview. Called on load; also the
 // fallback when the browser blocked the gesture-less attempt.
 export async function startCapture(force = false): Promise<void> {
+  // The screen is not a source right now: nothing here reaches for it.
+  if (!app.screenOn) return;
   // Never while a recording is being reviewed or encoded unless it is asked for
-  // explicitly: a fresh capture would clobber it. Reset leaves 'review' first,
-  // and Record while reviewing asks for one on purpose when the share is gone.
+  // explicitly: a fresh capture would clobber it. Reset leaves 'review' first.
   if (app.stream || app.phase === 'starting' || app.phase === 'recording') return;
   if (!force && (app.phase === 'review' || app.phase === 'encoding')) return;
   try {
@@ -122,20 +185,18 @@ export async function startCapture(force = false): Promise<void> {
     el.idleOv.classList.add('gone');
     el.recBtn.disabled = false;
     el.recLbl.textContent = 'Record';
-    setScreenLive(true);
+    updateSourceButtons();
     setPhase('live');
     setStatus('ready', `Live · ${app.captureW}×${app.captureH}`);
   } catch (err) {
     const e = err as { name?: string };
-    stopMirror();
-    el.idleOv.classList.remove('gone');
+    // No share was had, so the screen is no longer a source: the button goes
+    // out, and the webcam keeps the preview if it is on. The phase is left
+    // behind first, so syncSources is free to set it.
+    app.screenOn = false;
     el.resBadge.style.display = 'none';
-    el.recBtn.disabled = false;
-    setScreenLive(false);
     setPhase('idle');
-    setStatus('ready', 'Ready');
-    // NotAllowedError just means "cancelled / needs a gesture" — the idle hint
-    // already tells the user to press record.
+    syncSources();
     if (e.name && e.name !== 'NotAllowedError') toast('Could not start: ' + e.name, 4000);
   }
 }
@@ -182,14 +243,23 @@ class Output {
 // harness can drive a take's canvas and its audio graph without a screen share.
 export const output = new Output();
 
-// When a region is set, the webcam is on, or the mic is on, record a stream we
-// build ourselves (canvas video + mixed audio); otherwise record the raw stream.
+// The webcam alone is the picture, the screen with a crop or a bubble is drawn
+// on a canvas, and a plain full-screen share is recorded raw.
 function buildRecordingStream(): MediaStream {
-  const src = app.stream!;
   output.stop();                 // a fresh take: nothing of the last canvas is left
+  const audio = buildAudioTracks();
+
+  // No screen share: the camera is the whole picture, at its own size.
+  if (!app.screenOn || !app.stream) {
+    const out = new MediaStream();
+    app.webcamStream?.getVideoTracks().forEach(t => out.addTrack(t));
+    audio.forEach(t => out.addTrack(t));
+    return out;
+  }
+
+  const src = app.stream;
   const region = app.region;
   const needCanvas = !isFullRegion(region) || app.webcamOn;
-  const audio = buildAudioTracks();
 
   if (!needCanvas) {
     if (!app.micOn) return src;                 // raw stream already carries the audio
@@ -273,7 +343,7 @@ function buildAudioTracks(): MediaStreamTrack[] {
 }
 
 async function startRecording(): Promise<void> {
-  if (!app.stream || (app.phase !== 'live' && app.phase !== 'review')) return;
+  if (!hasPicture() || (app.phase !== 'live' && app.phase !== 'review')) return;
   const appending = !app.clip.takes.isEmpty();
   const was = app.phase;               // where a cancelled countdown returns to
   setPhase('countdown');
@@ -294,14 +364,14 @@ async function startRecording(): Promise<void> {
   const ready = await countdown.run(was);
 
   if (!ready) return;                                     // cancelled by a press
-  if (!app.stream || !app.stream.active) {                // capture ended meanwhile
+  if (!hasPicture()) {                                    // the source ended meanwhile
     el.recBtn.disabled = false;
     el.recLbl.textContent = 'Record';
     // A finished clip is kept, so land back on it rather than on an empty app.
     const keepClip = !app.clip.takes.isEmpty();
     setPhase(keepClip ? 'review' : 'idle');
-    setStatus('ready', keepClip ? 'Ready to export · press Record to share again' : 'Ready');
-    toast('The share ended — press Record to share again', 4000);
+    setStatus('ready', keepClip ? 'Ready to export · turn a source on to record again' : 'Ready');
+    toast('The source ended — turn one on to record again', 4000);
     return;
   }
 
@@ -345,8 +415,8 @@ export function stopRec(): void {
   setStatus('proc', 'Processing…');
 }
 
-// Let go of the shared screen (and the preview showing it). Reset uses this to
-// go back to the picker, so a share without audio can be redone.
+// Let go of the shared screen. It does not decide what the preview shows next:
+// the caller syncs the sources, because the webcam may be taking over.
 export function releaseDisplay(): void {
   if (!app.stream) return;
   // Detach first, so releasing the tracks doesn't re-enter onCaptureEnded.
@@ -354,8 +424,7 @@ export function releaseDisplay(): void {
   app.stream.getTracks().forEach(t => t.stop());
   app.stream = null;
   el.sv.srcObject = null;
-  stopMirror();
-  setScreenLive(false);
+  updateSourceButtons();
 }
 
 // The user clicked the browser's "Stop sharing" chip, or the shared surface went
@@ -367,16 +436,20 @@ function onCaptureEnded(): void {
   if (!inReview && app.phase !== 'live' && !counting) return;
 
   if (counting) countdown.cancel();
+  app.screenOn = false;      // the share is gone: the screen is no longer a source
   releaseDisplay();
-  stopWebcam();
-  stopMic();
   el.resBadge.style.display = 'none';
   el.recLbl.textContent = 'Record';
-  // A finished clip is kept: recording more just needs a share again.
+  // A finished clip is kept: recording more just needs a source again. The
+  // webcam and the microphone are the user's own toggles and are left alone.
   const keepClip = inReview || !app.clip.takes.isEmpty();
-  if (!keepClip) el.idleOv.classList.remove('gone');
-  setPhase(keepClip ? 'review' : 'idle');
-  setStatus('ready', keepClip ? 'Ready to export · press Record to share again' : 'Ready');
+  if (keepClip) {
+    stopMirror();
+    setPhase('review');
+    setStatus('ready', 'Ready to export · turn a source on to record again');
+    return;
+  }
+  syncSources();             // the webcam, if it is on, keeps the preview
 }
 
 // A recording just finished: keep it as a take, then open the review on the

@@ -38,8 +38,10 @@ export interface AppState {
 
   region: Rect;                 // crop region to record (whole source by default)
 
+  screenOn: boolean;            // the screen is a source: a share is held (or being asked for)
+
   webcamStream: MediaStream | null;   // webcam capture (video only)
-  webcamOn: boolean;            // webcam overlay shown/baked into the recording
+  webcamOn: boolean;            // the webcam is a source: the bubble over the screen, or the whole picture
 
   micStream: MediaStream | null;      // microphone capture (audio only)
   micOn: boolean;               // microphone mixed into the recording
@@ -71,6 +73,8 @@ export const app: AppState = {
   playRaf: null,
 
   region: { x: 0, y: 0, w: 1, h: 1 },
+
+  screenOn: true,
 
   webcamStream: null,
   webcamOn: false,

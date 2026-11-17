@@ -19,7 +19,7 @@ import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
 import { beginEncoding, encodingAt, endEncoding } from './ui/timeline-ui.js';
 import { dlBlob, ts } from './infra/download.js';
-import { stopRec, startCapture, releaseDisplay } from './recorder.js';
+import { stopRec, startCapture, releaseDisplay, syncSources } from './recorder.js';
 import { playback } from './ui/playback.js';
 import { session } from './session.js';
 import { exportOffline, offlineAvailable, type OfflineStats } from './offline-export.js';
@@ -100,7 +100,9 @@ export function resetAll(): void {
   setPhase('idle');
   session.reset();
   setStatus('ready', 'Ready');
-  // Same as the app start: go straight back to a live capture. Reset is a click,
-  // so the gesture is available for getDisplayMedia.
-  void startCapture();
+  // Same as the app start: go back for a share — but only while the screen is a
+  // source. With it off, the webcam (if it is on) keeps the preview and nothing
+  // reaches for the screen.
+  if (app.screenOn) void startCapture();
+  else syncSources();
 }
