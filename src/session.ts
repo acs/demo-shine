@@ -6,7 +6,7 @@
 // playhead is, the waveform, which take the video is holding, and the elements
 // that only mean anything while there is a clip. Starting over used to be thirty
 // lines of manual tidying at the end of the export flow; it is one call here
-// instead, and it is the same call whether a person pressed Reset or the share
+// instead, and it is the same call whether a person pressed New or the share
 // went away.
 //
 // Each view module owns the object its state lives on — the `LiveTimeline` that
@@ -17,7 +17,7 @@
 // same way.
 //
 // What deliberately stays out is the flow: letting go of the shared screen, the
-// phase, and asking for a screen again. That is the reset button's business, not
+// phase, and asking for a screen again. That is the New button's business, not
 // the session's.
 
 import { app } from './state.js';

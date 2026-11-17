@@ -64,7 +64,7 @@ widget, and that module **exports the instance** its state lives on (`liveTimeli
 So a view module's state is an **object with a lifetime**, not module-level `let`s: the
 take in progress is a `LiveTimeline`, the transport is a `Playback`. The **session** is
 what ends those lifetimes — `session.reset()` is the whole of "this session is over",
-and the reset button is only the flow around it. That is also what lets the app be
+and the New button is only the flow around it. That is also what lets the app be
 exercised twice in one page, which the browser harnesses now rely on.
 
 ## Tests come with the rule

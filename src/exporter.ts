@@ -1,5 +1,5 @@
-// The export and reset flows: wrap the use cases in the buttons, the status line
-// and the phase they belong to.
+// The export and new-session flows: wrap the use cases in the buttons, the status
+// line and the phase they belong to.
 //
 // What the export should write is decided by src/application/export-clip.ts and
 // encoded by src/offline-export.ts, which between them need nothing from here.
@@ -22,6 +22,7 @@ import { dlBlob, ts } from './infra/download.js';
 import { stopRec, startCapture, releaseDisplay, syncSources } from './recorder.js';
 import { playback } from './ui/playback.js';
 import { session } from './session.js';
+import { forgetClip } from './resume.js';
 import { exportOffline, offlineAvailable, type OfflineStats } from './offline-export.js';
 import { planExport } from './application/export-clip.js';
 import { FADE_S } from './ui/fade.js';
@@ -56,12 +57,15 @@ export async function doExport(target: ExportTarget = 'webm'): Promise<void> {
   setPhase('encoding');
   el.recBtn.disabled   = true;
   el.btnExp.disabled   = true;
-  el.btnReset.disabled = true;
+  el.btnNew.disabled   = true;
   el.playBtn.disabled  = true;
   setStatus('proc', 'Encoding…');
   const wasCut = beginEncoding();   // what the chip said before the export took it over
   try {
     const stats = await exportOfflineHere(target);
+    // The file is written, so the clip has gone somewhere and the session is
+    // over: the copy kept for a reload goes with it.
+    forgetClip();
     setStatus('ready', 'Export complete ✓');
     toast(exportedMessage(target, stats), 5000);
   } catch (err) {
@@ -72,7 +76,7 @@ export async function doExport(target: ExportTarget = 'webm'): Promise<void> {
   setPhase('review');
   el.recBtn.disabled   = false;
   el.btnExp.disabled   = false;
-  el.btnReset.disabled = false;
+  el.btnNew.disabled   = false;
   el.playBtn.disabled  = false;
   endEncoding(wasCut);
   playback.pause();               // refresh the playhead after the export moved rv
@@ -85,18 +89,19 @@ function exportedMessage(target: ExportTarget, stats: OfflineStats): string {
     : `File downloaded successfully — ${written}.`;
 }
 
-export function resetAll(): void {
+export function startNewSession(): void {
   if (app.phase === 'recording') { stopRec(); return; }
   if (app.phase === 'encoding' || app.phase === 'starting') return;
 
   // A live share has to be let go of before another can be asked for — that is
-  // the point of resetting while waiting to record, where the reason to reset is
+  // the point of starting over while waiting to record, where the reason is
   // usually to go back and tick "share audio".
   releaseDisplay();
 
   // The session lets go of everything it holds — the clip, the timeline, the
-  // playhead, the strip — and the flow around it goes on being the flow: the
-  // phase, the status line, and going back for a screen.
+  // playhead, the strip, and the copy kept for a reload — and the flow around it
+  // goes on being the flow: the phase, the status line, and going back for a
+  // screen.
   setPhase('idle');
   session.reset();
   setStatus('ready', 'Ready');

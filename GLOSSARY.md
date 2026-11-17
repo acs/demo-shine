@@ -18,7 +18,7 @@ beside it.
 
 | word | what it is | in the code |
 |---|---|---|
-| **session** | one sitting of the app: the clip, and the view state that belongs to showing it. Over at Reset, or when the share ends | `Session` (`session.reset()`) |
+| **session** | one sitting of the app: the clip, and the view state that belongs to showing it. Over at **New**, when the clip is exported, or when the share ends | `Session` (`session.reset()`) |
 | **take** | **one press of Record**: one MediaRecorder WebM with its own length, played in order with the others | `Take` — id, blob, url, duration |
 | **clip** | all the takes, in order, plus the keep range and what was cut out. What everything else asks what to show and what to export | `Clip`, the aggregate |
 | **take repository** | where a clip's takes come from, and the only owner of their object URLs | `TakeRepository` (the port), `InMemoryTakeRepository` |
@@ -32,7 +32,8 @@ A clip's length is **the sum of its takes** — derived, never a field beside th
 A clip lives in the page. The one thing that takes it away is the walk out to
 Bluesky to sign in, so the clip is written down before that trip and read back on
 the way in — and, because the writing is not only for that trip, a reload or a new
-version comes back to it too. Only Reset lets it go.
+version comes back to it too. The session is over, and the kept copy let go, at
+**New** — or when the clip is exported: the file written, or the post published.
 
 A take is megabytes and never changes; the keep range and the cuts are a few
 bytes and move on every drag. They are kept apart, so writing a trim never means
@@ -42,7 +43,7 @@ writing the recording again.
 |---|---|---|
 | **clip snapshot** | everything a clip is made of, written down: its takes (the recording bytes and their lengths), its keep range, its cuts | `ClipSnapshot`, `Clip.snapshot()` |
 | **restore** | rebuilding a clip from a snapshot and opening the review on it. Nothing is announced: it is a load, not a change | `Clip.restore()`, `resumeClip()` |
-| **clip store** | where a snapshot outlives the page: IndexedDB, the only store here that takes a Blob. A take is written once as it arrives; the keep range and the cuts are written on their own. Read at startup, dropped at Reset | `src/infra/clip-store.ts`, `src/resume.ts` |
+| **clip store** | where a snapshot outlives the page: IndexedDB, the only store here that takes a Blob. A take is written once as it arrives; the keep range and the cuts are written on their own. Read at startup, dropped when the session ends | `src/infra/clip-store.ts`, `src/resume.ts` |
 
 ## Trimming
 
@@ -118,7 +119,7 @@ can end it:
 | `Output`, `Mixer` | the canvas a take is drawn on, and the graph that mixes system audio with the microphone | a take |
 
 `Session` is what ends them: `session.reset()` is the whole of "this session is
-over", and the Reset button is only the flow around it.
+over", and the New button is only the flow around it.
 
 A few spots keep module-level state, all deliberately. The toast timer in
 `ui/dom.ts` lasts a single toast. The Bluesky client in `infra/bluesky.ts` — the

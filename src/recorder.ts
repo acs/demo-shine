@@ -135,7 +135,7 @@ export async function startCapture(force = false): Promise<void> {
   // The screen is not a source right now: nothing here reaches for it.
   if (!app.screenOn) return;
   // Never while a recording is being reviewed or encoded unless it is asked for
-  // explicitly: a fresh capture would clobber it. Reset leaves 'review' first.
+  // explicitly: a fresh capture would clobber it. New leaves 'review' first.
   if (app.stream || app.phase === 'starting' || app.phase === 'recording') return;
   if (!force && (app.phase === 'review' || app.phase === 'encoding')) return;
   try {
@@ -159,7 +159,7 @@ export async function startCapture(force = false): Promise<void> {
     app.stream = await navigator.mediaDevices.getDisplayMedia(options);
 
     app.recAudio = app.stream.getAudioTracks().length > 0;
-    if (!app.recAudio) toast('No audio was shared — the recording will be silent. Press Reset to share again with audio.', 6000);
+    if (!app.recAudio) toast('No audio was shared — the recording will be silent. Press New to share again with audio.', 6000);
 
     app.region = { ...FULL };   // a fresh capture records the whole source
 

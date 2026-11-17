@@ -22,7 +22,7 @@ export const el = {
   sDot:      byId<HTMLElement>('s-dot'),
   sText:     byId<HTMLElement>('s-text'),
   recLbl:    byId<HTMLElement>('rec-lbl'),
-  btnReset:  byId<HTMLButtonElement>('btn-reset'),
+  btnNew:    byId<HTMLButtonElement>('btn-new'),
   btnExp:    byId<HTMLButtonElement>('btn-exp'),
   expMenu:   byId<HTMLElement>('exp-menu'),
   expWebm:   byId<HTMLButtonElement>('exp-webm'),
