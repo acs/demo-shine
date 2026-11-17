@@ -10,25 +10,16 @@ WebM screen recording with region crop, a timeline trimmer, playback with sound,
 
 ## Features
 
-- **Zero dependencies on your machine** — runs entirely in the browser via `getDisplayMedia`
-- **Nothing captured until you ask** — every source starts off, so the app never opens a screen picker on its own; press **Screen** or **Webcam** to start one, and Record with nothing on says so
-- **Record sources in one row** — Screen, Webcam and Mic sit on the left, the record button is centred in the bar, and the sources are out while a take is being set up or records. They are independent toggles, **all off at start**: press Screen to share, and press it again to let the share go — nothing reaches for the screen after that — or Webcam, which carries the picture on its own when the screen is off. The recording's duration is read off the timeline rather than a separate clock
-- **WebM export, encoded offline** — VP9 (VP8 fallback) with Opus audio, written straight from the decoded frames by WebCodecs: about **10× faster than the clip**, it keeps going while the tab is in the background, and the file carries a duration and cue points, so any player can scrub it
-- **Region crop** — a red box over the preview always shows what will be recorded: the whole screen by default, drag to record just part of it, click to reset; while recording the box breathes (red ↔ background)
-- **Webcam** — a source button adds a mirrored bubble in the corner of the recording (disabled when no camera is present), or is **the whole recording** when the screen is off
-- **Microphone** — a source button (disabled when no mic) with a live level meter; its audio is **mixed with the tab/system audio** in the recording
-- **Add more takes** — pressing Record after a recording appends the new one to the end of the clip; the share is kept between takes, so there is no second picker and **every take in a clip comes from the same source** (the same tab, window or screen). **A short fade either side of the join, and a dissolve across it**, soften the change from one take to the next. New starts a new clip; if a source ends, turn it back on and the next take still adds on
-- **Your recording is not lost to a reload** — the clip is kept in the browser (IndexedDB) as it changes, so a page reload, an update, or the trip a Bluesky sign-in takes all come back to it, opened straight into the review; the session is over at **New**, or when the clip is exported (the file written, the post published), and the kept copy goes with it
-- **Live timeline** — the timeline is there while a take records, filling in with the picture and the sound as they are captured (drawn from the live preview and the recorded stream's own levels, never by decoding the half-written file), and it becomes the trim timeline on stop
-- **Timeline trimmer** — drag IN/OUT handles to keep a range, then **click twice to select a section and cut it out with the scissors** (or by clicking inside it), with an **undo** on the section to drop the selection and an **undo** in the header to put an approved trim back. **An approved trim leaves the timeline**, which closes up over it, so the timeline always shows what the export will hold — the strip, the waveform, the handles and the playhead all follow. **Drag a mark or the selected section** (whole, or by an edge) to reposition it, with the clip playing under it as it moves
-- **Playback** — play the recorded clip back on the preview with sound, bounded by the IN/OUT handles
-- **Export progress on the timeline** — the playhead travels across the clip as it is written, with the frames shown on the preview and how much of the clip is left to write counted down; nothing runs off a bottom bar
-- **Audio track** — a waveform of the recording under the thumbnails, shown when the clip has sound
-- **Tab / system audio** — requested on every capture (`audio: true` plus Chrome's `systemAudio: 'include'` hint, so the audio option is offered); the browser owns that checkbox, so the app says so when a share comes back silent, and **New** returns to the picker to redo it
-- **Light / dark mode** — full CSS variable theming, persisted to `localStorage`
-- **PWA** — installable as a desktop app, offline-capable for core recording and WebM export
-- **Version on screen** — the deployed build's version sits beside the logo (in the help panel too), and when a newer build has been deployed the header offers a reload; every merge to `main` bumps it, tags it and deploys — see [VERSIONING.md](VERSIONING.md)
-- **100% offline mode** — recording, playback and export happen entirely in your browser, and nothing is uploaded or stored on a server. Publishing a clip to a video service is optional, and only happens when you ask
+The headline capabilities; the **[full list is in FEATURES.md](FEATURES.md)**.
+
+- **Screen, webcam and mic** — record a screen, window or tab with its audio, the camera, the microphone, or any combination of them
+- **Nothing captured until you ask** — every source starts off, so the app never opens a screen picker on its own
+- **Region crop** — drag a box over the preview to record just part of the screen, and click to reset
+- **Timeline trimmer** — keep a range with the IN/OUT handles, cut a section out with the scissors, and undo either
+- **Add more takes** — Record again appends to the end of the clip, with a fade and a dissolve across the join
+- **Offline WebM export** — VP9 with Opus, written in the browser by WebCodecs about 10× faster than the clip, with a duration and cue points any player can scrub
+- **Nothing leaves your machine** — recording, playback and export are entirely local; publishing to Bluesky is optional, and only happens when you ask
+- **Light / dark and installable** — CSS-variable theming, and a PWA that installs as a desktop app
 
 ---
 
@@ -115,6 +106,7 @@ demoshine/
 ├── eslint.config.js      # ESLint (flat config)
 ├── vitest.config.ts      # Test runner config
 ├── VERSIONING.md         # How the version is bumped, tagged and shown
+├── FEATURES.md           # Every feature in full — the README keeps the summary
 ├── GLOSSARY.md           # The words this project uses — the ubiquitous language
 ├── THIRD-PARTY-NOTICES.template.txt  # Licences of what we bundle; the build fills in the versions
 ├── .agents/skills/       # How work is done here: verifying a change, the domain model, the workflow
