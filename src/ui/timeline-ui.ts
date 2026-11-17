@@ -11,7 +11,6 @@ import { app } from '../state.js';
 import { estimateWebmText } from './size-estimate.js';
 import { Trim } from '../domain/clip/Trim.js';
 import { keptLengthNow, keptOf, player, sourceOf } from './clip.js';
-import { setTimerMs } from './timer.js';
 import { playback } from './playback.js';
 import { waveform } from './waveform.js';
 
@@ -106,12 +105,12 @@ export function endEncoding(was: string): void {
 }
 
 // Everything that shows how long the clip is: the timeline changes length when a
-// trim is approved or taken back, so it all has to be drawn again.
+// trim is approved or taken back, so it all has to be drawn again. The clip's
+// length is the timeline's own readout — there is no separate clock.
 export function rebuildTimeline(): void {
   updateTrimUI();
   updateSizeUI();
   waveform.draw();
-  setTimerMs(keptLengthNow() * 1000);
   void strip.build();
 }
 
