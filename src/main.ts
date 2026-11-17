@@ -22,11 +22,11 @@ import { publishDialog } from './ui/publish-dialog.js';
 import { watchClip, resumeClip } from './resume.js';
 
 function init(): void {
-  // Not every browser can share a screen: no mobile browser implements
-  // getDisplayMedia, and neither does Safari on macOS. That is not "not
-  // supported" — the webcam and the mic still work — so the header says what is
-  // missing and the Screen button is out (source-buttons.ts). A browser with no
-  // mediaDevices at all is a different thing, and is said plainly.
+  // Not every browser can share a screen: Chrome and Firefox on Android do not
+  // implement getDisplayMedia (nor did Safari on iOS before 27). That is not
+  // "not supported" — the webcam and the mic still work — so the header says
+  // what is missing and the Screen button is out (source-buttons.ts). A browser
+  // with no mediaDevices at all is a different thing, and is said plainly.
   const hasMedia = !!navigator.mediaDevices;
   const canShare = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
   if (hasMedia && !canShare) el.compatWarn.classList.add('on');
