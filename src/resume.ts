@@ -14,7 +14,7 @@
 
 import { app, setPhase } from './state.js';
 import { setStatus, toast } from './ui/dom.js';
-import { saveClip, loadClip, clearClip } from './infra/clip-store.js';
+import { saveTake, saveMeta, saveClip, loadClip, clearClip } from './infra/clip-store.js';
 import { openReviewClip } from './recorder.js';
 
 const SAVE_DELAY_MS = 250;   // a dragged handle fires often; the clip itself is small
@@ -33,7 +33,14 @@ export function watchClip(): void {
       void clearClip();
       return;
     }
-    scheduleSave();
+    // A take is the recording and never changes, so it is written once, at once.
+    // The keep range and the cuts are a few bytes that move on every drag, so
+    // they go on their own and are put off a moment.
+    if (event.type === 'take-added') {
+      void saveTake(app.clip, event.index, app.recAudio).catch(warn);
+      return;
+    }
+    scheduleSaveMeta();
   });
 }
 
@@ -92,14 +99,16 @@ export async function resumeClip(): Promise<boolean> {
 }
 
 // A trim dragged with the handles fires on every input; the write is put off a
-// moment so a drag is one write, not thirty. A take arriving waits no longer than
-// that either, which is short enough that closing the tab does not often beat it.
-function scheduleSave(): void {
+// moment so a drag is one write, not thirty — and what it writes is the few bytes
+// of the keep range, not the recording, which is written once when it arrives.
+function scheduleSaveMeta(): void {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     saveTimer = undefined;
-    void saveClip(app.clip, app.recAudio).catch(err => {
-      console.warn('DemoShine: could not keep the clip across a reload —', err);
-    });
+    void saveMeta(app.clip, app.recAudio).catch(warn);
   }, SAVE_DELAY_MS);
+}
+
+function warn(err: unknown): void {
+  console.warn('DemoShine: could not keep the clip across a reload —', err);
 }
