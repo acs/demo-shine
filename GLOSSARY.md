@@ -34,11 +34,15 @@ Bluesky to sign in, so the clip is written down before that trip and read back o
 the way in — and, because the writing is not only for that trip, a reload or a new
 version comes back to it too. Only Reset lets it go.
 
+A take is megabytes and never changes; the keep range and the cuts are a few
+bytes and move on every drag. They are kept apart, so writing a trim never means
+writing the recording again.
+
 | word | what it is | in the code |
 |---|---|---|
 | **clip snapshot** | everything a clip is made of, written down: its takes (the recording bytes and their lengths), its keep range, its cuts | `ClipSnapshot`, `Clip.snapshot()` |
 | **restore** | rebuilding a clip from a snapshot and opening the review on it. Nothing is announced: it is a load, not a change | `Clip.restore()`, `resumeClip()` |
-| **clip store** | where a snapshot outlives the page: IndexedDB, the only store here that takes a Blob. Written as the clip changes, read at startup, dropped at Reset | `src/infra/clip-store.ts`, `src/resume.ts` |
+| **clip store** | where a snapshot outlives the page: IndexedDB, the only store here that takes a Blob. A take is written once as it arrives; the keep range and the cuts are written on their own. Read at startup, dropped at Reset | `src/infra/clip-store.ts`, `src/resume.ts` |
 
 ## Trimming
 
