@@ -28,6 +28,31 @@ describe('specFor', () => {
   });
 });
 
+describe('the picture the encoder is given', () => {
+  it('takes an MP4 down to the even size below it, which is what H.264 accepts', () => {
+    const spec = specFor('mp4');
+    expect(spec.picture(1919, 1079)).toEqual({ width: 1918, height: 1078 });
+    expect(spec.picture(985, 611)).toEqual({ width: 984, height: 610 });
+    expect(spec.picture(1920, 1080)).toEqual({ width: 1920, height: 1080 });   // already even
+  });
+
+  it('never leaves MP4 an odd edge — the crop that could not be exported', () => {
+    const spec = specFor('mp4');
+    for (const [w, h] of [[1919, 1080], [1920, 1079], [1919, 1079], [1, 1]]) {
+      const picture = spec.picture(w, h);
+      expect(picture.width % 2).toBe(0);
+      expect(picture.height % 2).toBe(0);
+      expect(picture.width).toBeGreaterThanOrEqual(2);
+      expect(picture.height).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('leaves a WebM exactly as the crop made it, odd edges and all', () => {
+    const spec = specFor('webm');
+    expect(spec.picture(1919, 1079)).toEqual({ width: 1919, height: 1079 });
+  });
+});
+
 describe('avcProbes', () => {
   // The level is the last two hex digits of the codec string, e.g. avc1.640028.
   const levelOf = (width: number, height: number): string => avcProbes(width, height)[0].slice(9);

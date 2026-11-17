@@ -20,15 +20,42 @@ export interface VideoCodecChoice {
   probes: (width: number, height: number) => readonly string[];
 }
 
+/** The size the encoder is given: some codecs refuse one a crop produced. */
+export interface Picture {
+  width: number;
+  height: number;
+}
+
+/** The picture as the crop made it: for a codec that takes any size. */
+export function wholePicture(width: number, height: number): Picture {
+  return { width, height };
+}
+
+/**
+ * The picture taken down to the even size below it.
+ *
+ * H.264 codes colour at half resolution, so both edges have to be even, and an odd
+ * one is refused outright: every `avc1.*` probe comes back "no", and the export
+ * says "this browser cannot encode MP4 offline" while VP9 takes the very same
+ * picture. A crop region is whatever the drag was — a 985×611 one is perfectly
+ * ordinary — so an odd edge made every MP4 export impossible and every WebM one
+ * fine. Both edges come down by at most one pixel, which the eye is not at.
+ */
+export function evenPicture(width: number, height: number): Picture {
+  return { width: Math.max(2, width - (width % 2)), height: Math.max(2, height - (height % 2)) };
+}
+
 export interface TargetSpec {
   mime: string;
   video: readonly VideoCodecChoice[];
   audio: 'opus' | 'aac';
+  /** The picture the encoder will take, from the one the crop produced. */
+  picture: (width: number, height: number) => Picture;
 }
 
 export function specFor(target: ExportTarget): TargetSpec {
   return target === 'mp4'
-    ? { mime: 'video/mp4', video: [{ name: 'avc', probes: avcProbes }], audio: 'aac' }
+    ? { mime: 'video/mp4', video: [{ name: 'avc', probes: avcProbes }], audio: 'aac', picture: evenPicture }
     : {
         mime: 'video/webm',
         video: [
@@ -36,6 +63,7 @@ export function specFor(target: ExportTarget): TargetSpec {
           { name: 'vp8', probes: () => ['vp8'] },
         ],
         audio: 'opus',
+        picture: wholePicture,
       };
 }
 
