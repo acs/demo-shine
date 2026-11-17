@@ -1,10 +1,23 @@
-# DemoShine
+# 🎬 DemoShine
 
-> Pure browser screen recorder. 100% offline mode — no extensions, no server. Optionally publishes to a video service.
+**🚀 Live App**: [https://acs.github.io/demo-shine/](https://acs.github.io/demo-shine/)
 
-WebM screen recording with region crop, a timeline trimmer, playback with sound, automatic tab/system audio, light/dark mode, and PWA install support — written in TypeScript, tested with Vitest and linted with ESLint.
+Capture. Create. Share.
 
-**[→ Launch DemoShine](https://acs.github.io/demo-shine/)**
+DemoShine is a lightweight video studio that runs entirely in your browser. Record your screen, webcam or microphone — independently or in any combination — to create software demos, tutorials or personal video updates.
+
+Review your recordings, make quick trims, and publish directly to Bluesky. Or simply export your video to a file.
+
+No installation. No recording server. Just open DemoShine and start creating.
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF)](https://vite.dev/)
+[![Vitest](https://img.shields.io/badge/Vitest-5-6E9F18)](https://vitest.dev/)
+[![ESLint](https://img.shields.io/badge/ESLint-10-4B32C3)](https://eslint.org/)
+[![WebCodecs](https://img.shields.io/badge/WebCodecs-export-1B7F79)](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API)
+[![Mediabunny](https://img.shields.io/badge/Mediabunny-1.66-6E56CF)](https://mediabunny.dev/)
+[![PWA](https://img.shields.io/badge/PWA-offline-5A0FC8)](https://web.dev/progressive-web-apps/)
+[![Bluesky](https://img.shields.io/badge/Bluesky-AT_Protocol-0285FF)](https://atproto.com/)
 
 A minute and a half of DemoShine recording, trimming and exporting a clip — recorded with DemoShine itself:
 
@@ -21,7 +34,7 @@ The headline capabilities; the **[full list is in FEATURES.md](FEATURES.md)**.
 - **Region crop** — drag a box over the preview to record just part of the screen, and click to reset
 - **Timeline trimmer** — keep a range with the IN/OUT handles, cut a section out with the scissors, and undo either
 - **Add more takes** — Record again appends to the end of the clip, with a fade and a dissolve across the join
-- **Offline WebM export** — VP9 with Opus, written in the browser by WebCodecs about 10× faster than the clip, with a duration and cue points any player can scrub
+- **Export to a file, encoded offline** — WebM for size or MP4 for compatibility, written in the browser by WebCodecs about 10× faster than the clip, with a duration and cue points any player can scrub
 - **Nothing leaves your machine** — recording, playback and export are entirely local; publishing to Bluesky is optional, and only happens when you ask
 - **Light / dark and installable** — CSS-variable theming, and a PWA that installs as a desktop app
 
@@ -186,7 +199,7 @@ commits, pull requests).
 
 ## Browser support
 
-| Browser | Recording | WebM export | Audio |
+| Browser | Recording | Export | Audio |
 |---|---|---|---|
 | Chrome 94+ | ✓ | ✓ | ✓ |
 | Edge 94+ | ✓ | ✓ | ✓ |
@@ -226,6 +239,7 @@ To deploy elsewhere, run `npm run build` and publish the `dist/` folder.
 ## Tech
 
 - [Vite](https://vite.dev/) — dev server and build
+- TypeScript — the whole app, unit-tested with [Vitest](https://vitest.dev/) and linted with ESLint
 - [`MediaDevices.getDisplayMedia()`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia) — screen capture
 - [`MediaRecorder`](https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder) — WebM encoding as a take is recorded
 - [WebCodecs](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API) — `VideoEncoder`/`AudioEncoder` for the offline export
