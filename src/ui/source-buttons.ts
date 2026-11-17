@@ -21,7 +21,7 @@ const sources = { camera: false, mic: false, screen: true };
 
 // A take in flight owns the sources: it is not to be switched under it.
 function locked(phase: Phase): boolean {
-  return phase === 'starting' || phase === 'countdown' || phase === 'recording';
+  return phase === 'starting' || phase === 'recording';
 }
 
 /**
