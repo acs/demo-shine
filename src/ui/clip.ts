@@ -28,8 +28,13 @@ import { drawFrame, seekTo } from './preview.js';
 // shows what the export will hold. Everything the user sees and points at goes
 // through these; the recording itself is still addressed in its own time.
 
+// The length the timeline is drawn over: the whole clip with the cuts taken out.
+// It is **not** the keep range's length — the IN/OUT handles sit *inside* the
+// timeline, and everything laid out on it (the strip, the waveform, the marks, the
+// playhead) is measured against this. Dividing by the keep range instead put the
+// playhead over a different moment than the picture under it.
 export function keptLengthNow(): number {
-  return app.clip.keptLength();
+  return app.clip.timeline().kept;
 }
 
 // A time in the recording, as the timeline shows it.
