@@ -127,8 +127,11 @@ export async function exportOffline(plan: ExportPlan, options: OfflineOptions = 
   if (!plan.pieces.length) throw new Error('nothing to export');
 
   const ec = document.createElement('canvas');
-  ec.width = el.cv.width || 1280;
-  ec.height = el.cv.height || 720;
+  // The picture the target's codec will take, which is not always the one the crop
+  // produced: H.264 refuses an odd edge, so an odd crop is taken down to even here.
+  const picture = spec.picture(el.cv.width || 1280, el.cv.height || 720);
+  ec.width = picture.width;
+  ec.height = picture.height;
   const ectx = ec.getContext('2d');
   if (!ectx) throw new Error('no 2D context for the export');
 
