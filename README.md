@@ -223,9 +223,9 @@ Screen audio is Chrome and Edge only, and even there the browser and the
 operating system decide: Windows and ChromeOS offer system audio, elsewhere it is
 the shared tab's own sound. The microphone is unaffected.
 
-Safari is the newest of the four and the least tested: WebM recording arrived in
-Safari 18.4 and `AudioEncoder` in 26, so **26 or later** is the floor. On macOS
-the first share also asks for **Screen Recording** permission in System Settings.
+Safari works on the current version — **26 or later**, since WebM recording arrived
+in 18.4 and `AudioEncoder` in 26. On macOS the first share also asks for **Screen
+Recording** permission in System Settings.
 
 ---
 
