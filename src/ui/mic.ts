@@ -40,7 +40,7 @@ export class Meter {
       const rms = Math.sqrt(sum / buf.length);
       const target = Math.min(1, rms * 3.2);        // a little gain so it reads well
       level = target > level ? target : level * 0.82; // fast attack, slow release
-      el.vuFill.style.width = (100 - level * 100).toFixed(1) + '%';
+      el.vuFill.style.height = (level * 100).toFixed(1) + '%';   // the bar rises with the voice
       this.frame = requestAnimationFrame(loop);
     };
     loop();
@@ -52,7 +52,7 @@ export class Meter {
     if (this.ctx) { void this.ctx.close(); this.ctx = null; }
     this.analyser = null;
     el.vu.classList.remove('on');
-    el.vuFill.style.width = '100%';
+    el.vuFill.style.height = '0%';
   }
 }
 
