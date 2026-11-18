@@ -108,6 +108,13 @@ export class Arrow extends Annotation {
     return new Arrow(this.id, span, this.from, this.to);
   }
 
+  duplicated(span: Span): Arrow {
+    // Built straight rather than through `create`: this came from an arrow that is
+    // already inside the picture and already worth keeping, so there is nothing left
+    // to normalise or refuse.
+    return new Arrow(newAnnotationId(), span, this.from, this.to);
+  }
+
   hitTest(x: number, y: number, w: number, h: number, tolerancePx: number): boolean {
     const d = distanceToSegment(x * w, y * h, this.from.x * w, this.from.y * h, this.to.x * w, this.to.y * h);
     return d <= tolerancePx;

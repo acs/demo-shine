@@ -30,6 +30,7 @@ class Dot extends Annotation {
   withHandle(): Dot { return this; }
   movedBy(dx: number, dy: number): Dot { return Dot.create(this.span, this.x + dx, this.y + dy, this.id); }
   withSpan(span: Span): Dot { return Dot.create(span, this.x, this.y, this.id); }
+  duplicated(span: Span): Dot { return Dot.create(span, this.x, this.y); }
   hitTest(): boolean { return false; }
   stored(): StoredAnnotation {
     return { id: this.id, kind: this.kind, s: this.span.s, e: this.span.e, geometry: { x: this.x, y: this.y } };

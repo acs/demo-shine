@@ -57,6 +57,16 @@ describe('the arrow', () => {
     expect(grown.geometry).toEqual({ from: { x: 0.1, y: 0.5 }, to: { x: 0.9, y: 0.5 } });
   });
 
+  it('copies itself as a new arrow, over the stretch it is given', () => {
+    const arrow = make();
+    const copy = arrow.duplicated(Span.of(0.6, 0.8));
+    expect(copy.id).not.toBe(arrow.id);
+    expect(copy.kind).toBe('arrow');
+    expect(copy.geometry).toEqual(arrow.geometry);
+    expect(copy.span.s).toBeCloseTo(0.6);
+    expect(copy.span.e).toBeCloseTo(0.8);
+  });
+
   it('knows when a point is on it', () => {
     const arrow = make();      // a line across the middle of a 320x180 picture
     expect(arrow.hitTest(0.5, 0.5, 320, 180, 9)).toBe(true);

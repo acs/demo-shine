@@ -49,6 +49,7 @@ The person who placed an arrow wants to move it, change where it points, change 
 2. **Given** a clip with an arrow, **When** the user drags its span on the timeline, **Then** it is shown only in the new stretch.
 3. **Given** a clip with an arrow, **When** the user deletes it, **Then** it no longer appears, and the deletion can be undone.
 4. **Given** a clip with an arrow, **When** the user looks at the timeline, **Then** the arrow is marked at the start of its stretch there, and reaching it does not mean playing through the clip.
+5. **Given** a clip with an arrow, **When** the user copies it and pastes, **Then** a new arrow of the same shape appears over the same part of the picture at the playhead, in hand, and is moved or deleted on its own without touching the first.
 
 ---
 
@@ -77,6 +78,8 @@ A second kind of annotation arrives later — a box, a label, a highlight. Addin
 - Several arrows overlap in time — each is shown on its own.
 - The page is reloaded, or the trip to sign in to publish is taken: every arrow comes back in place.
 - A delete is undone after a new take was recorded.
+- A paste at the very end of the clip keeps its whole stretch inside the clip — the copy is pulled back rather than left hanging past the end.
+- A copy is pasted where the playhead holds, so a paste with the playhead inside the copied arrow's own stretch lands on top of it; the copy is in hand, and its mark can be dragged away.
 
 ## Requirements *(mandatory)*
 
@@ -98,6 +101,7 @@ A second kind of annotation arrives later — a box, a label, a highlight. Addin
 - **FR-014**: A cut MUST take its part of an arrow's stretch with it, exactly as it takes the picture: the arrow is never shown over a stretch that was cut away.
 - **FR-015**: Undo MUST cover the most recent change of any kind, in one action: the one undo the user has takes back whatever they last did — an annotation added, an annotation deleted, or a cut approved — whichever kind it was.
 - **FR-016**: The timeline MUST show where the annotations are — each annotation is marked at the start of its stretch — so that a person can see and reach an annotation without playing or scrubbing through the clip, and so that marks do not lie on top of one another when annotations overlap in time.
+- **FR-017**: Users MUST be able to copy a picked annotation and paste it as a **new** one — the same kind and shape, over the same part of the picture, at the moment the playhead holds — and to move, change or delete the copy on its own.
 
 ### Key Entities *(include if feature involves data)*
 

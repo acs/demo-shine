@@ -12,7 +12,7 @@
 // redraw because it happened to be the caller.
 
 import { app } from '../state.js';
-import { ctx, el } from './dom.js';
+import { ctx, el, toast } from './dom.js';
 import { Span } from '../domain/clip/Span.js';
 import { Arrow } from '../domain/annotation/Arrow.js';
 import type { Annotation } from '../domain/annotation/Annotation.js';
@@ -20,6 +20,7 @@ import { arrowRenderer, drawAnnotations } from './annotation-layer.js';
 import { drawFrame } from './preview.js';
 import { player } from './clip.js';
 import { playback } from './playback.js';
+import { clipboard } from './annotation-clipboard.js';
 import { typingIn } from '../util.js';
 
 const DRAG_MIN = 3;          // px of travel before a press counts as a drag
@@ -204,6 +205,31 @@ export function initAnnotationEdit(): void {
     if ((evt.key === 'Delete' || evt.key === 'Backspace') && edit.selectedId && app.phase === 'review') {
       evt.preventDefault();
       app.clip.removeAnnotation(edit.selectedId);   // the clip announces it; the view follows
+      return;
+    }
+
+    // Copy the arrow in hand, and paste a new one of the same shape where the playhead
+    // holds — how a callout is repeated at another moment without selecting a stretch
+    // and drawing it again. The browser's own copy is left alone when nothing is
+    // picked, so copying selected text still works.
+    const key = evt.key.toLowerCase();
+    if (!(evt.metaKey || evt.ctrlKey) || (key !== 'c' && key !== 'v')) return;
+    if (app.phase !== 'review') return;
+
+    if (key === 'c' && edit.selectedId) {
+      const picked = app.clip.annotations.byId(edit.selectedId);
+      if (!picked) return;
+      evt.preventDefault();
+      clipboard.copy(picked);
+      toast('Arrow copied');
+      return;
+    }
+
+    if (key === 'v' && clipboard.has) {
+      const pasted = pasteAtPlayhead();
+      if (!pasted) return;
+      evt.preventDefault();
+      toast('Arrow pasted — drag its mark to move it');
     }
   });
 
@@ -223,6 +249,20 @@ export function repaint(): void {
   drawAnnotations(ctx, w, h, app.clip.annotationsAt(player.time()), edit.selectedId);
   const live = edit.preview();
   if (live) arrowRenderer.draw(ctx, live, w, h);
+}
+
+// A new arrow of the copied shape, over the same part of the picture, at the moment
+// the playhead holds — kept inside the clip, and in hand at once so its grips show.
+function pasteAtPlayhead(): Annotation | null {
+  const total = app.clip.total();
+  if (!(total > 0) || !clipboard.has) return null;
+  const length = clipboard.length;
+  const at = Math.max(0, Math.min(1 - length, player.time() / total));
+  const pasted = clipboard.paste(Span.of(at, at + length));
+  if (!pasted) return null;
+  app.clip.addAnnotation(pasted);      // the clip announces it; the views follow
+  edit.pick(pasted.id);
+  return pasted;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────

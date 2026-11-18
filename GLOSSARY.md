@@ -137,6 +137,7 @@ can end it:
 | `Meter` | the microphone's level graph and its frame loop | the microphone toggle, not the session |
 | `ExportMenu` | the File/Bluesky menu under the Export button, and the listeners that end it | one opening |
 | `MarkDrag`, `CropDrag` | a gesture in flight | the gesture |
+| `Clipboard` | the annotation a copy put aside, for a paste | the session |
 | `Output`, `Mixer` | the canvas a take is drawn on, and the graph that mixes system audio with the microphone | a take |
 
 `Session` is what ends them: `session.reset()` is the whole of "this session is

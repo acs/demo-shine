@@ -38,6 +38,7 @@ class Stub extends Annotation {
   withHandle() { return null; }
   movedBy() { return null; }
   withSpan() { return new Stub(); }
+  duplicated() { return new Stub(); }
   hitTest() { return false; }
   stored(): StoredAnnotation {
     return { id: this.id, kind: this.kind, s: this.span.s, e: this.span.e, geometry: {} };
@@ -53,6 +54,7 @@ class Tripod extends Annotation {
   withHandle() { return null; }
   movedBy() { return null; }
   withSpan() { return new Tripod(); }
+  duplicated() { return new Tripod(); }
   hitTest() { return false; }
   stored(): StoredAnnotation {
     return { id: this.id, kind: this.kind, s: this.span.s, e: this.span.e, geometry: {} };
