@@ -1,0 +1,15 @@
+# DemoShine — start here
+
+Before exploring the code, load the **Project overview** skill: what the app is,
+the flow it is built around, the runtime objects and their lifetimes, where each
+kind of code lives, and which document owns which fact. Then **GLOSSARY.md** — the
+words, and the words we do not use.
+
+- **Finding code:** prefer the **codebase-memory MCP** (`search_graph`,
+  `trace_path`, `get_code_snippet`, `query_graph`, `get_architecture`) over grep
+  for anything structural. The project is not indexed by default — run
+  `index_repository` once (mode `fast` browses fine) if you want it.
+- **Making a change:** the **Project workflow** skill — one change per pull
+  request, and CI owns the version, so never bump `package.json` by hand — and the
+  **Verification** skill: a rule in `src/domain/` is proved by a unit test, and
+  anything drawn, played or encoded needs a browser harness.
