@@ -109,7 +109,7 @@ function pick(id: string): void {
   playback.hold(annotation.span.s * app.clip.total());
 }
 
-/** Draw a bar per annotation, in kept time, with the picked one marked. */
+/** Draw a mark per annotation, at the start of its stretch, with the picked one marked. */
 export function renderLane(): void {
   const host = el.tlAnnots;
   if (app.phase !== 'review' || !(app.clip.total() > 0)) {
@@ -118,16 +118,27 @@ export function renderLane(): void {
   }
   const total = app.clip.total();
   const kept = Math.max(0.001, keptLengthNow());
+  const width = Math.max(1, host.getBoundingClientRect().width);
   const selected = edit.selectedId;
+
+  // A mark sits at the **start** of its stretch, as the kind's symbol rather than the
+  // whole stretch: several arrows over one section share a start, and bars for them
+  // would lie on top of each other. Marks that would still collide step aside by one
+  // mark's width, so every arrow stays reachable — the title gives its true moment.
+  const STEP_PX = 13;
+  let lastX = -Infinity;
+  let nudge = 0;
   let html = '';
   for (const annotation of app.clip.annotations.all) {
     const s = keptOf(annotation.span.s * total), e = keptOf(annotation.span.e * total);
     if (e - s < 0.001) continue;                 // entirely cut away: nothing to show
-    const left = (s / kept) * 100, width = ((e - s) / kept) * 100;
+    const x = (s / kept) * width;
+    nudge = x - lastX < STEP_PX ? nudge + STEP_PX : 0;
+    lastX = x;
     const on = annotation.id === selected;
     html += `<div class="tl-annot${on ? ' on' : ''}" data-id="${annotation.id}"`
-          + ` style="left:${left.toFixed(3)}%;width:${width.toFixed(3)}%"`
-          + ` title="Arrow — click to go to it, drag to move it">${ARROW_ICON}`
+          + ` style="left:${((x / width) * 100).toFixed(3)}%;margin-left:${nudge}px"`
+          + ` title="Arrow at ${s.toFixed(2)}s — click to go to it, drag to move when it shows">${ARROW_ICON}`
           + (on ? `<button class="tl-annot-del" title="Delete this arrow" aria-label="Delete this arrow">×</button>` : '')
           + `</div>`;
   }
