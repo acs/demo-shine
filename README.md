@@ -1,8 +1,5 @@
 <h1>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="public/branding/logo-dark.png">
-    <img src="public/branding/logo-transparent.png" alt="DemoClip" width="420">
-  </picture>
+  <img src="public/branding/logo.png" alt="DemoClip" width="420">
 </h1>
 
 **🚀 Live App**: [https://acs.github.io/democlip/](https://acs.github.io/democlip/)
