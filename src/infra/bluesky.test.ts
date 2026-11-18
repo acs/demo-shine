@@ -35,7 +35,7 @@ class FakeFetch {
   }) as typeof fetch;
 }
 
-const video = PublishableVideo.of(new Blob(['mp4'], { type: 'video/mp4' }), 'demoshine-1.mp4', AspectRatio.of(16, 9));
+const video = PublishableVideo.of(new Blob(['mp4'], { type: 'video/mp4' }), 'democlip-1.mp4', AspectRatio.of(16, 9));
 
 describe('XrpcBlueskyService', () => {
   it('asks for a service token, then uploads the MP4 to the video service', async () => {
@@ -57,7 +57,7 @@ describe('XrpcBlueskyService', () => {
     const url = new URL(videoFetch.calls[0].url);
     expect(url.origin + url.pathname).toBe('https://video.bsky.app/xrpc/app.bsky.video.uploadVideo');
     expect(url.searchParams.get('did')).toBe('did:plc:me');
-    expect(url.searchParams.get('name')).toBe('demoshine-1.mp4');
+    expect(url.searchParams.get('name')).toBe('democlip-1.mp4');
     const headers = new Headers(videoFetch.calls[0].init?.headers);
     expect(headers.get('authorization')).toBe('Bearer svc');
     expect(headers.get('content-type')).toBe('video/mp4');

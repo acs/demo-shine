@@ -7,7 +7,7 @@
 // asked for a post that carries the finished video.
 //
 // Bluesky takes `video/mp4` only (see `PublishableVideo`), which is why the
-// encode step is a separate concern: DemoShine's download stays WebM, and this
+// encode step is a separate concern: DemoClip's download stays WebM, and this
 // path writes MP4. None of the browser work — the encoder, the upload, the
 // polling — happens here. It is all behind `PublicationDeps`, so the sequencing
 // (the order, the progress, giving up) runs in node against a fake.
@@ -86,7 +86,7 @@ export async function publishToBluesky(
   deps.onProgress?.({ stage: 'encoding' });
   const video = PublishableVideo.of(
     await deps.encode(plan),
-    `demoshine-${createdAt.getTime()}.mp4`,
+    `democlip-${createdAt.getTime()}.mp4`,
     settings.aspectRatio,
   );
 

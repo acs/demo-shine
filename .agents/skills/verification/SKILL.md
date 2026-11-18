@@ -1,6 +1,6 @@
 ---
 name: Verification
-description: How to prove a change works in DemoShine — unit tests in node, a browser harness on the running dev server, and what must be said about what was not verified. Use before claiming any change works, and when reviewing one.
+description: How to prove a change works in DemoClip — unit tests in node, a browser harness on the running dev server, and what must be said about what was not verified. Use before claiming any change works, and when reviewing one.
 ---
 
 # Verification

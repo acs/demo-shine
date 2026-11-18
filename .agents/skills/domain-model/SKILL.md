@@ -1,6 +1,6 @@
 ---
 name: Domain model
-description: How to work in DemoShine's domain — value objects, the Clip aggregate, ports, where a new rule belongs, and the rule that the view listens. Use when adding or changing a rule, a class or a module under src/.
+description: How to work in DemoClip's domain — value objects, the Clip aggregate, ports, where a new rule belongs, and the rule that the view listens. Use when adding or changing a rule, a class or a module under src/.
 ---
 
 # The domain model

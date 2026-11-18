@@ -99,7 +99,7 @@ describe('publishToBluesky', () => {
     expect(result).toEqual(POSTED);
     expect(service.uploads).toHaveLength(1);
     expect(service.uploads[0].blob.type).toBe('video/mp4');
-    expect(service.uploads[0].name).toMatch(/^demoshine-\d+\.mp4$/);
+    expect(service.uploads[0].name).toMatch(/^democlip-\d+\.mp4$/);
     expect(service.posts[0].embed).toEqual({
       $type: 'app.bsky.embed.video',
       video: blobRef,
