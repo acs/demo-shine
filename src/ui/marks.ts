@@ -25,6 +25,7 @@ import { Span } from '../domain/clip/Span.js';
 import { updateSizeUI } from './timeline-ui.js';
 import { keptLengthNow, keptOf, player, sourceOf } from './clip.js';
 import { playback } from './playback.js';
+import { typingIn } from '../util.js';
 
 const MIN_SECTION = 0.01;   // a hundredth of the clip: the shortest section worth trimming
 
@@ -212,8 +213,7 @@ function onTimelineClick(evt: MouseEvent): void {
 function onNudgeKey(evt: KeyboardEvent): void {
   if (evt.key !== 'ArrowLeft' && evt.key !== 'ArrowRight') return;
   if (evt.altKey || evt.ctrlKey || evt.metaKey) return;      // leave the browser's own
-  const target = evt.target as HTMLElement | null;
-  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+  if (typingIn(evt.target)) return;
   if (app.phase !== 'review') return;
   evt.preventDefault();
   const step = evt.shiftKey ? 1 : FRAME_S;
