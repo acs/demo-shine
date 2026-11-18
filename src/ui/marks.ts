@@ -1,10 +1,7 @@
-// Timeline marks, the sections they select, and the trim they approve.
+// Timeline marks, the sections they select, and the cut they approve.
 //
-// The clip can be trimmed in two independent ways, and this module owns the
-// second one:
-//
-//   * the keep range, dragged with the blue/red IN/OUT handles (timeline-ui.ts);
-//   * the cuts: a section selected with two marks and approved here, which leaves
+// A section is selected with two marks and approved here: it becomes a cut, and
+// it leaves the timeline.
 //
 // The gesture, in full:
 //
@@ -14,7 +11,7 @@
 //   undo                      leave it in; the selection is dropped
 //   drag a mark / the section  move what is selected; the clip plays under it
 //
-// An approved trim is taken out of the timeline and what is left closes up, so
+// An approved cut is taken out of the timeline and what is left closes up, so
 // the timeline shows what the export will hold and no discarded hatching is left
 // lying about. That mapping is in clip.ts (keptOf/sourceOf); everything here
 // works in the recording's own time and converts on the way to the screen. The
@@ -25,12 +22,11 @@ import { app } from '../state.js';
 import type { ClipEvent } from '../domain/clip/Clip.js';
 import { el } from './dom.js';
 import { Span } from '../domain/clip/Span.js';
-import { Trim } from '../domain/clip/Trim.js';
 import { updateSizeUI } from './timeline-ui.js';
 import { keptLengthNow, keptOf, player, sourceOf } from './clip.js';
 import { playback } from './playback.js';
 
-const MIN_SECTION = Trim.MIN_GAP;   // a hundredth of the clip: the shortest section worth trimming
+const MIN_SECTION = 0.01;   // a hundredth of the clip: the shortest section worth trimming
 
 const DRAG_MIN   = 3;     // px of travel before a press counts as a drag
 const EDGE_GRIP  = 7;     // px near a section's edge that resizes instead of moves
@@ -62,8 +58,6 @@ function followTheClip(event: ClipEvent): void {
     case 'cleared':
       app.marks = [];
       break;
-    case 'keep-range':
-      return;                    // the handles moved; the marks did not
   }
   renderMarks();
 }

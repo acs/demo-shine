@@ -1,8 +1,8 @@
 // The joined clip: the takes of a session, played as one timeline.
 //
 // Every press of Record produces a take. They are played in order in the same
-// <video>, so that everything else in the app — the playhead, the trim handles,
-// the cuts, the thumbnails, the export — can go on thinking in terms
+// <video>, so that everything else in the app — the playhead, the cuts, the
+// thumbnails, the export — can go on thinking in terms
 // of a single clip of `app.clip.total()` seconds. This module is the only place
 // that knows where a time in that clip falls: which take holds it, and where in
 // that take.
@@ -24,17 +24,15 @@ import { drawFrame, seekTo } from './preview.js';
 
 // ── the timeline the user sees ───────────────────────────────────────────────
 //
-// Approved trims leave the timeline and what is left closes up, so the timeline
+// Approved cuts leave the timeline and what is left closes up, so the timeline
 // shows what the export will hold. Everything the user sees and points at goes
 // through these; the recording itself is still addressed in its own time.
 
 // The length the timeline is drawn over: the whole clip with the cuts taken out.
-// It is **not** the keep range's length — the IN/OUT handles sit *inside* the
-// timeline, and everything laid out on it (the strip, the waveform, the marks, the
-// playhead) is measured against this. Dividing by the keep range instead put the
-// playhead over a different moment than the picture under it.
+// Everything laid out on it — the strip, the waveform, the marks, the playhead —
+// is measured against this.
 export function keptLengthNow(): number {
-  return app.clip.timeline().kept;
+  return app.clip.keptLength();
 }
 
 // A time in the recording, as the timeline shows it.

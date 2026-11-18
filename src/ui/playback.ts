@@ -1,7 +1,4 @@
-// Playback of the recorded clip, rendered on the preview canvas with sound and
-// kept in sync with the trim handles: playback is bounded by IN/OUT, and moving
-// a handle while playing re-clamps the playhead; while paused, moving a handle
-// previews that handle's frame.
+// Playback of the recorded clip, rendered on the preview canvas with sound.
 //
 // The cuts are jumped over as they are reached, without pausing,
 // so the trimmed clip plays as one continuous piece. Three pieces of state make
@@ -31,11 +28,8 @@ const PLAY_ICON  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="curren
 const PAUSE_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
 
 const STALL_MS  = 2500;   // how long the playhead may stand still before we stop
-const SEEK_MS   = 12000;  // ...but a seek gets longer: jumping a trim means seeking
+const SEEK_MS   = 12000;  // ...but a seek gets longer: jumping a cut means seeking
 const NUDGE_MS  = 600;    // ...and a seek that left the clip paused gets a moment
-
-const clipStart = () => app.clip.trim.start * app.clip.total();
-const clipEnd   = () => app.clip.trim.end * app.clip.total();
 
 // The end of the cut the playhead sits in, in seconds, or null when
 // it is not inside one. The cuts are stored as fractions of the clip.
@@ -76,27 +70,24 @@ export class Playback {
 
   start(): void {
     if (app.phase !== 'review' || el.rv.readyState < 1) return;
-    const start = clipStart();
-    const end   = clipEnd();
-    // (Re)start from IN when the playhead sits outside the trimmed range.
-    const t = player.time();
-    if (t < start || t >= end - 0.02) void player.seek(start);
+    const end = app.clip.total();
+    // (Re)start from the beginning when the playhead sits at the end.
+    if (player.time() >= end - 0.02) void player.seek(0);
     this.beginPlayback();
   }
 
   // Start (or keep) playing from an absolute time — a click on the timeline.
   playFrom(time: number): void {
     if (app.phase !== 'review' || el.rv.readyState < 1) return;
-    const start = clipStart();
-    const end   = clipEnd();
-    let t = clampToClip(time, start, end);
-    // Land outside anything trimmed away, then off the OUT point, which restarts.
-    // While a bar is being dragged, neither rule applies: the whole point is to
-    // hear what sits at the bar.
+    const end = app.clip.total();
+    let t = clampToClip(time, 0, end);
+    // Land outside anything cut away, then off the end, which restarts. While a
+    // bar is being dragged, neither rule applies: the whole point is to hear what
+    // sits at the bar.
     if (!this.scrubbing) {
       const cutEnd = cutEndFor(t);
       if (cutEnd !== null) t = Math.min(cutEnd, end);
-      if (t >= end - 0.02) t = start;
+      if (t >= end - 0.02) t = 0;
     }
     this.updatePlayhead(t);
     this.askedSkip = 0;
@@ -143,36 +134,18 @@ export class Playback {
     this.updatePlayhead(0);
   }
 
-  // Called by the timeline when a trim handle moves.
-  syncToTrim(moved: 'start' | 'end'): void {
-    if (app.phase !== 'review' || el.rv.readyState < 1) return;
-    const start = clipStart();
-    const end   = clipEnd();
-    if (app.playing) {
-      // Keep playing, but never outside the new range.
-      const t = clampToClip(player.time(), start, end);
-      if (t !== player.time()) { this.askedSkip = 0; void player.seek(t); }
-      this.updatePlayhead(t);
-    } else {
-      // Preview the frame at the handle the user just moved.
-      const t = moved === 'start' ? start : end;
-      void player.seekAndDraw(t);
-      this.updatePlayhead(t);
-    }
-  }
-
   // Jump the playhead to an absolute time (thumbnail scrub), keeping transport state.
   seek(time: number): void {
     if (app.phase !== 'review' || el.rv.readyState < 1) return;
-    const t = clampToClip(time, clipStart(), clipEnd());
+    const t = clampToClip(time, 0, app.clip.total());
     this.askedSkip = 0;
     this.updatePlayhead(t);
     if (app.playing) void player.seek(t);
     else             void player.seekAndDraw(t);
   }
 
-  // The playhead is shown in timeline time: a trimmed-away stretch has no width on
-  // screen, so the head must not sit over it.
+  // The playhead is shown in timeline time: a cut stretch has no width on screen,
+  // so the head must not sit over it.
   private updatePlayhead(time?: number): void {
     const source = time ?? player.time();
     const kept = keptOf(source);
@@ -218,12 +191,12 @@ export class Playback {
       return;
     }
 
-    // A trimmed-away stretch is jumped over without pausing, so playback carries
-    // straight on. The seek is asked for once and the playhead is left alone until
-    // the element comes out of the seek, so the browser is not re-asked every frame.
+    // A cut stretch is jumped over without pausing, so playback carries straight
+    // on. The seek is asked for once and the playhead is left alone until the
+    // element comes out of the seek, so the browser is not re-asked every frame.
     const cutEnd = this.scrubbing ? null : cutEndFor(player.time());
     if (cutEnd !== null) {
-      const to = Math.min(cutEnd, clipEnd());
+      const to = Math.min(cutEnd, app.clip.total());
       if (!el.rv.seeking && this.askedSkip !== to) { this.askedSkip = to; void player.seek(to); }
       this.updatePlayhead(to);
       app.playRaf = requestAnimationFrame(() => this.loop());
@@ -231,8 +204,8 @@ export class Playback {
     }
     this.askedSkip = 0;
 
-    if (player.time() >= clipEnd()) {
-      void player.seek(clipEnd());
+    if (player.time() >= app.clip.total()) {
+      void player.seek(app.clip.total());
       this.pause();
       return;
     }

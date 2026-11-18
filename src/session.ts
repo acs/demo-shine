@@ -1,7 +1,7 @@
 // The session: what one sitting of the app holds, and the one place that lets go
 // of it.
 //
-// A session is a clip — its takes, its keep range, its cuts — and the view state
+// A session is a clip — its takes and its cuts — and the view state
 // that belongs to showing it: the timeline while a take is recording, where the
 // playhead is, the waveform, which take the video is holding, and the elements
 // that only mean anything while there is a clip. Starting over used to be thirty

@@ -32,7 +32,7 @@ The headline capabilities; the **[full list is in FEATURES.md](FEATURES.md)**.
 - **Screen, webcam and mic** — record a screen, window or tab with its audio, the camera, the microphone, or any combination of them
 - **Nothing captured until you ask** — every source starts off, so the app never opens a screen picker on its own
 - **Region crop** — drag a box over the preview to record just part of the screen, and click to reset
-- **Timeline trimmer** — keep a range with the IN/OUT handles, cut a section out with the scissors, and undo either
+- **Timeline trimmer** — click twice to select a section, cut it out with the scissors, and undo it
 - **Add more takes** — Record again appends to the end of the clip, with a fade and a dissolve across the join
 - **Export to a file, encoded offline** — WebM for size or MP4 for compatibility, written in the browser by WebCodecs about 10× faster than the clip, with a duration and cue points any player can scrub
 - **Nothing leaves your machine** — recording, playback and export are entirely local; publishing to Bluesky is optional, and only happens when you ask
@@ -45,10 +45,10 @@ The headline capabilities; the **[full list is in FEATURES.md](FEATURES.md)**.
 1. Open [DemoShine](https://acs.github.io/demo-shine/) — nothing is captured yet. Press **Screen** to pick a screen, window or tab (full screen is preselected; tick **Share tab audio** / **Share system audio** for sound), or **Webcam** to record the camera on its own — **Mic** adds the microphone to either. Pressing a source again lets it go, and **New** goes back to the picker if you forget the audio
 2. The red box over the preview shows what will be recorded — the whole screen by default; drag to record only a region, and click to go back to the full screen
 3. Press the red button to record — it starts at once; press it again to stop
-4. Press Record again to add another take to the end of the clip — the timeline then holds every take, and the trims you already made are kept
+4. Press Record again to add another take to the end of the clip — the timeline then holds every take, and the cuts you already made are kept
 5. The timeline holds a playback control and an audio track
-6. Play it back, drag the **blue IN** and **red OUT** handles to keep a range, or click anywhere on the timeline to play from that moment. To cut a section out, click where it starts and where it ends, then press the **scissors** (or click inside the shaded section): it leaves the timeline and the rest closes up. The **undo** on the section drops the selection, and the **undo** in the header brings back what you just trimmed. Marks and the selected section can be dragged to reposition them
-7. Press **Export ▾** and pick where the clip goes — a **WebM** file (small and sharp), an **MP4** file (plays anywhere), or **Bluesky** to publish it as a video post. The encode runs offline, over the kept range only, roughly ten times faster than the clip, and the timeline counts down how much is left to write
+6. Play it back, or click anywhere on the timeline to play from that moment. To cut a section out, click where it starts and where it ends, then press the **scissors** (or click inside the shaded section): it leaves the timeline and the rest closes up. The **undo** on the section drops the selection, and the **undo** in the header brings back what you just cut. Marks and the selected section can be dragged to reposition them
+7. Press **Export ▾** and pick where the clip goes — a **WebM** file (small and sharp), an **MP4** file (plays anywhere), or **Bluesky** to publish it as a video post. The encode runs offline, over the clip with its cuts taken out, roughly ten times faster than the clip, and the timeline counts down how much is left to write
 
 ---
 
@@ -71,13 +71,12 @@ demoshine/
 │   ├── globals.d.ts      # Ambient types (prefixed AudioContext, captureStream)
 │   ├── vite-env.d.ts     # Vite client types
 │   ├── domain/clip/      # Pure logic — no DOM, no browser APIs; a test beside every rule
-│   │   ├── Clip.ts         # The aggregate: takes + keep range + cuts + the kept segments
+│   │   ├── Clip.ts         # The aggregate: takes + cuts + the kept segments
 │   │   ├── Take.ts         # One press of Record: id, blob, url, duration
 │   │   ├── TakeRepository.ts # The port the clip takes its takes from
 │   │   ├── Span.ts         # A half-open range: [s, e)
 │   │   ├── SpanSet.ts      # Ranges that cannot overlap — what was cut
 │   │   ├── TimelineMap.ts  # Recording time ↔ kept time, in one place
-│   │   ├── Trim.ts         # The keep range, and the slider view of it
 │   │   └── ExportPlan.ts   # What the file will hold, decided before a frame is encoded
 │   ├── domain/bluesky/   # Pure logic for publishing: what a Bluesky post may hold
 │   │   ├── AspectRatio.ts  # width:height, whole numbers, reducible to smallest terms
@@ -98,7 +97,7 @@ demoshine/
 │       ├── dom.ts          # Central element registry + status/toast helpers
 │       ├── preview.ts      # Preview canvas, seeking, live mirror
 │       ├── region.ts       # Crop-region selection + overlay (CropDrag)
-│       ├── timeline-ui.ts  # IN/OUT handles, size estimate, the thumbnail strip (Strip)
+│       ├── timeline-ui.ts  # Time labels, size estimate, the thumbnail strip (Strip)
 │       ├── live-timeline.ts # The strip and the levels while a take records (LiveTimeline)
 │       ├── thumbnail.ts    # The shape of a strip cell: a frame at the picture's own aspect
 │       ├── clip.ts         # The joined clip, played as one timeline (Player)
