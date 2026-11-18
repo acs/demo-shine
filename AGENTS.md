@@ -1,4 +1,4 @@
-# DemoShine — start here
+# DemoClip — start here
 
 Before exploring the code, load the **Project overview** skill: what the app is,
 the flow it is built around, the runtime objects and their lifetimes, where each

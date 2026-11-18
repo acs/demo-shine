@@ -1,6 +1,6 @@
 {
-  "name": "DemoShine",
-  "short_name": "DemoShine",
+  "name": "DemoClip",
+  "short_name": "DemoClip",
   "description": "Pure browser screen recorder — 100% offline WebM with timeline trimming and audio. No extensions, no server; publishing is optional.",
   "start_url": ".",
   "scope": ".",

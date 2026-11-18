@@ -3,7 +3,7 @@
 //
 // Bluesky takes `video/mp4` and nothing else — `app.bsky.video.uploadVideo` and
 // the `app.bsky.embed.video` blob both declare it — and the embed caps the file
-// at 300 MB. DemoShine records WebM, so the export that feeds this has to write
+// at 300 MB. DemoClip records WebM, so the export that feeds this has to write
 // MP4 (H.264 with AAC); a WebM blob is not constructible here, which is the whole
 // point of the type rather than a check every caller has to remember.
 

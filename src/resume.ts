@@ -98,7 +98,7 @@ export async function resumeClip(): Promise<boolean> {
   } catch (err) {
     // A clip that cannot be rebuilt is not one to keep re-reading: drop it and
     // start clean rather than fail to start at all.
-    console.warn('DemoShine: could not restore the saved clip —', err);
+    console.warn('DemoClip: could not restore the saved clip —', err);
     void clearClip();
     return false;
   }
@@ -122,5 +122,5 @@ function scheduleSaveMeta(): void {
 }
 
 function warn(err: unknown): void {
-  console.warn('DemoShine: could not keep the clip across a reload —', err);
+  console.warn('DemoClip: could not keep the clip across a reload —', err);
 }

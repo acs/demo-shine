@@ -23,7 +23,7 @@ import type { BlobRef, PostRecord } from '../domain/bluesky/BlueskyPost.js';
 import type { PublishableVideo } from '../domain/bluesky/PublishableVideo.js';
 
 const DEPLOYED_HOST = 'acs.github.io';
-const CLIENT_METADATA_URL = `https://${DEPLOYED_HOST}/demo-shine/oauth-client-metadata.json`;
+const CLIENT_METADATA_URL = `https://${DEPLOYED_HOST}/democlip/oauth-client-metadata.json`;
 const HANDLE_RESOLVER = 'https://bsky.social';
 const VIDEO_SERVICE = 'https://video.bsky.app';
 const SERVICE_TOKEN_MINUTES = 30;

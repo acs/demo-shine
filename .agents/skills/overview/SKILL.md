@@ -1,9 +1,9 @@
 ---
 name: Project overview
-description: What DemoShine is and how it fits together — the app, the end-to-end flow, the runtime objects and their lifetimes, where each kind of code lives, and which document owns which fact. Use at the start of any work on this project, before reading the code.
+description: What DemoClip is and how it fits together — the app, the end-to-end flow, the runtime objects and their lifetimes, where each kind of code lives, and which document owns which fact. Use at the start of any work on this project, before reading the code.
 ---
 
-# DemoShine, in one sitting
+# DemoClip, in one sitting
 
 **A pure-browser screen recorder.** TypeScript + Vite, no server, no account, and
 nothing leaves the machine unless a clip is published. Record a screen, window or

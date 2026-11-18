@@ -13,13 +13,13 @@ const sized = (size: number, type = 'video/mp4'): Blob =>
 describe('PublishableVideo', () => {
   it('is an MP4 with a name and a ratio', () => {
     const blob = mp4();
-    const video = PublishableVideo.of(blob, 'demoshine-1.mp4', ratio);
+    const video = PublishableVideo.of(blob, 'democlip-1.mp4', ratio);
     expect(video.blob).toBe(blob);
-    expect(video.name).toBe('demoshine-1.mp4');
+    expect(video.name).toBe('democlip-1.mp4');
     expect(video.aspectRatio).toBe(ratio);
   });
 
-  it('refuses the WebM DemoShine records, which Bluesky will not take', () => {
+  it('refuses the WebM DemoClip records, which Bluesky will not take', () => {
     expect(() => PublishableVideo.of(new Blob(['x'], { type: 'video/webm' }), 'a.webm', ratio))
       .toThrow(/video\/mp4/);
   });
