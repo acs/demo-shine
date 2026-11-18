@@ -36,7 +36,7 @@ version comes back to it too. The session is over, and the kept copy let go, at
 **New** — or when the clip is exported: the file written, or the post published.
 
 A take is megabytes and never changes; the cuts are a few bytes and move on every
-trim. They are kept apart, so writing a trim never means writing the recording
+cut. They are kept apart, so writing a cut never means writing the recording
 again.
 
 | word | what it is | in the code |
@@ -45,7 +45,7 @@ again.
 | **restore** | rebuilding a clip from a snapshot and opening the review on it. Nothing is announced: it is a load, not a change | `Clip.restore()`, `resumeClip()` |
 | **clip store** | where a snapshot outlives the page: IndexedDB, the only store here that takes a Blob. A take is written once as it arrives; the cuts are written on their own. Read at startup, dropped when the session ends | `src/infra/clip-store.ts`, `src/resume.ts` |
 
-## Trimming
+## Cutting
 
 | word | what it is | in the code |
 |---|---|---|
@@ -134,6 +134,9 @@ what it holds is the one thing that has to outlive it.
   that records why the take repository exists.
 - **region** for a removed area — a region is the **crop**. A removed area is a
   **cut**.
+- **trim** — what the UI used to call a **cut**: the label, the chip, the events
+  `trim-approved` / `trim-undone`. The domain always said `Clip.cuts`, and the
+  words are one again: a **cut** is the stretch removed and the act of removing it.
 - **keep range**, **trim handles**, **IN/OUT** — the range a clip kept, dragged
   with two sliders. The **cut** does the same job, so it was removed with
   `Trim.ts` and the two range inputs.

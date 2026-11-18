@@ -1,7 +1,7 @@
 // Playback of the recorded clip, rendered on the preview canvas with sound.
 //
 // The cuts are jumped over as they are reached, without pausing,
-// so the trimmed clip plays as one continuous piece. Two pieces of state make
+// so the cut clip plays as one continuous piece. Two pieces of state make
 // that work:
 //
 //   askedSkip   the cut end already seeked to — each jump is asked for once, not
@@ -149,7 +149,7 @@ export class Playback {
     if (!app.playing) return;
     const now = Date.now();
 
-    // A seek is not a stall. Jumping over a trimmed stretch means seeking, and a
+    // A seek is not a stall. Jumping over a cut stretch means seeking, and a
     // MediaRecorder file can take a while over one, so it is allowed its own,
     // longer time before being given up on.
     if (el.rv.seeking) {

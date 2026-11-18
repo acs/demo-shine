@@ -13,9 +13,9 @@
 //
 // The takes and the clip's cuts are kept in two stores on purpose. A take is
 // megabytes and never changes once recorded; the cuts are a few bytes and change
-// on every trim. Written as one record, every trim re-writes the whole recording —
+// on every cut. Written as one record, every cut re-writes the whole recording —
 // measured at ~15 ms for 24 MB on a desktop, and worse on a phone. Written apart,
-// a take is written once as it arrives and a trim writes nothing but itself.
+// a take is written once as it arrives and a cut writes nothing but itself.
 //
 // This is deliberately the browser boundary and nothing more: no rules live here,
 // and a failure to write is reported to the caller rather than swallowed.

@@ -1,6 +1,6 @@
 // Ranges that cannot overlap: sorted, and merged on the way in.
 //
-// This is what the app calls the cuts — the stretches a trim took out. Everything that
+// This is what the app calls the cuts — the stretches a cut took out. Everything that
 // used to be a free function over a bare array (is this moment inside one, how
 // long is left after them, where do I jump to leave one, how much of them falls
 // inside this window) is a question asked of the set, and the set is what keeps

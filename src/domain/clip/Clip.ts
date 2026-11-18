@@ -1,4 +1,4 @@
-// The clip: the takes and what was trimmed away. The aggregate.
+// The clip: the takes and what was cut away. The aggregate.
 //
 // Everything else in the app asks this object what the clip is. It owns the two
 // things that have to agree with each other —
@@ -22,7 +22,7 @@ import { TimelineMap } from './TimelineMap.js';
 import type { Take } from './Take.js';
 import type { TakeRepository } from './TakeRepository.js';
 
-/** A stretch of one take that survives the trims, in seconds of the recording. */
+/** A stretch of one take that survives the cuts, in seconds of the recording. */
 export type Segment = { takeIndex: number; from: number; to: number };
 
 /**
@@ -47,8 +47,8 @@ export interface ClipSnapshot {
  */
 export type ClipEvent =
   | { type: 'take-added'; take: Take; index: number; previousTotal: number }
-  | { type: 'trim-approved'; cut: Span; removed: number }
-  | { type: 'trim-undone'; cut: Span }
+  | { type: 'cut-approved'; cut: Span; removed: number }
+  | { type: 'cut-undone'; cut: Span }
   | { type: 'cleared' };
 
 export type ClipListener = (event: ClipEvent) => void;
@@ -77,7 +77,7 @@ export class Clip {
     return this.repo;
   }
 
-  /** What was trimmed away, as fractions of the clip, in one non-overlapping set. */
+  /** What was cut away, as fractions of the clip, in one non-overlapping set. */
   get cuts(): SpanSet {
     return this.removed;
   }
@@ -122,16 +122,16 @@ export class Clip {
     this.removed = this.removed.add(cut);
     const removed = before - this.keptLength();
     this.lastApproved = { before: previous, cut, removed };
-    this.announce({ type: 'trim-approved', cut, removed });
+    this.announce({ type: 'cut-approved', cut, removed });
     return removed;
   }
 
-  /** Is there a trim to put back? */
+  /** Is there a cut to put back? */
   canUndo(): boolean {
     return this.lastApproved !== null;
   }
 
-  /** How many seconds the last approved trim took off the timeline. */
+  /** How many seconds the last approved cut took off the timeline. */
   lastRemoved(): number {
     return this.lastApproved?.removed ?? 0;
   }
@@ -142,7 +142,7 @@ export class Clip {
     if (!last) return null;
     this.removed = last.before;
     this.lastApproved = null;
-    this.announce({ type: 'trim-undone', cut: last.cut });
+    this.announce({ type: 'cut-undone', cut: last.cut });
     return last.cut;
   }
 
