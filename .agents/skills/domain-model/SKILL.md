@@ -19,6 +19,22 @@ src/
 
 ## Where a rule belongs
 
+A concept that needs rules is a **class named after the word** — `Span`, `SpanSet`,
+`Take`, `Clip`, an annotation kind like `Arrow`. A class is for a thing that decides
+something. An **interface is for data with no rules** — `Segment`, `ExportPiece`,
+`ClipSnapshot`, the geometry a kind is handed. Reaching for an interface because it
+is quicker is how a rule ends up in a free function every caller has to remember.
+
+A kind of thing that is drawn or played is **a class plus a renderer**: its rules in
+`domain/` (how a shape is normalised, whether it is worth keeping, how it is moved and
+hit), and how it looks in `ui/`, under the same id — because `src/domain/` may not
+touch a canvas. The id is the whole of the coupling; adding a kind is a class, a line
+in the register, and a renderer.
+
+A rule also lives in **one place**, and everything asks it. Two copies drift: the
+export once drew annotations in a different order from the review, because it
+re-implemented the clip's answer instead of asking for it.
+
 Ask who owns the thing the rule is about:
 
 - about a **range** — order it, merge it, clamp it, intersect it → the value object (`Span`)
