@@ -6,40 +6,43 @@ how they move. Field names are the ones the code will use; the words are the one
 
 ## New entities
 
-### `Annotation` — one thing drawn over the picture
+### `Annotation` — the base class
 
 `src/domain/annotation/Annotation.ts`
 
-| Field | Type | Meaning |
-|---|---|---|
-| `id` | `string` | Identity, so a specific annotation can be picked, changed and undone. Made once, at creation. |
-| `kind` | `string` | Which kind it is — `'arrow'` today. The id both registries key on. |
-| `span` | `Span` | **When** it is shown, as fractions of the clip (`[0, 1]`), like a cut. |
-| `geometry` | kind-specific | **Where** it is, as fractions of the picture (`[0, 1]²`). For an arrow: `{ from, to }`. |
+| Member | Meaning |
+|---|---|
+| `id` | Identity, so a specific annotation can be picked, changed and undone. Made once, at creation. |
+| `span` | **When** it is shown, as fractions of the clip (`[0, 1]`), like a cut. A `Span`, so an out-of-order pair cannot be built. |
+| `kind` | Which kind it is — `'arrow'` today. The id both registries key on. |
+| `handles()` | The points a drag can take hold of, in fractions of the picture. |
+| `withHandle(end, to)` | The same annotation with one handle moved; null if that is not one of its handles. |
+| `movedBy(dx, dy)` | The same annotation, shifted — how it is moved whole. |
+| `withSpan(span)` | The same annotation over a different stretch — how it follows a clip that grew. |
+| `hitTest(x, y, w, h, tolerancePx)` | Is a point on it? Pure geometry, no canvas. |
+| `stored()` | The annotation as it is written down. |
+
+A kind is a **subclass** of it, and the class **is** the kind: a static `id` names
+it and a static `restore` rebuilds one, which is what `kinds.ts` registers.
+
+### `Arrow` — the first kind
+
+`src/domain/annotation/Arrow.ts` — `class Arrow extends Annotation`
+
+| Member | Meaning |
+|---|---|
+| `from`, `to` (`Point`) | The tail and the head, in fractions of the picture. |
+| `Arrow.create(span, from, to, id?)` | A new arrow, both ends clamped into `[0, 1]²`; **null** when they are closer than a small minimum, so a stray click is not an arrow. |
+| `isUsable` | Is this worth keeping, or a stray click? |
+| `geometry` | `{ from, to }`. |
+| `Arrow.restore(stored)` | Rebuild one from what was written down; null when it is not an arrow to draw. |
 
 **Rules**
 
-- `span` is a `Span` (half-open, ordered on construction) — an out-of-order pair
-  cannot be built.
-- `geometry` is normalised through its kind's `normalize()` on the way in, so a
-  geometry outside the picture cannot be represented.
-- `id` is unique within a clip's set.
-
-### `ArrowGeometry` — the arrow's geometry
-
-`src/domain/annotation/Arrow.ts`
-
-| Field | Type | Meaning |
-|---|---|---|
-| `from` | `Point` `{ x, y }` | The tail, in fractions of the picture. |
-| `to` | `Point` `{ x, y }` | The head — what it points at. |
-
-**Rules**
-
-- both points are clamped into `[0, 1]²` by `normalize()` (an arrow drawn past the
-  edge is kept, pulled to the edge — it is not lost; spec edge case).
-- `isUsable()` is false when the tail and the head are closer than a small minimum,
-  so a stray click does not become a zero-length arrow.
+- an arrow drawn past the edge is kept, pulled to the edge — it is not lost (spec
+  edge case);
+- a change of stretch never makes an arrow unusable — the ends are untouched;
+- a damaged stored arrow reads back as nothing rather than throwing.
 
 ### `AnnotationSet` — the clip's annotations
 

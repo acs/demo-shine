@@ -21,30 +21,35 @@ rejected, it would need its own copy of the total/kept-time mapping and would dr
 from the clip's; view state in `app` — rejected, they are not the view's, they are
 the clip's and must be persisted and exported.
 
-## D2 — How a kind is made extensible: one id, two descriptors
+## D2 — How a kind is made extensible: a subclass, and a renderer
 
-**Decision**: a kind is identified by a **string id** (today `'arrow'`) and is
-described in two places under that id:
+**Decision**: an annotation is a **class**. `Annotation` is the abstract base, and a
+kind is a subclass of it — the arrow is `Arrow`. The base holds what every annotation
+has: identity, the stretch it is shown over, and the pure geometry a drag and a pick
+are made of (`handles`, `withHandle`, `movedBy`, `withSpan`, `hitTest`). A kind adds
+its own shape and the rules for it (`Arrow.create` normalises, `isUsable` refuses a
+stray click, `stored`/`restore` write it down and read it back). **The class is the
+kind**: its static `id` names it and its static `restore` rebuilds one, which is what
+`src/domain/annotation/kinds.ts` registers so a stored clip can be opened again.
 
-- a **domain descriptor** (`src/domain/annotation/Arrow.ts`, registered in
-  `kinds.ts`): pure rules — how a raw geometry is normalised (clamped into the
-  picture), whether a geometry is worth keeping (not a stray click), and the default
-  geometry a fresh one starts from;
-- a **view renderer** (`src/ui/annotation-layer.ts`, registered under the same id):
-  how it is drawn onto a 2-D context, whether a point hits it, and where its drag
-  handles are.
+How it *looks* is the one thing that stays out. A **renderer**
+(`src/ui/annotation-layer.ts`) is registered under the same id and does nothing but
+draw. That is not a compromise: `src/domain/` may not touch a canvas, for the same
+reason `TakeRepository` is a port.
 
-**Rationale**: the domain must stay free of the canvas, so "how it looks" cannot live
-with "what it is allowed to be" — but the two must not drift. Keying both on one id,
-with the renderer registry in the view and the rule registry in the domain, keeps the
-split the repository already uses (`TakeRepository` is a port the domain defines and
-`infra/` implements) and makes a new kind *new files plus one registry entry in each
-place*. Nothing that already exists changes — which is FR-011 and SC-005.
+**Rationale**: a concept with rules is a class in this repository — `Span`,
+`SpanSet`, `Clip` — and the arrow's rules are real rules: it has ends to take hold
+of, it can be aimed and moved, and it knows how close a point has to be to be on it.
+Keeping them on the class puts them with the thing they are about, and makes the
+view's drag polymorphic (`annotation.movedBy(...)`, `annotation.withHandle(...)`)
+instead of a shape the view has to know. Adding a kind is a class beside `Arrow`, a
+line in the register, and a renderer.
 
-**Alternatives considered**: a class hierarchy with a polymorphic `draw()` —
-rejected, `draw()` takes a canvas, and `src/domain/` may not import the DOM; a single
-registry holding both rules and drawing in the view — rejected, the domain would then
-have no way to validate a geometry, and the rule would drift from the type.
+**Alternatives considered**: an interface plus a kind-descriptor object (the first
+cut of this change) — rejected, it split the rules from the type and left the view
+reconstructing geometry by hand; a class with a `draw(ctx)` method — rejected, it
+would make the domain import a canvas; an `instanceof` switch in the view instead of
+a renderer registry — rejected, adding a kind would then edit the drawing code.
 
 ## D3 — Units and anchoring: fractions of the picture and of the clip
 

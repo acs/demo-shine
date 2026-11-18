@@ -1,32 +1,68 @@
 // One annotation: something drawn over the picture of a clip, for a stretch of its
 // time.
 //
-// It carries identity, so a specific one can be picked, changed, deleted and taken
-// back by the one undo; its kind, which is what both the rules and the drawing key
-// on; the stretch it is shown over, as fractions of the clip, exactly as a cut is;
-// and its geometry, as fractions of the picture, shaped by its kind.
+// It is a class, and a kind is a subclass of it — the arrow is `Arrow`. The base
+// holds what every annotation has: identity, the stretch it is shown over, and the
+// pure geometry a drag and a pick are made of. A kind adds its own shape and the
+// rules for it.
 //
-// The value is made through `createAnnotation`, and that is the point: a geometry is
-// normalised by its kind on the way in, so an annotation that could not be drawn
-// inside the picture cannot be built.
+// Nothing here draws. `src/domain/` may not touch a canvas, so how a kind looks
+// lives in the view under the same id (`src/ui/annotation-layer.ts`), for the same
+// reason `TakeRepository` is a port: the rules and the browser are kept apart.
 
 import { Span } from '../clip/Span.js';
-import { kindOf } from './kinds.js';
 
 export type AnnotationId = string;
 
-export interface Annotation<G = unknown> {
-  readonly id: AnnotationId;
-  /** Which kind it is — 'arrow' today. The id both registries key on. */
-  readonly kind: string;
-  /** When it is shown: fractions of the clip, like a cut. */
-  readonly span: Span;
-  /** Where it is: fractions of the picture, shaped by its kind. */
-  readonly geometry: G;
+/** A point, as fractions of the picture. */
+export interface Point {
+  readonly x: number;
+  readonly y: number;
 }
 
-/** Any annotation, whatever its kind — what a set holds. */
-export type AnyAnnotation = Annotation<unknown>;
+/** A point a drag can take hold of, in fractions of the picture. */
+export interface AnnotationHandle {
+  readonly x: number;
+  readonly y: number;
+  readonly end: string;
+}
+
+/** One annotation as it is written down: its span and geometry, plain numbers. */
+export interface StoredAnnotation {
+  id: string;
+  kind: string;
+  s: number;
+  e: number;
+  geometry: unknown;
+}
+
+export abstract class Annotation {
+  protected constructor(
+    readonly id: AnnotationId,
+    /** When it is shown: fractions of the clip, like a cut. */
+    readonly span: Span,
+    /** Which kind it is — the id both registries key on. */
+    readonly kind: string,
+  ) {}
+
+  /** The points a drag can take hold of, in fractions of the picture. */
+  abstract handles(): readonly AnnotationHandle[];
+
+  /** The same annotation with one handle at a new point, or null if that is not one. */
+  abstract withHandle(end: string, to: Point): Annotation | null;
+
+  /** The same annotation, shifted — how it is moved whole. */
+  abstract movedBy(dx: number, dy: number): Annotation | null;
+
+  /** The same annotation over a different stretch — how it follows a clip that grew. */
+  abstract withSpan(span: Span): Annotation;
+
+  /** Is a point (fractions of the picture) on it, within `tolerancePx`? */
+  abstract hitTest(x: number, y: number, w: number, h: number, tolerancePx: number): boolean;
+
+  /** This annotation as it is written down. */
+  abstract stored(): StoredAnnotation;
+}
 
 let seq = 0;
 
@@ -34,22 +70,4 @@ let seq = 0;
 export function newAnnotationId(): AnnotationId {
   seq += 1;
   return `an-${Math.random().toString(36).slice(2, 8)}-${seq}`;
-}
-
-/**
- * An annotation of a known kind, with its geometry normalised on the way in. Null
- * when the kind is unknown (a stored clip from a later version), or when the
- * geometry is not worth keeping (a stray click).
- */
-export function createAnnotation<G>(
-  kind: string,
-  span: Span,
-  geometry: G,
-  id: AnnotationId = newAnnotationId(),
-): Annotation<G> | null {
-  const rules = kindOf(kind);
-  if (!rules) return null;
-  const normalised = rules.normalize(geometry) as G;
-  if (!rules.isUsable(normalised)) return null;
-  return { id, kind, span, geometry: normalised };
 }
