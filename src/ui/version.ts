@@ -21,7 +21,7 @@ const ASK_EVERY_MS = 15 * 60 * 1000;   // how often to look, while the app stays
 export function initVersion(): void {
   const label = 'v' + VERSION;
   el.ver.textContent = label;
-  el.ver.title = 'DemoShine ' + label;
+  el.ver.title = 'DemoClip ' + label;
   el.helpVer.textContent = label;
 
   el.verNew.addEventListener('click', () => location.reload());

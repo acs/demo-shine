@@ -1,14 +1,14 @@
-# 🎬 DemoShine
+# 🎬 DemoClip
 
-**🚀 Live App**: [https://acs.github.io/demo-shine/](https://acs.github.io/demo-shine/)
+**🚀 Live App**: [https://acs.github.io/democlip/](https://acs.github.io/democlip/)
 
 Capture. Create. Share.
 
-DemoShine is a lightweight video studio that runs entirely in your browser. Record your screen, webcam or microphone — independently or in any combination — to create software demos, tutorials or personal video updates.
+DemoClip is a lightweight video studio that runs entirely in your browser. Record your screen, webcam or microphone — independently or in any combination — to create software demos, tutorials or personal video updates.
 
 Review your recordings, make quick cuts, and publish directly to Bluesky. Or simply export your video to a file.
 
-No installation. No recording server. Just open DemoShine and start creating.
+No installation. No recording server. Just open DemoClip and start creating.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF)](https://vite.dev/)
@@ -19,7 +19,7 @@ No installation. No recording server. Just open DemoShine and start creating.
 [![PWA](https://img.shields.io/badge/PWA-offline-5A0FC8)](https://web.dev/progressive-web-apps/)
 [![Bluesky](https://img.shields.io/badge/Bluesky-AT_Protocol-0285FF)](https://atproto.com/)
 
-A minute and a half of DemoShine recording, cutting and exporting a clip — recorded with DemoShine itself:
+A minute and a half of DemoClip recording, cutting and exporting a clip — recorded with DemoClip itself:
 
 https://github.com/user-attachments/assets/81f83dc4-a036-4e10-a398-b36ceca93122
 
@@ -42,7 +42,7 @@ The headline capabilities; the **[full list is in FEATURES.md](FEATURES.md)**.
 
 ## Usage
 
-1. Open [DemoShine](https://acs.github.io/demo-shine/) — nothing is captured yet. Press **Screen** to pick a screen, window or tab (full screen is preselected; tick **Share tab audio** / **Share system audio** for sound), or **Webcam** to record the camera on its own — **Mic** adds the microphone to either. Pressing a source again lets it go, and **New** goes back to the picker if you forget the audio
+1. Open [DemoClip](https://acs.github.io/democlip/) — nothing is captured yet. Press **Screen** to pick a screen, window or tab (full screen is preselected; tick **Share tab audio** / **Share system audio** for sound), or **Webcam** to record the camera on its own — **Mic** adds the microphone to either. Pressing a source again lets it go, and **New** goes back to the picker if you forget the audio
 2. The red box over the preview shows what will be recorded — the whole screen by default; drag to record only a region, and click to go back to the full screen
 3. Press the red button to record — it starts at once; press it again to stop
 4. Press Record again to add another take to the end of the clip — the timeline then holds every take, and the cuts you already made are kept
@@ -55,7 +55,7 @@ The headline capabilities; the **[full list is in FEATURES.md](FEATURES.md)**.
 ## File structure
 
 ```
-demoshine/
+democlip/
 ├── index.html            # Entry HTML — links the stylesheet and src/main.ts
 ├── styles.css            # All styling (theme variables, layout, components)
 ├── src/                  # TypeScript source

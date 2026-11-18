@@ -70,4 +70,4 @@ jobs:
         uses: actions/deploy-pages@v5
 
       - name: Report the deployed version
-        run: echo "Deployed DemoShine v${{ needs.build.outputs.version }} — ${{ steps.deployment.outputs.page_url }}"
+        run: echo "Deployed DemoClip v${{ needs.build.outputs.version }} — ${{ steps.deployment.outputs.page_url }}"

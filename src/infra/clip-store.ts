@@ -2,7 +2,7 @@
 //
 // A Bluesky sign-in leaves the page — the authorization server sends the browser
 // away and back — and everything the page held in memory goes with it. The takes
-// are the recording itself, the most valuable thing DemoShine has, so the clip is
+// are the recording itself, the most valuable thing DemoClip has, so the clip is
 // written down before that trip and read back on the way in.
 //
 // IndexedDB is the only store here that takes a Blob, which is what a take is;
@@ -22,7 +22,7 @@
 
 import type { Clip, ClipSnapshot } from '../domain/clip/Clip.js';
 
-const DB_NAME = 'demoshine';
+const DB_NAME = 'democlip';
 const DB_VERSION = 2;          // 2 splits the one-record store into takes + meta
 const TAKES = 'takes';
 const META = 'meta';
