@@ -1,13 +1,11 @@
 // Playback of the recorded clip, rendered on the preview canvas with sound.
 //
 // The cuts are jumped over as they are reached, without pausing,
-// so the trimmed clip plays as one continuous piece. Three pieces of state make
+// so the trimmed clip plays as one continuous piece. Two pieces of state make
 // that work:
 //
 //   askedSkip   the cut end already seeked to — each jump is asked for once, not
 //               once per frame, so the browser is never re-asked mid-seek
-//   scrubbing   a bar is being dragged: play even inside a cut, which is the
-//               whole point of dragging one
 //   seenAt/seenTime   watchdog — if the playhead really will not move, stop
 //               rather than leave the transport claiming to play
 //
@@ -44,19 +42,9 @@ export class Playback {
   private askedSkip = 0;       // cut end already seeked to, so it is asked for once
   private seekSince = 0;       // when the seek in flight started (0 = none)
   private nudgedAt  = 0;       // when playback was last re-asked for after a seek
-  private scrubbing = false;   // a bar is being dragged: play even inside a cut
   private seenAt    = 0;       // watchdog: position of the playhead at the last look
   private seenTime  = 0;       // watchdog: when that look happened
   private joinFaded = false;   // the sound is down for a join that is coming
-
-  // While a bar is dragged the clip is played from wherever it is, including the
-  // inside of a cut — otherwise there would be nothing to hear.
-  setScrubbing(on: boolean): void {
-    this.scrubbing = on;
-    this.askedSkip = 0;
-    this.seenAt = player.time();
-    this.seenTime = Date.now();
-  }
 
   isPlaying(): boolean {
     return app.playing;
@@ -76,23 +64,16 @@ export class Playback {
     this.beginPlayback();
   }
 
-  // Start (or keep) playing from an absolute time — a click on the timeline.
-  playFrom(time: number): void {
+  // Bring the playhead to a moment and hold it there: the frame at that moment,
+  // paused. Placing a mark or moving one is a still frame's business — a clip
+  // running under the bar is what makes the exact point hard to find.
+  hold(time: number): void {
     if (app.phase !== 'review' || el.rv.readyState < 1) return;
-    const end = app.clip.total();
-    let t = clampToClip(time, 0, end);
-    // Land outside anything cut away, then off the end, which restarts. While a
-    // bar is being dragged, neither rule applies: the whole point is to hear what
-    // sits at the bar.
-    if (!this.scrubbing) {
-      const cutEnd = cutEndFor(t);
-      if (cutEnd !== null) t = Math.min(cutEnd, end);
-      if (t >= end - 0.02) t = 0;
-    }
-    this.updatePlayhead(t);
+    if (app.playing) this.pause();
+    const t = clampToClip(time, 0, app.clip.total());
     this.askedSkip = 0;
-    void player.seek(t);
-    if (!app.playing) this.beginPlayback();
+    this.updatePlayhead(t);
+    void player.seekAndDraw(t);
   }
 
   private beginPlayback(): void {
@@ -194,7 +175,7 @@ export class Playback {
     // A cut stretch is jumped over without pausing, so playback carries straight
     // on. The seek is asked for once and the playhead is left alone until the
     // element comes out of the seek, so the browser is not re-asked every frame.
-    const cutEnd = this.scrubbing ? null : cutEndFor(player.time());
+    const cutEnd = cutEndFor(player.time());
     if (cutEnd !== null) {
       const to = Math.min(cutEnd, app.clip.total());
       if (!el.rv.seeking && this.askedSkip !== to) { this.askedSkip = to; void player.seek(to); }

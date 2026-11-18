@@ -9,7 +9,7 @@
 //   click again               bound the section between the two marks
 //   scissors / click inside   approve it — the section becomes a cut and leaves
 //   undo                      leave it in; the selection is dropped
-//   drag a mark / the section  move what is selected; the clip plays under it
+//   drag a mark / the section  move what is selected; the frame under it follows
 //
 // An approved cut is taken out of the timeline and what is left closes up, so
 // the timeline shows what the export will hold and no discarded hatching is left
@@ -188,14 +188,16 @@ function onTimelineClick(evt: MouseEvent): void {
   const f = atEnd ? 1 : fractionAt(evt.clientX);
   const time = f * app.clip.total();
 
-  // Inside the selected section: that is the confirmation — trim it out.
+  // Inside the selected section: that is the confirmation — cut it out.
   const section = pendingSection();
-  if (section && f >= section.s && f <= section.e) { approveTrim(); playback.playFrom(time); return; }
+  if (section && f >= section.s && f <= section.e) { approveTrim(); return; }
 
-  // Otherwise drop a mark. A click outside the section starts a new pair.
+  // Otherwise drop a mark. A click outside the section starts a new pair. The
+  // frame at the click is held, not played: the mark has to be placed on the
+  // moment the eye is on, and a clip running on from it takes that moment away.
   app.marks = app.marks.length >= 2 ? [f] : [...app.marks, f].sort((a, b) => a - b);
   renderMarks();
-  playback.playFrom(time);
+  playback.hold(time);
 }
 
 // ── Dragging a bar ───────────────────────────────────────────────────────────
@@ -249,22 +251,21 @@ class MarkDrag {
     el.timeline.classList.add('dragging');
   }
 
-  /** The pointer moved: the bar follows it, and the clip plays under it. */
+  /** The pointer moved: the bar follows it, and the frame under it is held. */
   move(evt: PointerEvent): void {
     const press = this.press;
     if (!press) return;
     if (!press.moved) {
       if (Math.abs(evt.clientX - press.fromX) < DRAG_MIN) return;
       press.moved = true;
-      playback.setScrubbing(true);      // a section plays while it is being positioned
     }
 
     const f = fractionAt(evt.clientX);
     this.dragTo(f);
     renderMarks();
-    // Play where the bar now is, so its sound and picture come with it.
+    // Hold the frame the bar is over, so the exact point can be found by eye.
     const now = Date.now();
-    if (now - press.lastSeek >= SEEK_EVERY) { press.lastSeek = now; playback.playFrom(f * app.clip.total()); }
+    if (now - press.lastSeek >= SEEK_EVERY) { press.lastSeek = now; playback.hold(f * app.clip.total()); }
   }
 
   /** The pointer came up. */
@@ -287,7 +288,6 @@ class MarkDrag {
     this.press = null;
     this.swallow = false;
     el.timeline.classList.remove('dragging');
-    playback.setScrubbing(false);
   }
 
   private dragTo(f: number): void {
