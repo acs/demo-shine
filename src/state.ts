@@ -24,7 +24,7 @@ export interface AppState {
   stream: MediaStream | null;   // from getDisplayMedia
   rec: MediaRecorder | null;    // live recording
   chunks: Blob[];               // blobs of the recording in progress
-  clip: Clip;                   // the takes, the keep range, and what was trimmed away —
+  clip: Clip;                   // the takes and what was cut away —
                                 // everything else asks this object what the clip is
 
   marks: number[];              // 0..1, up to two pending marks bounding the section to cut —

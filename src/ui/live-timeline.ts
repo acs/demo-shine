@@ -99,8 +99,6 @@ export class LiveTimeline {
     this.lastDraw = Date.now();
     this.paintStrip(span, head);
     this.paintWave(span);
-    el.rFill.style.left = '0%';
-    el.rFill.style.width = ((head / span) * 100).toFixed(2) + '%';
     el.playhead.style.left = ((head / span) * 100).toFixed(2) + '%';
     el.tLiveTime.textContent = clock(elapsed);
     el.tSize.textContent = estimateWebmText(head, el.cv.width, el.cv.height);

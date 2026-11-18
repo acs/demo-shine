@@ -166,11 +166,7 @@
         <div class="tl-times" id="t-labels">
           <span class="tl-now-wrap">NOW <span id="t-now">0.00s</span></span>
           <span class="tl-dur">·</span>
-          <span class="tl-in">IN <span id="t-in">0.00s</span></span>
-          <span class="tl-dur">·</span>
           <span class="tl-dur"><span id="t-clip">0.00s</span></span>
-          <span class="tl-dur">·</span>
-          <span class="tl-out">OUT <span id="t-out">0.00s</span></span>
         </div>
       </div>
       <span class="tl-est"><span class="tl-est-lbl">Est. </span><span id="t-size">—</span><span id="t-cut"></span></span>
@@ -180,10 +176,7 @@
       <canvas class="wave-strip" id="waveform" style="display:none"></canvas>
       <div class="range-wrap">
         <div class="range-bg"></div>
-        <div class="range-fill" id="r-fill"></div>
         <div class="range-playhead" id="playhead"></div>
-        <input type="range" id="r-start" min="0" max="1000" value="0" step="1">
-        <input type="range" id="r-end"   min="0" max="1000" value="1000" step="1">
       </div>
       <div class="tl-marks" id="tl-marks"></div>
     </div>
@@ -215,8 +208,8 @@
       <div class="help-step">
         <div class="help-num">3</div>
         <div class="help-step-body">
-          <div class="help-step-title">Stop and trim</div>
-          <div class="help-step-desc">Press ▶ to play the clip back with sound — it plays within your IN/OUT range, and you can still drag the handles while it plays. <strong>Click anywhere on the timeline to play from that moment.</strong> Drag the blue IN handle and red OUT handle to define your clip. To cut a part out: click where it starts and click where it ends, then press the <strong>scissors</strong> — or just click inside the shaded section — and it leaves the timeline, which closes up over it. The <strong>undo</strong> on the section drops the selection, and the <strong>undo</strong> in the header brings back whatever you just trimmed. Drag a mark or the shaded section to move it (it resizes if you grab it near an edge), and the clip plays under it as you drag. The estimated file size updates live.</div>
+          <div class="help-step-title">Stop and cut</div>
+          <div class="help-step-desc">Press ▶ to play the clip back with sound. <strong>Click anywhere on the timeline to play from that moment.</strong> To cut a part out: click where it starts and click where it ends, then press the <strong>scissors</strong> — or just click inside the shaded section — and it leaves the timeline, which closes up over it. The <strong>undo</strong> on the section drops the selection, and the <strong>undo</strong> in the header brings back whatever you just cut. Drag a mark or the shaded section to move it (it resizes if you grab it near an edge), and the clip plays under it as you drag. The estimated file size updates live.</div>
         </div>
       </div>
       <div class="help-step">

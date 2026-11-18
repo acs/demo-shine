@@ -23,10 +23,10 @@ export interface ExportPiece {
   at: number;     // seconds into the output file
 }
 
-/** One take that survives the trims: the stretch of it to decode, and where it lands. */
+/** One take that survives the cuts: how far into it to decode, and where it lands. */
 export interface ExportStep {
   takeIndex: number;
-  local: { from: number; to: number };   // the take's own seconds
+  localTo: number;                       // the take's own seconds to decode up to
   at: number;                            // where it begins in the output file
   joinAt: number | null;                 // where the join to dissolve from begins, or null
 }
@@ -42,26 +42,24 @@ export class ExportPlan {
     readonly pieces: readonly ExportPiece[],
     readonly steps: readonly ExportStep[],
     readonly takes: readonly Take[],
-    readonly from: number,          // the trim range, in seconds of the recording
-    readonly to: number,
+    readonly to: number,            // where the export ends, in seconds of the recording
     readonly total: number,         // seconds the file will hold
     readonly audio: boolean,
     readonly fadeSeconds: number,
     private readonly map: TimelineMap,
-    private readonly base: number,  // where the range starts on the kept timeline
     private readonly starts: readonly number[],
   ) {}
 
   /**
    * Place the kept stretches end to end on the output timeline. `segments` is
-   * what the clip says survives the trims; `range` is what the trim handles hold,
-   * in seconds of the recording; `map` is the recording and the timeline mapped
-   * both ways, which is where a frame's position comes from.
+   * what the clip says survives the cuts; `to` is where the export stops, in
+   * seconds of the recording; `map` is the recording and the timeline mapped both
+   * ways, which is where a frame's position comes from.
    */
   static of(
     segments: readonly Segment[],
     takes: readonly Take[],
-    range: { from: number; to: number },
+    to: number,
     map: TimelineMap,
     settings: ExportSettings,
   ): ExportPlan {
@@ -88,17 +86,14 @@ export class ExportPlan {
         takeIndex,
         at,
         joinAt: i === 0 ? null : at,          // the first take has nothing to join to
-        // The stretch of this take the range holds, in the take's own seconds.
-        local: {
-          from: Math.max(range.from, start) - start,
-          to: Math.min(range.to, start + (takes[takeIndex]?.duration ?? 0)) - start,
-        },
+        // How far into this take the export reaches, in the take's own seconds.
+        localTo: Math.min(to, start + (takes[takeIndex]?.duration ?? 0)) - start,
       };
     });
 
     return new ExportPlan(
-      pieces, steps, takes, range.from, range.to, total, settings.audio, settings.fadeSeconds,
-      map, map.keptOf(range.from), starts,
+      pieces, steps, takes, to, total, settings.audio, settings.fadeSeconds,
+      map, starts,
     );
   }
 
@@ -108,12 +103,12 @@ export class ExportPlan {
   }
 
   /**
-   * Where a moment of the recording lands in the output file — the kept time,
-   * less where the range starts. This is the expression the exporter reached for
-   * by hand, in one place, so the frame loop has no units to mix up.
+   * Where a moment of the recording lands in the output file — the kept time.
+   * This is the expression the exporter reached for by hand, in one place, so the
+   * frame loop has no units to mix up.
    */
   outputTimeOf(source: number): number {
-    return this.map.keptOf(source) - this.base;
+    return this.map.keptOf(source);
   }
 
   /** Is a different take on the other side of this piece? Then a join is there. */

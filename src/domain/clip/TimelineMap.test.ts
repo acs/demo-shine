@@ -43,18 +43,6 @@ describe('TimelineMap', () => {
     expect(map.endAt(5)).toBeNull();
   });
 
-  it('gives a position on the timeline as a fraction of the recording', () => {
-    const map = clip([{ s: 0.2, e: 0.3 }]);          // 2s-3s of a 10s recording
-    expect(map.sourceFraction(0)).toBeCloseTo(0);
-    expect(map.sourceFraction(5)).toBeCloseTo(0.6);  // 5s on the timeline is 6s of it
-    expect(map.sourceFraction(99)).toBeCloseTo(1);   // held inside the recording
-    expect(map.sourceFraction(-4)).toBeCloseTo(0);
-  });
-
-  it('says nothing when there is no recording to be a fraction of', () => {
-    expect(TimelineMap.none(0).sourceFraction(3)).toBe(0);
-  });
-
   it('is the whole clip when nothing was removed', () => {
     const map = TimelineMap.none(10);
     expect(map.kept).toBe(10);
