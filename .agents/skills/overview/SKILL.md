@@ -70,7 +70,8 @@ skill covers this properly — read it before adding a rule.
   tests, commits and pull requests; a new concept is written there first.
 - The sibling skills: **Domain model** (where a rule belongs, ports, lifetimes),
   **Verification** (unit test vs browser harness vs a real session), **Project
-  workflow** (one change per PR, commit and PR shape).
+  workflow** (one change per PR, commit and PR shape), **Branding** (the mark, the
+  name as live text, the colours and the files).
 
 ## Things that surprise a newcomer
 
