@@ -7,6 +7,7 @@
 // id appears once — and the order kept is the order they are drawn in.
 
 import { Span } from '../clip/Span.js';
+import { TimelineMap } from '../clip/TimelineMap.js';
 import type { Annotation } from './Annotation.js';
 
 export class AnnotationSet {
@@ -64,6 +65,21 @@ export class AnnotationSet {
     return this.all
       .filter(annotation => annotation.span.contains(fraction))
       .sort((a, b) => a.span.s - b.span.s || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  }
+
+  /**
+   * The annotations shown at a moment of the recording, in draw order, through the
+   * clip's mapping: a moment inside a cut shows nothing, which is how a cut takes
+   * its part of an annotation's stretch with it.
+   *
+   * This is the one answer, asked by the review and by the export alike — the two
+   * must not be able to disagree about what is on the picture at a moment, or the
+   * file would not match what was seen.
+   */
+  shownAt(source: number, map: TimelineMap): readonly Annotation[] {
+    const total = map.length;
+    if (!(total > 0) || map.contains(source)) return [];
+    return this.at(source / total);
   }
 
   /** Every span multiplied — how a set of fractions follows a clip that grew. */

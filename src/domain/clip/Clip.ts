@@ -196,10 +196,7 @@ export class Clip {
    * annotation's stretch with it, with no rule of its own.
    */
   annotationsAt(source: number): readonly Annotation[] {
-    const total = this.total();
-    if (!(total > 0)) return [];
-    if (this.timeline().contains(source)) return [];
-    return this.notes.at(source / total);
+    return this.notes.shownAt(source, this.timeline());
   }
 
   // ── Undo ───────────────────────────────────────────────────────────────────

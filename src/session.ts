@@ -28,6 +28,7 @@ import { player } from './ui/clip.js';
 import { drag } from './ui/marks.js';
 import { crop } from './ui/region.js';
 import { edit } from './ui/annotation-edit.js';
+import { selection } from './ui/selection.js';
 import { playback } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
 import { liveTimeline } from './ui/live-timeline.js';
@@ -48,6 +49,7 @@ export class Session {
     drag.cancel();
     crop.cancel();
     edit.cancel();        // an arrow being drawn must not outlive the clip
+    selection.clear();    // nor the stretch that was being pointed at
     exportMenu.close();   // the menu points at a clip that is about to be gone
     // The element was holding a take that no longer exists: let go of it rather
     // than revoke its URL a second time.

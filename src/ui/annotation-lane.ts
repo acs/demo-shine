@@ -14,7 +14,7 @@
 import { app } from '../state.js';
 import { el } from './dom.js';
 import { Span } from '../domain/clip/Span.js';
-import { keptLengthNow, keptOf } from './clip.js';
+import { fractionAtX as fractionAt, keptLengthNow, keptOf } from './clip.js';
 import { playback } from './playback.js';
 import { edit, onSelectionChange } from './annotation-edit.js';
 
@@ -132,12 +132,4 @@ export function renderLane(): void {
           + `</div>`;
   }
   host.innerHTML = html;
-}
-
-// Where on the recording a screen x sits, 0..1 — the same mapping the marks use.
-function fractionAt(clientX: number): number {
-  const track = el.thumbs.getBoundingClientRect();
-  if (track.width <= 0 || !(app.clip.total() > 0)) return 0;
-  const kept = Math.max(0, Math.min(1, (clientX - track.left) / track.width));
-  return Math.max(0, Math.min(1, app.clip.timeline().sourceOf(kept * keptLengthNow()) / app.clip.total()));
 }

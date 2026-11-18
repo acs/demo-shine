@@ -13,6 +13,7 @@
 
 import type { Segment } from './Clip.js';
 import type { Take } from './Take.js';
+import { AnnotationSet } from '../annotation/AnnotationSet.js';
 import type { Annotation } from '../annotation/Annotation.js';
 import { TimelineMap } from './TimelineMap.js';
 
@@ -47,7 +48,7 @@ export class ExportPlan {
     readonly total: number,         // seconds the file will hold
     readonly audio: boolean,
     readonly fadeSeconds: number,
-    readonly annotations: readonly Annotation[],   // what is drawn over the picture
+    readonly annotations: AnnotationSet,   // what is drawn over the picture
     private readonly map: TimelineMap,
     private readonly starts: readonly number[],
   ) {}
@@ -65,7 +66,7 @@ export class ExportPlan {
     to: number,
     map: TimelineMap,
     settings: ExportSettings,
-    annotations: readonly Annotation[] = [],
+    annotations: AnnotationSet = AnnotationSet.EMPTY,
   ): ExportPlan {
     const starts: number[] = [];
     let running = 0;
@@ -102,15 +103,12 @@ export class ExportPlan {
   }
 
   /**
-   * The annotations shown at a moment of the recording, in draw order. A moment
-   * inside a cut shows nothing, so a cut takes its part of an annotation's stretch
-   * with it — the same answer the clip gives, from the same mapping.
+   * The annotations shown at a moment of the recording, in draw order. This is the
+   * clip's own answer, through the same set and the same mapping the review uses —
+   * so the file cannot disagree with what was seen.
    */
   annotationsAt(source: number): readonly Annotation[] {
-    const length = this.map.length;
-    if (!(length > 0) || this.map.contains(source)) return [];
-    const fraction = source / length;
-    return this.annotations.filter(annotation => annotation.span.contains(fraction));
+    return this.annotations.shownAt(source, this.map);
   }
 
   /** Where a take begins on the recording's own timeline. */
