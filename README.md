@@ -128,7 +128,7 @@ democlip/
 ├── FEATURES.md           # Every feature in full — the README keeps the summary
 ├── GLOSSARY.md           # The words this project uses — the ubiquitous language
 ├── THIRD-PARTY-NOTICES.template.txt  # Licences of what we bundle; the build fills in the versions
-├── .agents/skills/       # How work is done here: verifying a change, the domain model, the workflow
+├── .agents/skills/       # How work is done here: verifying a change, the domain model, the workflow, branding
 └── .husky/pre-commit     # Runs lint-staged on commit
 ```
 
@@ -193,8 +193,9 @@ rediscovered: [`GLOSSARY.md`](GLOSSARY.md) holds the words — a *take* is not a
 *mark*, a *section* is not yet a *cut* — and `.agents/skills/` holds
 [verification](.agents/skills/verification/SKILL.md) (what counts as proving a
 change), the [domain model](.agents/skills/domain-model/SKILL.md) (where a rule
-belongs) and the [workflow](.agents/skills/project-workflow/SKILL.md) (branches,
-commits, pull requests).
+belongs), the [workflow](.agents/skills/project-workflow/SKILL.md) (branches,
+commits, pull requests) and [branding](.agents/skills/branding/SKILL.md) (the mark,
+the name and the colours).
 
 ---
 
