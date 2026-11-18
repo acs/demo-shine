@@ -20,7 +20,7 @@
 // This is deliberately the browser boundary and nothing more: no rules live here,
 // and a failure to write is reported to the caller rather than swallowed.
 
-import type { Clip, ClipSnapshot } from '../domain/clip/Clip.js';
+import type { Clip, ClipSnapshot, StoredAnnotation } from '../domain/clip/Clip.js';
 
 const DB_NAME = 'democlip';
 const DB_VERSION = 2;          // 2 splits the one-record store into takes + meta
@@ -41,11 +41,12 @@ interface StoredTake {
   duration: number;
 }
 
-/** The small half: how many takes, the cuts, and the sound. */
+/** The small half: how many takes, the cuts, the annotations, and the sound. */
 interface Meta {
   version: number;
   count: number;
   cuts: Array<{ s: number; e: number }>;
+  annotations?: StoredAnnotation[];
   audio: boolean;
 }
 
@@ -116,7 +117,7 @@ export function loadClip(): Promise<StoredClip | null> {
     // Every take the small half counts has to be there, or the clip is not one
     // to hand back: a missing take would make every position after it wrong.
     if (takes.length !== meta.count || takes.some(take => !take || !(take.duration > 0))) return null;
-    return { clip: { takes: takes as StoredTake[], cuts: meta.cuts }, audio: !!meta.audio };
+    return { clip: { takes: takes as StoredTake[], cuts: meta.cuts, annotations: meta.annotations ?? [] }, audio: !!meta.audio };
   }).catch(() => null);
 }
 
@@ -136,6 +137,13 @@ function metaOf(clip: Clip, audio: boolean): Meta {
     version: FORMAT,
     count: clip.takes.count(),
     cuts: clip.cuts.spans.map(span => ({ s: span.s, e: span.e })),
+    annotations: clip.annotations.all.map(annotation => ({
+      id: annotation.id,
+      kind: annotation.kind,
+      s: annotation.span.s,
+      e: annotation.span.e,
+      geometry: annotation.geometry,
+    })),
     audio,
   };
 }

@@ -162,7 +162,7 @@
         <span class="tl-live" id="t-live" aria-hidden="true"><span class="tl-live-dot"></span>REC <span id="t-live-time">00:00</span></span>
         <span class="tl-cut" id="t-cut-wrap">
           <span id="t-cut"></span>
-          <button class="tl-act undo" id="cut-undo" title="Put the cut back" aria-label="Put the cut back">
+          <button class="tl-act undo" id="cut-undo" title="Put the last change back" aria-label="Put the last change back">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-5"/></svg>
           </button>
         </span>
@@ -182,6 +182,7 @@
         <div class="range-playhead" id="playhead"></div>
       </div>
       <div class="tl-marks" id="tl-marks"></div>
+      <div class="tl-annots" id="tl-annots"></div>
     </div>
   </div>
 
@@ -212,7 +213,7 @@
         <div class="help-num">3</div>
         <div class="help-step-body">
           <div class="help-step-title">Stop and cut</div>
-          <div class="help-step-desc">Press ▶ (or <strong>P</strong>) to play the clip back with sound. <strong>Click anywhere on the timeline to bring the playhead there</strong> — it holds that frame rather than playing, so you can find the exact moment. To cut a part out: click where it starts and click where it ends, then press the <strong>scissors</strong> — or just click inside the shaded section — and it leaves the timeline, which closes up over it. The <strong>undo</strong> on the section drops the selection, and the <strong>undo</strong> in the header brings back whatever you just cut. Drag a mark or the shaded section to move it (it resizes if you grab it near an edge), and the frame under it follows as you drag. <strong>←</strong> / <strong>→</strong> nudge the bar a frame at a time (hold <strong>Shift</strong> for a second), so the cut can land on an exact frame. The estimated file size updates live.</div>
+          <div class="help-step-desc">Press ▶ (or <strong>P</strong>) to play the clip back with sound. <strong>Click anywhere on the timeline to bring the playhead there</strong> — it holds that frame rather than playing, so you can find the exact moment. To cut a part out: click where it starts and click where it ends, then press the <strong>scissors</strong> — or just click inside the shaded section — and it leaves the timeline, which closes up over it. To point at something instead, press the <strong>arrow</strong> on the section and drag across the preview: the arrow shows over that stretch in playback and in the file you export. Click an arrow on the picture to move or aim it, drag its bar on the timeline lane to change when it shows, or delete it with the <strong>×</strong> on the bar. The <strong>undo</strong> on the section drops the selection, and the <strong>undo</strong> in the header brings back whatever you last did, a cut or an arrow. Drag a mark or the shaded section to move it (it resizes if you grab it near an edge), and the frame under it follows as you drag. <strong>←</strong> / <strong>→</strong> nudge the bar a frame at a time (hold <strong>Shift</strong> for a second), so the cut can land on an exact frame. The estimated file size updates live.</div>
         </div>
       </div>
       <div class="help-step">
