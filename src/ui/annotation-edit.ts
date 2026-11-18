@@ -222,7 +222,7 @@ export function repaint(): void {
   try { drawFrame(el.rv); } catch { return; }        // a frame still decoding
   drawAnnotations(ctx, w, h, app.clip.annotationsAt(player.time()), edit.selectedId);
   const live = edit.preview();
-  if (live) arrowRenderer.draw(ctx, live, w, h, false);
+  if (live) arrowRenderer.draw(ctx, live, w, h);
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
