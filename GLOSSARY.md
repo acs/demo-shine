@@ -75,7 +75,7 @@ whatever is then done with it.
 | **annotation** | something drawn over the picture of a clip, for a stretch of its time. It has a **kind**, the **span** it is shown over, and a geometry its kind shapes | `Annotation`, `Clip.annotations` |
 | **annotation kind** | what makes one annotation different from another — an arrow today. Its rules (how a geometry is normalised, whether it is worth keeping) live in the domain; how it is drawn and picked lives in the view, under the same id | `AnnotationKind`, `kinds.ts`; `AnnotationRenderer`, `ui/annotation-layer.ts` |
 | **arrow** | the first kind: a line with a head, given by where it starts (`from`) and what it points at (`to`), in fractions of the picture | `arrowKind`, `ArrowGeometry` |
-| **annotation lane** | the row on the timeline showing where the annotations are, in kept time, so one can be found without playing the clip | `ui/annotation-lane.ts` |
+| **annotation lane** | the row on the timeline marking each annotation at the start of its stretch, in kept time, so one can be found without playing the clip | `ui/annotation-lane.ts` |
 | **annotation layer** | the one place an annotation is drawn, used by playback and by the export alike, so the file matches the review | `ui/annotation-layer.ts` |
 
 An annotation's geometry is held in fractions of the picture, so it lands in the

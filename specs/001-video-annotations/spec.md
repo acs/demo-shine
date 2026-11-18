@@ -48,7 +48,7 @@ The person who placed an arrow wants to move it, change where it points, change 
 1. **Given** a clip with an arrow, **When** the user clicks it on the picture and drags an end, **Then** the arrow points somewhere else and the change is shown in playback.
 2. **Given** a clip with an arrow, **When** the user drags its span on the timeline, **Then** it is shown only in the new stretch.
 3. **Given** a clip with an arrow, **When** the user deletes it, **Then** it no longer appears, and the deletion can be undone.
-4. **Given** a clip with an arrow, **When** the user looks at the timeline, **Then** the arrow's stretch is shown there, and reaching it does not mean playing through the clip.
+4. **Given** a clip with an arrow, **When** the user looks at the timeline, **Then** the arrow is marked at the start of its stretch there, and reaching it does not mean playing through the clip.
 
 ---
 
@@ -97,7 +97,7 @@ A second kind of annotation arrives later — a box, a label, a highlight. Addin
 - **FR-013**: The stretch an annotation is shown over MUST be chosen with the same selection the user already uses to cut, and MUST be chosen **before** the annotation is added: the user selects a stretch, then chooses what to do with it — cut it, or annotate it. There is one way to point at a stretch of the clip, whatever is then done with it.
 - **FR-014**: A cut MUST take its part of an arrow's stretch with it, exactly as it takes the picture: the arrow is never shown over a stretch that was cut away.
 - **FR-015**: Undo MUST cover the most recent change of any kind, in one action: the one undo the user has takes back whatever they last did — an annotation added, an annotation deleted, or a cut approved — whichever kind it was.
-- **FR-016**: The timeline MUST show where the annotations are — each annotation's stretch is drawn on it — so that a person can see and reach an annotation without playing or scrubbing through the clip.
+- **FR-016**: The timeline MUST show where the annotations are — each annotation is marked at the start of its stretch — so that a person can see and reach an annotation without playing or scrubbing through the clip, and so that marks do not lie on top of one another when annotations overlap in time.
 
 ### Key Entities *(include if feature involves data)*
 
