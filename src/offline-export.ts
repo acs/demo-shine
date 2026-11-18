@@ -69,7 +69,7 @@ async function pickVideoCodec(spec: TargetSpec, width: number, height: number, b
   return null;
 }
 
-// The sound of the kept range, rendered off the clock: each take is decoded, its
+// The sound of the kept clip, rendered off the clock: each take is decoded, its
 // kept stretches placed end to end, and the same fade put either side of a join
 // that playback has. Null when the clip has no sound.
 //
@@ -171,8 +171,8 @@ export async function exportOffline(plan: ExportPlan, options: OfflineOptions = 
         if (!track) throw new Error('a take has no video track');
         if (!(await track.canDecode())) throw new Error('a take cannot be decoded');
         const first = await input.getFirstTimestamp();
-        const from = step.local.from + first;
-        const to   = step.local.to + first;
+        const from = first;
+        const to   = step.localTo + first;
 
         for await (const frame of new VideoSampleSink(track).samples(from, to)) {
           try {

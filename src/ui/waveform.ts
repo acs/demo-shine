@@ -1,7 +1,6 @@
 // The audio track shown under the video thumbnails: a waveform of the recorded
 // clip, visible only when the recording has audio. It is drawn in timeline time,
-// so a trimmed-away stretch takes up no width and what is left closes up over
-// it, and the stretches outside the IN/OUT range are dimmed.
+// so a cut stretch takes up no width and what is left closes up over it.
 //
 // The bars come from a decode of the recording, which is read-only: the file, the
 // playback and the export are untouched by it. See PEAK_RATE below.
@@ -94,10 +93,9 @@ export class Waveform {
 
     const light = document.documentElement.dataset.theme === 'light';
     const wave  = light ? 'rgba(59,127,255,0.55)'  : 'rgba(96,148,255,0.7)';
-    const shade = light ? 'rgba(255,255,255,0.6)'  : 'rgba(6,7,16,0.6)';
 
-    // The bars are drawn in timeline time: a trimmed-away stretch has no width on
-    // screen, so its bars are left out and the rest closes up over it.
+    // The bars are drawn in timeline time: a cut stretch has no width on screen,
+    // so its bars are left out and the rest closes up over it.
     const kept = keptLengthNow();
     if (!(kept > 0)) return;
     const gone = app.clip.cuts.scaled(app.clip.total());   // the cuts, in seconds
@@ -112,13 +110,6 @@ export class Waveform {
       const barH = Math.max(1, peaks[i] * (h - 4));
       ctx.fillRect((keptOf(at) / kept) * w - bw / 2, mid - barH / 2, bw, barH);
     }
-
-    // Dim everything outside the kept range.
-    const x0 = (keptOf(app.clip.trim.start * app.clip.total()) / kept) * w;
-    const x1 = (keptOf(app.clip.trim.end * app.clip.total()) / kept) * w;
-    ctx.fillStyle = shade;
-    ctx.fillRect(0, 0, Math.max(0, x0), h);
-    ctx.fillRect(Math.min(w, x1), 0, Math.max(0, w - x1), h);
   }
 }
 

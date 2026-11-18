@@ -7,7 +7,7 @@ import { loadPrefs } from './prefs.js';
 import { applyTheme, toggleTheme } from './ui/theme.js';
 import { toggleHelp, helpBdClick } from './ui/help.js';
 import { drawGrid } from './ui/preview.js';
-import { initTimeline, onTrim, updateTrimUI, updateSizeUI } from './ui/timeline-ui.js';
+import { initTimeline, updateTimeUI, updateSizeUI } from './ui/timeline-ui.js';
 import { initTimelineMarks } from './ui/marks.js';
 import { toggleRec, toggleScreen, syncSources } from './recorder.js';
 import { doExport, startNewSession } from './exporter.js';
@@ -38,13 +38,10 @@ function init(): void {
 
   drawGrid();
   initVersion();
-  updateTrimUI();
+  updateTimeUI();
   updateSizeUI();
 
   // Controls — these used to be inline onclick/onchange handlers in the markup.
-  el.rStart.addEventListener('input', onTrim);
-  el.rEnd.addEventListener('input', onTrim);
-
   el.themeBtn.addEventListener('click', toggleTheme);
   el.helpBtn.addEventListener('click', toggleHelp);
   el.helpClose.addEventListener('click', toggleHelp);

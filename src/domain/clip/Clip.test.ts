@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import { Clip, type ClipEvent } from './Clip.js';
 import { Span } from './Span.js';
-import { Trim } from './Trim.js';
 import { Take } from './Take.js';
 import type { TakeRepository } from './TakeRepository.js';
 
@@ -75,12 +74,6 @@ describe('Clip', () => {
     expect(clip.canUndo()).toBe(false);         // measured against a clip that moved
   });
 
-  it('counts only what the keep range holds', () => {
-    const clip = clipOf(10);
-    clip.keepRange(Trim.of(0.5, 1));
-    expect(clip.keptLength()).toBeCloseTo(5);
-  });
-
   it('says what an export is made of: the kept stretches, take by take', () => {
     expect(clipOf(3, 3).segmentsIn(0, 6).map(s => [s.takeIndex, s.from, s.to]))
       .toEqual([[0, 0, 3], [1, 3, 6]]);
@@ -93,27 +86,23 @@ describe('Clip', () => {
       .toEqual([[0, 0, 3], [1, 3, 4.2], [1, 4.8, 6]]);
   });
 
-  it('empties itself: the takes, the cuts and the keep range', () => {
+  it('empties itself: the takes and the cuts', () => {
     const clip = clipOf(4);
     clip.approve(Span.of(0.1, 0.2));
-    clip.keepRange(Trim.of(0.2, 0.8));
     clip.clear();
     expect(clip.total()).toBe(0);
     expect(clip.keptLength()).toBe(0);
     expect(clip.cuts.isEmpty).toBe(true);
-    expect(clip.trim.start).toBe(0);
     expect(clip.canUndo()).toBe(false);
   });
 });
 
 describe('Clip, written down and read back', () => {
-  it('snapshots its takes, keep range and cuts', () => {
+  it('snapshots its takes and cuts', () => {
     const clip = clipOf(4, 6);
-    clip.keepRange(Trim.of(0.1, 0.9));
     clip.approve(Span.of(0.2, 0.3));
     const snap = clip.snapshot();
     expect(snap.takes.map(t => t.duration)).toEqual([4, 6]);
-    expect(snap.trim).toEqual({ start: 0.1, end: 0.9 });
     expect(snap.cuts.map(c => [c.s, c.e])).toEqual([[0.2, 0.3]]);
   });
 
@@ -121,13 +110,10 @@ describe('Clip, written down and read back', () => {
     const clip = Clip.empty(new FakeTakes());
     clip.restore({
       takes: [{ blob: new Blob(['a']), duration: 4 }, { blob: new Blob(['b']), duration: 6 }],
-      trim: { start: 0.1, end: 0.9 },
       cuts: [{ s: 0.2, e: 0.3 }],
     });
     expect(clip.total()).toBe(10);
     expect(clip.takes.count()).toBe(2);
-    expect(clip.trim.start).toBe(0.1);
-    expect(clip.trim.end).toBe(0.9);
     expect(clip.cuts.spans.map(c => [c.s, c.e])).toEqual([[0.2, 0.3]]);
     expect(clip.canUndo()).toBe(false);
   });
@@ -135,7 +121,6 @@ describe('Clip, written down and read back', () => {
   it('comes back the same the second time round', () => {
     const clip = clipOf(5, 5);
     clip.approve(Span.of(0.1, 0.2));
-    clip.keepRange(Trim.of(0.25, 0.75));
     const snap = clip.snapshot();
     clip.clear();
     clip.restore(snap);
@@ -146,7 +131,7 @@ describe('Clip, written down and read back', () => {
     const clip = clipOf(4);
     const seen: string[] = [];
     clip.onChange(event => seen.push(event.type));
-    clip.restore({ takes: [{ blob: new Blob(['x']), duration: 2 }], trim: { start: 0, end: 1 }, cuts: [] });
+    clip.restore({ takes: [{ blob: new Blob(['x']), duration: 2 }], cuts: [] });
     expect(seen).toEqual([]);
   });
 });
@@ -176,13 +161,12 @@ describe('Clip, announcing what changed', () => {
     expect(undone.cut.equals(Span.of(0.2, 0.3))).toBe(true);
   });
 
-  it('says the handles moved, and that the session was dropped', () => {
+  it('says the session was dropped', () => {
     const clip = clipOf(4);
     const seen: string[] = [];
     clip.onChange(event => seen.push(event.type));
-    clip.keepRange(Trim.of(0.2, 0.8));
     clip.clear();
-    expect(seen).toEqual(['keep-range', 'cleared']);
+    expect(seen).toEqual(['cleared']);
   });
 
   it('lets a listener stop listening', () => {

@@ -10,7 +10,7 @@ import { app, setPhase } from './state.js';
 import { el, setStatus, toast } from './ui/dom.js';
 import { refreshSourceButtons } from './ui/source-buttons.js';
 import { drawGrid, startMirror, stopMirror, seekWithin } from './ui/preview.js';
-import { strip, updateSizeUI, updateTrimUI } from './ui/timeline-ui.js';
+import { strip, updateSizeUI, updateTimeUI } from './ui/timeline-ui.js';
 import { player } from './ui/clip.js';
 import { playback } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
@@ -408,9 +408,9 @@ function onCaptureEnded(): void {
 }
 
 // A recording just finished: keep it as a take, then open the review on the
-// whole joined clip. A second recording is added to the end, so the trims made
-// before it stay put (only the cuts are re-based, to keep them over
-// the same moments of the recording).
+// whole joined clip. A second recording is added to the end, so the cuts made
+// before it stay put (re-based, to keep them over the same moments of the
+// recording).
 async function onRecStop(): Promise<void> {
   const blob = new Blob(app.chunks, { type: 'video/webm' });
   const wallClock = (Date.now() - (app.startAt ?? Date.now())) / 1000;
@@ -424,13 +424,13 @@ async function onRecStop(): Promise<void> {
   // take will start, and the total drives the whole timeline.
   const duration = (await measureTake(blob)) ?? wallClock;
   // The clip announces the take and everything showing the clip reacts — the marks
-  // and the handles do so at once. The strip cannot: it is drawn by seeking the
-  // element, which only now starts holding the new take.
+  // do so at once. The strip cannot: it is drawn by seeking the element, which
+  // only now starts holding the new take.
   app.clip.addTake(blob, duration);
 
   // Open on the take that was just recorded, or on the first one for a new clip,
-  // with the playhead at the join or at the trim IN.
-  const park = appending ? previous : app.clip.trim.start * app.clip.total();
+  // with the playhead at the join or at the start.
+  const park = appending ? previous : 0;
   await openReviewClip(appending ? app.clip.takes.count() - 1 : 0, park);
 }
 
@@ -446,7 +446,7 @@ export async function openReviewClip(loadIndex: number, park: number): Promise<v
 
   // The clip may be a cropped region, so size the preview canvas to it.
   if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
-  updateTrimUI();
+  updateTimeUI();
   updateSizeUI();
   el.idleOv.classList.add('gone');      // the overlay says "turn a source on"; the clip is picture enough
   void waveform.build(app.clip.takes.all());

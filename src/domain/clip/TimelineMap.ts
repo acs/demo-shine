@@ -77,17 +77,8 @@ export class TimelineMap {
   }
 
   /**
-   * A position on the kept timeline as a **fraction of the recording** — what the
-   * keep range holds, since the handles are dragged in timeline units and the clip
-   * stores fractions. Kept out of the callers: doing it by hand is how the units
-   * get mixed up.
+   * A moment on the timeline, as the recording holds it.
    */
-  sourceFraction(kept: number): number {
-    if (!(this.total > 0)) return 0;
-    return Math.max(0, Math.min(1, this.sourceOf(kept) / this.total));
-  }
-
-  /** A moment on the timeline, as the recording holds it. */
   sourceOf(kept: number): number {
     let source = kept;
     for (const cut of this.removed.spans) {

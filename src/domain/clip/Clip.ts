@@ -1,18 +1,17 @@
-// The clip: the takes, what was trimmed away, and the keep range. The aggregate.
+// The clip: the takes and what was trimmed away. The aggregate.
 //
-// Everything else in the app asks this object what the clip is. It owns the three
+// Everything else in the app asks this object what the clip is. It owns the two
 // things that have to agree with each other —
 //
 //   * the takes, in order, and so the clip's length (the sum of them, derived, so
 //     it cannot drift from the takes it is made of);
-//   * the keep range, as a fraction of that length;
 //   * the cuts — the stretches approved out of it — as a set that cannot overlap.
 //
 // — and it owns the rules that relate them, which used to be spread between the
-// marks module, the exporter and a couple of fields on the app: a trim that is
+// marks module, the exporter and a couple of fields on the app: a cut that is
 // approved leaves the timeline, the last one can be put back, the cuts are
 // fractions of a clip that grows when a new take arrives, and the kept stretches
-// of a range are what an export is made of.
+// of the clip are what an export is made of.
 //
 // It takes its takes from a `TakeRepository` (the port), so nothing here touches
 // the browser and the whole thing can be tested with a fake collection.
@@ -20,7 +19,6 @@
 import { Span } from './Span.js';
 import { SpanSet } from './SpanSet.js';
 import { TimelineMap } from './TimelineMap.js';
-import { Trim } from './Trim.js';
 import type { Take } from './Take.js';
 import type { TakeRepository } from './TakeRepository.js';
 
@@ -29,13 +27,12 @@ export type Segment = { takeIndex: number; from: number; to: number };
 
 /**
  * A clip written down: the takes it is made of (the recording bytes and the
- * length each one has), its keep range, and its cuts. `snapshot()` gives one and
- * `restore()` takes one back, and it is the shape a store persists — the blobs
- * are the recordings themselves.
+ * length each one has) and its cuts. `snapshot()` gives one and `restore()` takes
+ * one back, and it is the shape a store persists — the blobs are the recordings
+ * themselves.
  */
 export interface ClipSnapshot {
   takes: ReadonlyArray<{ blob: Blob; duration: number }>;
-  trim: { start: number; end: number };
   cuts: ReadonlyArray<{ s: number; e: number }>;
 }
 
@@ -52,13 +49,11 @@ export type ClipEvent =
   | { type: 'take-added'; take: Take; index: number; previousTotal: number }
   | { type: 'trim-approved'; cut: Span; removed: number }
   | { type: 'trim-undone'; cut: Span }
-  | { type: 'keep-range'; trim: Trim }
   | { type: 'cleared' };
 
 export type ClipListener = (event: ClipEvent) => void;
 
 export class Clip {
-  private keep = Trim.of(0, 1);
   private lastApproved: { before: SpanSet; cut: Span; removed: number } | null = null;
   private readonly listeners = new Set<ClipListener>();
 
@@ -82,11 +77,6 @@ export class Clip {
     return this.repo;
   }
 
-  /** The keep range, as a fraction of the clip. */
-  get trim(): Trim {
-    return this.keep;
-  }
-
   /** What was trimmed away, as fractions of the clip, in one non-overlapping set. */
   get cuts(): SpanSet {
     return this.removed;
@@ -102,16 +92,9 @@ export class Clip {
     return TimelineMap.forClip(this.removed.spans, this.total());
   }
 
-  /** How much is left to export, in seconds. */
+  /** How long the clip is once the cuts are gone: what an export holds. */
   keptLength(): number {
-    const duration = this.total();
-    return this.timeline().keptLength(this.keep.start * duration, this.keep.end * duration);
-  }
-
-  /** The handles were dragged. */
-  keepRange(trim: Trim): void {
-    this.keep = trim;
-    this.announce({ type: 'keep-range', trim });
+    return this.timeline().kept;
   }
 
   /**
@@ -188,26 +171,24 @@ export class Clip {
 
   /**
    * Everything this clip is made of, so it can be written down and read back:
-   * its takes, its keep range, and its cuts.
+   * its takes and its cuts.
    */
   snapshot(): ClipSnapshot {
     return {
       takes: this.repo.all().map(take => ({ blob: take.blob, duration: take.duration })),
-      trim: { start: this.keep.start, end: this.keep.end },
       cuts: this.removed.spans.map(span => ({ s: span.s, e: span.e })),
     };
   }
 
   /**
-   * Rebuild this clip from a snapshot — the takes, the keep range, the cuts.
-   * Nothing is announced: a restore is a load rather than a change to a clip
-   * already on screen, and the flow that restores sets the view up itself. The
-   * takes already in the repository are dropped, object URLs and all.
+   * Rebuild this clip from a snapshot — the takes and the cuts. Nothing is
+   * announced: a restore is a load rather than a change to a clip already on
+   * screen, and the flow that restores sets the view up itself. The takes already
+   * in the repository are dropped, object URLs and all.
    */
   restore(snapshot: ClipSnapshot): void {
     this.repo.clear();
     for (const take of snapshot.takes) this.repo.add(take.blob, take.duration);
-    this.keep = Trim.of(snapshot.trim.start, snapshot.trim.end);
     this.removed = SpanSet.of(snapshot.cuts);
     this.lastApproved = null;
   }
@@ -216,7 +197,6 @@ export class Clip {
   clear(): void {
     this.repo.clear();
     this.removed = SpanSet.EMPTY;
-    this.keep = Trim.of(0, 1);
     this.lastApproved = null;
     this.announce({ type: 'cleared' });
   }
