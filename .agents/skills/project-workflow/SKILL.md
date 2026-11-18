@@ -1,6 +1,6 @@
 ---
 name: Project workflow
-description: How changes are made in DemoShine — one change per pull request, branch and commit conventions, what a pull request body contains, and that CI owns the version. Use when starting work, committing or opening a pull request.
+description: How changes are made in DemoClip — one change per pull request, branch and commit conventions, what a pull request body contains, and that CI owns the version. Use when starting work, committing or opening a pull request.
 ---
 
 # Project workflow

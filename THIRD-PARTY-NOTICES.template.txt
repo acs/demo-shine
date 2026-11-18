@@ -1,11 +1,11 @@
-DemoShine — third-party notices
+DemoClip — third-party notices
 ==============================
 
-DemoShine itself is MIT licensed (see LICENSE.md). The built app bundles the
+DemoClip itself is MIT licensed (see LICENSE.md). The built app bundles the
 library below, unmodified.
 
 This is the template: the build fills in the version from what is actually
-installed (see the `demoshine-notices` plugin in vite.config.ts) and ships the
+installed (see the `democlip-notices` plugin in vite.config.ts) and ships the
 result as THIRD-PARTY-NOTICES.txt beside the app, and inside the JavaScript
 bundle as well.
 
@@ -21,7 +21,7 @@ Mediabunny {{mediabunny}}
   container, duration and cue points included.
 
   The MPL is file-level: it covers Mediabunny's own files and not the rest of
-  this application, so DemoShine remains MIT. Its full text sits with the source
+  this application, so DemoClip remains MIT. Its full text sits with the source
   (LICENSE in the package) and at https://mozilla.org/MPL/2.0/.
 
 -------------------------------------------------------------------------------

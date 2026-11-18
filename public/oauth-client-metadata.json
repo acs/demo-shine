@@ -1,8 +1,8 @@
 {
-  "client_id": "https://acs.github.io/demo-shine/oauth-client-metadata.json",
-  "client_name": "DemoShine",
-  "client_uri": "https://acs.github.io/demo-shine/",
-  "redirect_uris": ["https://acs.github.io/demo-shine/"],
+  "client_id": "https://acs.github.io/democlip/oauth-client-metadata.json",
+  "client_name": "DemoClip",
+  "client_uri": "https://acs.github.io/democlip/",
+  "redirect_uris": ["https://acs.github.io/democlip/"],
   "scope": "atproto transition:generic",
   "grant_types": ["authorization_code", "refresh_token"],
   "response_types": ["code"],

@@ -45,7 +45,7 @@ export default defineConfig(({ mode }) => ({
       // to compare its own against and offer a reload when a newer build is out
       // (see src/ui/version.ts). Written for the build only: under the dev
       // server there is no deployment that could be newer.
-      name: 'demoshine-version',
+      name: 'democlip-version',
       apply: 'build',
       generateBundle() {
         this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ version }) });
@@ -58,7 +58,7 @@ export default defineConfig(({ mode }) => ({
       // which the offline export brings in, is MPL-2.0, and its notice is meant
       // to travel with the copies made of it. They ship as a file beside the app
       // too, so they can be read without opening a minified bundle.
-      name: 'demoshine-notices',
+      name: 'democlip-notices',
       apply: 'build',
       generateBundle(_options, bundle) {
         const notices = thirdPartyNotices();

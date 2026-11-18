@@ -1,6 +1,6 @@
 # Versioning
 
-The build's version is shown beside the logo in the header — `DemoShine v1.0.5` —
+The build's version is shown beside the logo in the header — `DemoClip v1.0.5` —
 so it is plain which deployed build a window is running, and whether a reload
 really did pick up a new deploy. That matters for a PWA, which can go on serving
 an older shell from the service worker's cache.

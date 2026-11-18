@@ -70,7 +70,7 @@ export class Waveform {
       el.waveform.style.display = '';
       this.draw();
     } catch (err) {
-      console.warn('DemoShine: could not decode audio for the waveform —', err);
+      console.warn('DemoClip: could not decode audio for the waveform —', err);
       this.clear();
     } finally {
       void ctx.close();

@@ -1,4 +1,4 @@
-const CACHE = 'demoshine-v1';
+const CACHE = 'democlip-v1';
 // The app shell. Vite emits hashed JS/CSS filenames, so those are cached at
 // runtime on first load rather than listed here.
 const CORE  = ['./', './index.html', './manifest.json', './icon.svg'];

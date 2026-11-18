@@ -36,8 +36,8 @@ async function exportOfflineHere(target: ExportTarget): Promise<OfflineStats> {
   // Nothing to write is the same error the encoder used to raise, on the same path.
   if (!plan) throw new Error('nothing to export');
   const { blob, stats } = await exportOffline(plan, { target, onProgress: source => encodingAt(source, plan.to) });
-  dlBlob(blob, `demoshine-${ts()}.${target}`);
-  console.info('DemoShine export', stats);
+  dlBlob(blob, `democlip-${ts()}.${target}`);
+  console.info('DemoClip export', stats);
   return stats;
 }
 
