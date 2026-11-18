@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { Span } from '../clip/Span.js';
+import { TimelineMap } from '../clip/TimelineMap.js';
 import { AnnotationSet } from './AnnotationSet.js';
 import { Arrow } from './Arrow.js';
 import type { Annotation } from './Annotation.js';
@@ -42,6 +43,15 @@ describe('AnnotationSet', () => {
     const set = AnnotationSet.EMPTY.add(note('a', 0, 0.5));
     expect(set.change('nope', note('nope', 0, 1))).toBe(set);
     expect(set.remove('nope')).toBe(set);
+  });
+
+  it('answers what is shown at a moment through the timeline map', () => {
+    const set = AnnotationSet.EMPTY.add(note('a', 0.1, 0.6));       // 1s-6s of a 10s clip
+    const map = TimelineMap.forClip([{ s: 0.3, e: 0.4 }], 10);      // 3s-4s cut out
+    expect(set.shownAt(2, map).map(a => a.id)).toEqual(['a']);
+    expect(set.shownAt(3.5, map)).toEqual([]);                      // inside the cut
+    expect(set.shownAt(0.5, map)).toEqual([]);                      // before it
+    expect(set.shownAt(5, map).map(a => a.id)).toEqual(['a']);
   });
 
   it('re-bases every span when the clip grows, keeping each one an annotation', () => {

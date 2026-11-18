@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { ExportPlan } from './ExportPlan.js';
 import { Take } from './Take.js';
 import { TimelineMap } from './TimelineMap.js';
+import { Span } from './Span.js';
+import { AnnotationSet } from '../annotation/AnnotationSet.js';
+import { Arrow } from '../annotation/Arrow.js';
 
 // Two 5s takes, so the clip is 10s and a join falls halfway along it.
 const takes = [
@@ -23,6 +26,12 @@ const parts = () => ({
 
 const planOf = (settings = { audio: false, fadeSeconds: 0.08 }): ExportPlan =>
   ExportPlan.of(parts().segments, takes, 10, parts().map, settings);
+
+const arrow = (id: string, s: number, e: number): Arrow => {
+  const made = Arrow.create(Span.of(s, e), { x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }, id);
+  if (!made) throw new Error('the test arrow should be usable');
+  return made;
+};
 
 describe('ExportPlan', () => {
   it('places the kept stretches end to end, closing the cut', () => {
@@ -71,5 +80,17 @@ describe('ExportPlan', () => {
     const plan = planOf({ audio: true, fadeSeconds: 0.5 });
     expect(plan.audio).toBe(true);
     expect(plan.fadeSeconds).toBe(0.5);
+  });
+
+  it('shows the annotations through the same mapping the review uses', () => {
+    const { map, segments } = parts();                    // 3s-4s cut out of 10s
+    // Added in the reverse of their draw order, so the order asserted below is the
+    // set's (by where each stretch starts) and not the order they were added in.
+    const annotations = AnnotationSet.EMPTY.add(arrow('b', 0.5, 0.9)).add(arrow('a', 0.1, 0.6));
+    const plan = ExportPlan.of(segments, takes, 10, map, { audio: false, fadeSeconds: 0.08 }, annotations);
+
+    expect(plan.annotationsAt(5.5).map(a => a.id)).toEqual(['a', 'b']);   // 5s-6s: both
+    expect(plan.annotationsAt(3.5)).toEqual([]);                          // inside the cut
+    expect(plan.annotationsAt(8.5).map(a => a.id)).toEqual(['b']);        // only the later one
   });
 });

@@ -23,7 +23,7 @@ import type { ClipEvent } from '../domain/clip/Clip.js';
 import { el } from './dom.js';
 import { Span } from '../domain/clip/Span.js';
 import { updateSizeUI } from './timeline-ui.js';
-import { keptLengthNow, keptOf, player, sourceOf } from './clip.js';
+import { fractionAtX as fractionAt, keptLengthNow, keptOf, player } from './clip.js';
 import { playback } from './playback.js';
 import { typingIn } from '../util.js';
 import { MIN_SECTION, selection } from './selection.js';
@@ -404,14 +404,8 @@ function track(): DOMRect {
   return el.thumbs.getBoundingClientRect();
 }
 
-// Where on the recording a given screen x sits, 0..1. The timeline is in
-// timeline time, so this is where the mapping comes back the other way.
-function fractionAt(clientX: number): number {
-  const t = track();
-  if (t.width <= 0 || !(app.clip.total() > 0)) return 0;
-  const kept = Math.max(0, Math.min(1, (clientX - t.left) / t.width));
-  return Math.max(0, Math.min(1, sourceOf(kept * keptLengthNow()) / app.clip.total()));
-}
+// Where on the recording a screen x sits lives in clip.ts (fractionAtX), because the
+// annotation lane maps a click the same way and the two must not disagree.
 
 // The span the two pending marks bound lives with the selection now
 // (src/ui/selection.ts): it is what a Cut or an Annotate action is applied to.
