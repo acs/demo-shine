@@ -20,6 +20,7 @@ import { arrowRenderer, drawAnnotations } from './annotation-layer.js';
 import { drawFrame } from './preview.js';
 import { player } from './clip.js';
 import { playback } from './playback.js';
+import { typingIn } from '../util.js';
 
 const DRAG_MIN = 3;          // px of travel before a press counts as a drag
 const GRIP_PX = 14;          // how near an end a press has to be to take hold of it
@@ -185,13 +186,25 @@ export function initAnnotationEdit(): void {
   window.addEventListener('pointerup', () => edit.end());
   window.addEventListener('pointercancel', () => edit.end());
 
-  // Escape lets go of an armed arrow, or of the one in hand.
+  // Escape lets go of an armed arrow or of the one in hand; Delete takes the picked
+  // one away, because reaching for the × on its timeline bar is a longer trip than
+  // pressing the key that means "remove this". The one undo brings it back.
   window.addEventListener('keydown', evt => {
-    if (evt.key !== 'Escape') return;
-    if (!edit.armed && !edit.selectedId) return;
-    if (edit.armed) edit.cancel();
-    else            edit.forget();
-    repaint();
+    if (typingIn(evt.target)) return;             // a field's Delete belongs to the field
+
+    if (evt.key === 'Escape') {
+      if (!edit.armed && !edit.selectedId) return;
+      if (edit.armed) edit.cancel();
+      else            edit.forget();
+      repaint();
+      return;
+    }
+
+    // Delete is Supr; on a Mac keyboard the same key is Backspace.
+    if ((evt.key === 'Delete' || evt.key === 'Backspace') && edit.selectedId && app.phase === 'review') {
+      evt.preventDefault();
+      app.clip.removeAnnotation(edit.selectedId);   // the clip announces it; the view follows
+    }
   });
 
   // The clip says what changed; this is where the preview follows.
