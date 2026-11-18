@@ -65,14 +65,19 @@ failing.
 ```ts
 export interface AnnotationRenderer<A extends Annotation> {
   readonly id: string;
-  draw(ctx: CanvasRenderingContext2D, annotation: A, w: number, h: number, selected: boolean): void;
+  /** Paint it, inside `w × h`, in the picture's own proportions. */
+  draw(ctx: CanvasRenderingContext2D, annotation: A, w: number, h: number): void;
 }
 ```
 
 **Guarantees**
 
-- a renderer only draws — how an annotation is picked, moved and aimed is the class's
-  (`handles`, `hitTest`, `movedBy`, `withHandle`);
+- a renderer **only draws**, and draws in the picture's own proportions, because what
+  an annotation looks like is part of the picture and must export the same;
+- how an annotation is picked, moved and aimed is the class's (`handles`, `hitTest`,
+  `movedBy`, `withHandle`), and **the grips a picked annotation is dragged by are the
+  layer's**, drawn once from `handles()` for every kind — so a new kind gets the same
+  grip UI without drawing any. They are sized in screen pixels and never exported;
 - it draws only inside `w × h`, so the same code is right for the preview canvas and
   for the export canvas whatever their sizes (FR-004, SC-003);
 - `drawAnnotations(ctx, w, h, annotations, selectedId)` is the single entry point used
@@ -84,7 +89,7 @@ export interface AnnotationRenderer<A extends Annotation> {
 | Piece | Where | What it is |
 |---|---|---|
 | `Arrow` | `src/domain/annotation/Arrow.ts` | `static id = 'arrow'`; `create()` clamps both ends into `[0, 1]²` and refuses a stray click; `handles()` the two ends; `withHandle()`/`movedBy()` aim and move it; `hitTest()` within a tolerance of the segment; `stored()`/`restore()` write it down and read it back |
-| `arrowRenderer` | `src/ui/annotation-layer.ts` | `draw()` a shaft with a solid head, in the app's accent, with a thin dark outline, and a dot on each end when it is picked |
+| `arrowRenderer` | `src/ui/annotation-layer.ts` | `draw()` a shaft with a solid head, in the app's accent, with a thin dark edge; its size comes from `arrowMetrics(w)`, so it stays under 2% of the picture's width. The grips on its ends when it is picked are the layer's, not its own |
 
 ## Adding the next kind — the checklist the contract promises
 
