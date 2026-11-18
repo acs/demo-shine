@@ -13,7 +13,7 @@
 
 import type { Segment } from './Clip.js';
 import type { Take } from './Take.js';
-import type { AnyAnnotation } from '../annotation/Annotation.js';
+import type { Annotation } from '../annotation/Annotation.js';
 import { TimelineMap } from './TimelineMap.js';
 
 /** One kept stretch of one take, placed in the file the export will write. */
@@ -47,7 +47,7 @@ export class ExportPlan {
     readonly total: number,         // seconds the file will hold
     readonly audio: boolean,
     readonly fadeSeconds: number,
-    readonly annotations: readonly AnyAnnotation[],   // what is drawn over the picture
+    readonly annotations: readonly Annotation[],   // what is drawn over the picture
     private readonly map: TimelineMap,
     private readonly starts: readonly number[],
   ) {}
@@ -65,7 +65,7 @@ export class ExportPlan {
     to: number,
     map: TimelineMap,
     settings: ExportSettings,
-    annotations: readonly AnyAnnotation[] = [],
+    annotations: readonly Annotation[] = [],
   ): ExportPlan {
     const starts: number[] = [];
     let running = 0;
@@ -106,7 +106,7 @@ export class ExportPlan {
    * inside a cut shows nothing, so a cut takes its part of an annotation's stretch
    * with it — the same answer the clip gives, from the same mapping.
    */
-  annotationsAt(source: number): readonly AnyAnnotation[] {
+  annotationsAt(source: number): readonly Annotation[] {
     const length = this.map.length;
     if (!(length > 0) || this.map.contains(source)) return [];
     const fraction = source / length;

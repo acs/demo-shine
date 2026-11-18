@@ -13,19 +13,21 @@
 
 import { app } from '../state.js';
 import { ctx, el } from './dom.js';
-import type { Span } from '../domain/clip/Span.js';
-import { createAnnotation, type AnyAnnotation } from '../domain/annotation/Annotation.js';
-import { arrowKind, type ArrowGeometry } from '../domain/annotation/Arrow.js';
-import { arrowRenderer, drawAnnotations, rendererOf } from './annotation-layer.js';
+import { Span } from '../domain/clip/Span.js';
+import { Arrow } from '../domain/annotation/Arrow.js';
+import type { Annotation } from '../domain/annotation/Annotation.js';
+import { arrowRenderer, drawAnnotations } from './annotation-layer.js';
 import { drawFrame } from './preview.js';
 import { player } from './clip.js';
 import { playback } from './playback.js';
 
 const DRAG_MIN = 3;          // px of travel before a press counts as a drag
 const GRIP_PX = 14;          // how near an end a press has to be to take hold of it
+const PREVIEW_ID = 'preview';
 
 interface Point { x: number; y: number }
-type Grab = 'from' | 'to' | 'move';
+// 'move' is the whole thing; anything else is one of the annotation's own handles.
+type Grab = string;
 
 const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -38,6 +40,7 @@ class ArrowEdit {
   private grab: Grab | null = null;
   private last: Point = { x: 0, y: 0 };
   private fromX = 0;
+  private fromY = 0;
 
   get selectedId(): string | null { return this.pickId; }
   get armed(): boolean { return this.span !== null; }
@@ -100,12 +103,12 @@ class ArrowEdit {
     // Otherwise a press may pick an arrow that is already there.
     const hit = hitAnnotation(p);
     if (!hit) { this.forget(); repaint(); return; }
-    const handles = rendererOf(hit.kind)?.handles(hit.geometry) ?? [];
-    const near = handles.find(h => Math.hypot(h.x - p.x, h.y - p.y) * el.cv.clientWidth <= GRIP_PX);
+    const near = hit.handles().find(h => Math.hypot(h.x - p.x, h.y - p.y) * el.cv.clientWidth <= GRIP_PX);
     this.pickId = hit.id;
     this.grab = near ? near.end : 'move';
     this.last = p;
     this.fromX = e.clientX;
+    this.fromY = e.clientY;
     playback.pause();
     announceSelection();
     repaint();
@@ -118,20 +121,18 @@ class ArrowEdit {
 
     if (this.live) { this.to = p; repaint(); return; }
     if (!this.pickId || !this.grab) return;
-    if (Math.abs(e.clientX - this.fromX) < DRAG_MIN) return;
+    // Any direction counts: an arrow is aimed as often as it is slid sideways.
+    if (Math.hypot(e.clientX - this.fromX, e.clientY - this.fromY) < DRAG_MIN) return;
 
     const annotation = app.clip.annotations.byId(this.pickId);
     if (!annotation) return;
-    const g = annotation.geometry as ArrowGeometry;
     const dx = p.x - this.last.x, dy = p.y - this.last.y;
     this.last = p;
 
-    const next: ArrowGeometry = this.grab === 'from' ? { from: p, to: g.to }
-      : this.grab === 'to' ? { from: g.from, to: p }
-      : { from: { x: g.from.x + dx, y: g.from.y + dy }, to: { x: g.to.x + dx, y: g.to.y + dy } };
-
+    // How it moves and aims is the annotation's own business — this only asks.
+    const next = this.grab === 'move' ? annotation.movedBy(dx, dy) : annotation.withHandle(this.grab, p);
     // The clip announces the change, and the redraw is the listener's — not this.
-    app.clip.changeAnnotation(annotation.id, { ...annotation, geometry: arrowKind.normalize(next) });
+    if (next) app.clip.changeAnnotation(annotation.id, next);
   }
 
   end(): void {
@@ -140,7 +141,7 @@ class ArrowEdit {
       const geometry = { from: this.from, to: this.to };
       this.live = false;
       if (span) {
-        const annotation = createAnnotation('arrow', span, geometry);
+        const annotation = Arrow.create(span, geometry.from, geometry.to);
         if (annotation) {
           app.clip.addAnnotation(annotation);
           this.span = null;                // the selection was spent on it
@@ -158,8 +159,9 @@ class ArrowEdit {
   }
 
   /** The arrow being drawn, for the preview to show before it is committed. */
-  preview(): ArrowGeometry | null {
-    return this.live ? { from: this.from, to: this.to } : null;
+  preview(): Arrow | null {
+    if (!this.live) return null;
+    return Arrow.create(this.span ?? Span.of(0, 1), this.from, this.to, PREVIEW_ID);
   }
 }
 
@@ -220,12 +222,13 @@ function fractionAt(clientX: number, clientY: number): Point {
   };
 }
 
-// The topmost annotation under a point, at the moment the playhead holds.
-function hitAnnotation(p: Point): AnyAnnotation | null {
+// The topmost annotation under a point, at the moment the playhead holds. The hit
+// test is the annotation's own, because how close is close enough is geometry.
+function hitAnnotation(p: Point): Annotation | null {
   const shown = app.clip.annotationsAt(player.time());
   const w = el.cv.width, h = el.cv.height;
   for (let i = shown.length - 1; i >= 0; i--) {
-    if (rendererOf(shown[i].kind)?.hitTest(shown[i].geometry, p.x, p.y, w, h)) return shown[i];
+    if (shown[i].hitTest(p.x, p.y, w, h, Math.max(9, w / 55))) return shown[i];
   }
   return null;
 }

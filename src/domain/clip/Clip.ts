@@ -25,21 +25,13 @@ import { Span } from './Span.js';
 import { SpanSet } from './SpanSet.js';
 import { TimelineMap } from './TimelineMap.js';
 import { AnnotationSet } from '../annotation/AnnotationSet.js';
-import { createAnnotation, type AnyAnnotation } from '../annotation/Annotation.js';
+import { annotationFrom } from '../annotation/kinds.js';
+import type { Annotation, StoredAnnotation } from '../annotation/Annotation.js';
 import type { Take } from './Take.js';
 import type { TakeRepository } from './TakeRepository.js';
 
 /** A stretch of one take that survives the cuts, in seconds of the recording. */
 export type Segment = { takeIndex: number; from: number; to: number };
-
-/** One annotation as it is written down: its span and geometry, plain numbers. */
-export interface StoredAnnotation {
-  id: string;
-  kind: string;
-  s: number;
-  e: number;
-  geometry: unknown;
-}
 
 /**
  * A clip written down: the takes it is made of (the recording bytes and the
@@ -67,9 +59,9 @@ export type ClipEvent =
   | { type: 'take-added'; take: Take; index: number; previousTotal: number }
   | { type: 'cut-approved'; cut: Span; removed: number }
   | { type: 'cut-undone'; cut: Span }
-  | { type: 'annotation-added'; annotation: AnyAnnotation }
-  | { type: 'annotation-changed'; annotation: AnyAnnotation; previous: AnyAnnotation }
-  | { type: 'annotation-removed'; annotation: AnyAnnotation }
+  | { type: 'annotation-added'; annotation: Annotation }
+  | { type: 'annotation-changed'; annotation: Annotation; previous: Annotation }
+  | { type: 'annotation-removed'; annotation: Annotation }
   | { type: 'cleared' };
 
 /**
@@ -78,9 +70,9 @@ export type ClipEvent =
  */
 export type ClipChange =
   | { type: 'cut-approved'; cut: Span; removed: number; before: SpanSet }
-  | { type: 'annotation-added'; annotation: AnyAnnotation }
-  | { type: 'annotation-changed'; annotation: AnyAnnotation; previous: AnyAnnotation }
-  | { type: 'annotation-removed'; annotation: AnyAnnotation };
+  | { type: 'annotation-added'; annotation: Annotation }
+  | { type: 'annotation-changed'; annotation: Annotation; previous: Annotation }
+  | { type: 'annotation-removed'; annotation: Annotation };
 
 export type ClipListener = (event: ClipEvent) => void;
 
@@ -171,14 +163,14 @@ export class Clip {
   // ── Annotations ────────────────────────────────────────────────────────────
 
   /** A new annotation, at the end of the order. */
-  addAnnotation(annotation: AnyAnnotation): void {
+  addAnnotation(annotation: Annotation): void {
     this.notes = this.notes.add(annotation);
     this.lastChange = { type: 'annotation-added', annotation };
     this.announce({ type: 'annotation-added', annotation });
   }
 
   /** Replace one, keeping its id. Says whether it was there to replace. */
-  changeAnnotation(id: string, next: AnyAnnotation): boolean {
+  changeAnnotation(id: string, next: Annotation): boolean {
     const previous = this.notes.byId(id);
     if (!previous) return false;
     this.notes = this.notes.change(id, next);
@@ -188,7 +180,7 @@ export class Clip {
   }
 
   /** Take one out. Returns what was removed, or null when there was none. */
-  removeAnnotation(id: string): AnyAnnotation | null {
+  removeAnnotation(id: string): Annotation | null {
     const annotation = this.notes.byId(id);
     if (!annotation) return null;
     this.notes = this.notes.remove(id);
@@ -203,7 +195,7 @@ export class Clip {
    * that the picture under it is gone — which is how a cut takes its part of an
    * annotation's stretch with it, with no rule of its own.
    */
-  annotationsAt(source: number): readonly AnyAnnotation[] {
+  annotationsAt(source: number): readonly Annotation[] {
     const total = this.total();
     if (!(total > 0)) return [];
     if (this.timeline().contains(source)) return [];
@@ -287,13 +279,7 @@ export class Clip {
     return {
       takes: this.repo.all().map(take => ({ blob: take.blob, duration: take.duration })),
       cuts: this.removed.spans.map(span => ({ s: span.s, e: span.e })),
-      annotations: this.notes.all.map(annotation => ({
-        id: annotation.id,
-        kind: annotation.kind,
-        s: annotation.span.s,
-        e: annotation.span.e,
-        geometry: annotation.geometry,
-      })),
+      annotations: this.notes.all.map(annotation => annotation.stored()),
     };
   }
 
@@ -312,8 +298,8 @@ export class Clip {
     this.removed = SpanSet.of(snapshot.cuts);
     this.notes = AnnotationSet.of(
       (snapshot.annotations ?? [])
-        .map(stored => createAnnotation(stored.kind, Span.of(stored.s, stored.e), stored.geometry, stored.id))
-        .filter((annotation): annotation is AnyAnnotation => annotation !== null),
+        .map(stored => annotationFrom(stored))
+        .filter((annotation): annotation is Annotation => annotation !== null),
     );
     this.lastChange = null;
   }

@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { Span } from '../clip/Span.js';
 import { AnnotationSet } from './AnnotationSet.js';
-import type { AnyAnnotation } from './Annotation.js';
+import { Arrow } from './Arrow.js';
+import type { Annotation } from './Annotation.js';
 
-const note = (id: string, s: number, e: number): AnyAnnotation =>
-  ({ id, kind: 'arrow', span: Span.of(s, e), geometry: {} });
+const note = (id: string, s: number, e: number): Annotation => {
+  const arrow = Arrow.create(Span.of(s, e), { x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }, id);
+  if (!arrow) throw new Error('the test arrow should be usable');
+  return arrow;
+};
 
 describe('AnnotationSet', () => {
   it('refuses a repeated id: an id appears once', () => {
@@ -40,9 +44,12 @@ describe('AnnotationSet', () => {
     expect(set.remove('nope')).toBe(set);
   });
 
-  it('re-bases every span when the clip grows', () => {
+  it('re-bases every span when the clip grows, keeping each one an annotation', () => {
     const grown = AnnotationSet.EMPTY.add(note('a', 0.5, 0.6)).rebase(0.5);
-    expect(grown.byId('a')?.span.s).toBeCloseTo(0.25);
-    expect(grown.byId('a')?.span.e).toBeCloseTo(0.3);
+    const one = grown.byId('a');
+    expect(one?.span.s).toBeCloseTo(0.25);
+    expect(one?.span.e).toBeCloseTo(0.3);
+    expect(one?.kind).toBe('arrow');                  // still the class, not a bare object
+    expect(typeof one?.stored).toBe('function');
   });
 });

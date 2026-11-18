@@ -20,7 +20,8 @@
 // This is deliberately the browser boundary and nothing more: no rules live here,
 // and a failure to write is reported to the caller rather than swallowed.
 
-import type { Clip, ClipSnapshot, StoredAnnotation } from '../domain/clip/Clip.js';
+import type { Clip, ClipSnapshot } from '../domain/clip/Clip.js';
+import type { StoredAnnotation } from '../domain/annotation/Annotation.js';
 
 const DB_NAME = 'democlip';
 const DB_VERSION = 2;          // 2 splits the one-record store into takes + meta
@@ -137,13 +138,7 @@ function metaOf(clip: Clip, audio: boolean): Meta {
     version: FORMAT,
     count: clip.takes.count(),
     cuts: clip.cuts.spans.map(span => ({ s: span.s, e: span.e })),
-    annotations: clip.annotations.all.map(annotation => ({
-      id: annotation.id,
-      kind: annotation.kind,
-      s: annotation.span.s,
-      e: annotation.span.e,
-      geometry: annotation.geometry,
-    })),
+    annotations: clip.annotations.all.map(annotation => annotation.stored()),
     audio,
   };
 }

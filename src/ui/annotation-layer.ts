@@ -5,47 +5,34 @@
 // whichever canvas is handed in — so an arrow lands in the same place in the file
 // as on the screen, whatever the two sizes are.
 //
-// A renderer is registered under the same id as the kind's rules
-// (src/domain/annotation/kinds.ts). That id is the whole of the coupling between
-// what an annotation is allowed to be and how it looks: a new kind adds a renderer
-// here, and nothing that is already drawn changes.
+// A renderer is registered under the same id as the annotation's own kind — the
+// class `Arrow` — and a renderer draws and nothing else: how an annotation is
+// picked, moved and aimed is geometry, and lives on the class
+// (`src/domain/annotation/Arrow.ts`). That is the whole of the coupling between what
+// an annotation is allowed to be and how it looks, and a new kind adds a renderer
+// here without changing what is already drawn.
 
-import type { AnyAnnotation } from '../domain/annotation/Annotation.js';
-import { arrowKind, type ArrowGeometry } from '../domain/annotation/Arrow.js';
+import type { Annotation } from '../domain/annotation/Annotation.js';
+import { Arrow } from '../domain/annotation/Arrow.js';
 
-/** A point a drag can take hold of, in fractions of the picture. */
-export interface Handle {
-  x: number;
-  y: number;
-  end: 'from' | 'to';
+export interface AnnotationRenderer<A extends Annotation> {
+  readonly id: string;
+  /** Paint it; `selected` lets the picked one show what can be dragged. */
+  draw(ctx: CanvasRenderingContext2D, annotation: A, w: number, h: number, selected: boolean): void;
 }
 
-export interface AnnotationRenderer<G> {
+/** A renderer with its annotation erased, which is how the registry holds them. */
+interface AnyRenderer {
   readonly id: string;
-  /** Paint it; `selected` lets the picked one show its handles. */
-  draw(ctx: CanvasRenderingContext2D, g: G, w: number, h: number, selected: boolean): void;
-  /** Is a point (fractions of the picture) on it? Used to pick it. */
-  hitTest(g: G, x: number, y: number, w: number, h: number): boolean;
-  /** The points a drag can take hold of, in fractions. */
-  handles(g: G): readonly Handle[];
-}
-
-/** A renderer with its geometry erased, which is how the registry holds them. */
-export interface AnyRenderer {
-  readonly id: string;
-  draw(ctx: CanvasRenderingContext2D, g: unknown, w: number, h: number, selected: boolean): void;
-  hitTest(g: unknown, x: number, y: number, w: number, h: number): boolean;
-  handles(g: unknown): readonly Handle[];
+  draw(ctx: CanvasRenderingContext2D, annotation: Annotation, w: number, h: number, selected: boolean): void;
 }
 
 const renderers = new Map<string, AnyRenderer>();
 
-export function registerRenderer<G>(renderer: AnnotationRenderer<G>): void {
+export function registerRenderer<A extends Annotation>(renderer: AnnotationRenderer<A>): void {
   renderers.set(renderer.id, {
     id: renderer.id,
-    draw: (ctx, g, w, h, selected) => renderer.draw(ctx, g as G, w, h, selected),
-    hitTest: (g, x, y, w, h) => renderer.hitTest(g as G, x, y, w, h),
-    handles: g => renderer.handles(g as G),
+    draw: (ctx, annotation, w, h, selected) => renderer.draw(ctx, annotation as A, w, h, selected),
   });
 }
 
@@ -58,13 +45,11 @@ export function drawAnnotations(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
-  annotations: readonly AnyAnnotation[],
+  annotations: readonly Annotation[],
   selectedId: string | null = null,
 ): void {
   for (const annotation of annotations) {
-    const renderer = renderers.get(annotation.kind);
-    if (!renderer) continue;    // a kind this version cannot draw: nothing, not a crash
-    renderer.draw(ctx, annotation.geometry, w, h, annotation.id === selectedId);
+    renderers.get(annotation.kind)?.draw(ctx, annotation, w, h, annotation.id === selectedId);
   }
 }
 
@@ -76,8 +61,6 @@ export function drawAnnotations(
 
 const ACCENT = '#e53e3e';
 const OUTLINE = 'rgba(2,3,8,0.72)';
-
-const px = (fraction: number, size: number): number => fraction * size;
 
 function line(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, width: number, colour: string): void {
   ctx.strokeStyle = colour;
@@ -112,20 +95,13 @@ function dot(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): vo
   ctx.stroke();
 }
 
-/** How far a point is from a segment, in the same units as the points. */
-function distanceToSegment(px0: number, py0: number, x0: number, y0: number, x1: number, y1: number): number {
-  const dx = x1 - x0, dy = y1 - y0;
-  const lengthSq = dx * dx + dy * dy;
-  const t = lengthSq > 0 ? Math.max(0, Math.min(1, ((px0 - x0) * dx + (py0 - y0) * dy) / lengthSq)) : 0;
-  return Math.hypot(px0 - (x0 + t * dx), py0 - (y0 + t * dy));
-}
+export const arrowRenderer: AnnotationRenderer<Arrow> = {
+  id: Arrow.id,
 
-export const arrowRenderer: AnnotationRenderer<ArrowGeometry> = {
-  id: arrowKind.id,
-
-  draw(ctx, g, w, h, selected) {
-    const x0 = px(g.from.x, w), y0 = px(g.from.y, h);
-    const x1 = px(g.to.x, w), y1 = px(g.to.y, h);
+  draw(ctx, arrow, w, h, selected) {
+    const { from, to } = arrow.geometry;
+    const x0 = from.x * w, y0 = from.y * h;
+    const x1 = to.x * w, y1 = to.y * h;
     const size = Math.max(7, w * 0.03);
     const weight = Math.max(2, w / 300);
     const angle = Math.atan2(y1 - y0, x1 - x0);
@@ -139,21 +115,10 @@ export const arrowRenderer: AnnotationRenderer<ArrowGeometry> = {
     head(ctx, bx, by, angle, size * 1.25, OUTLINE);
     head(ctx, bx, by, angle, size, ACCENT);
     if (selected) {
-      dot(ctx, x0, y0, Math.max(4, w / 100));
-      dot(ctx, x1, y1, Math.max(4, w / 100));
+      for (const handle of arrow.handles()) dot(ctx, handle.x * w, handle.y * h, Math.max(4, w / 100));
     }
     ctx.restore();
   },
-
-  hitTest(g, x, y, w, h) {
-    const d = distanceToSegment(px(x, w), px(y, h), px(g.from.x, w), px(g.from.y, h), px(g.to.x, w), px(g.to.y, h));
-    return d <= Math.max(9, w / 55);
-  },
-
-  handles: g => [
-    { x: g.from.x, y: g.from.y, end: 'from' },
-    { x: g.to.x, y: g.to.y, end: 'to' },
-  ],
 };
 
 registerRenderer(arrowRenderer);

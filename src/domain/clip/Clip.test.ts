@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { Clip, type ClipEvent } from './Clip.js';
 import { Span } from './Span.js';
 import { Take } from './Take.js';
-import { createAnnotation, type AnyAnnotation } from '../annotation/Annotation.js';
+import { Arrow } from '../annotation/Arrow.js';
+import type { Annotation } from '../annotation/Annotation.js';
 import type { TakeRepository } from './TakeRepository.js';
 
 // The port is what makes this possible: the aggregate is tested with the smallest
@@ -185,11 +186,10 @@ describe('Clip, announcing what changed', () => {
 
 // ── Annotations ────────────────────────────────────────────────────────────────
 
-const arrow = (id: string, s: number, e: number): AnyAnnotation => {
-  const annotation = createAnnotation('arrow', Span.of(s, e),
-    { from: { x: 0.1, y: 0.5 }, to: { x: 0.9, y: 0.5 } }, id);
-  if (!annotation) throw new Error('the test arrow should be usable');
-  return annotation;
+const arrow = (id: string, s: number, e: number): Annotation => {
+  const made = Arrow.create(Span.of(s, e), { x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }, id);
+  if (!made) throw new Error('the test arrow should be usable');
+  return made;
 };
 
 describe('Clip, annotations', () => {

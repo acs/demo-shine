@@ -49,7 +49,7 @@ class LaneDrag {
     if (!(total > 0)) return;
     const start = Math.max(0, Math.min(1 - annotation.span.length, fractionAt(e.clientX) - this.offset));
     // The clip announces the change; the redraw is the listener's, not this.
-    app.clip.changeAnnotation(annotation.id, { ...annotation, span: Span.of(start, start + annotation.span.length) });
+    app.clip.changeAnnotation(annotation.id, annotation.withSpan(Span.of(start, start + annotation.span.length)));
   }
 
   up(): void {

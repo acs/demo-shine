@@ -7,17 +7,17 @@
 // id appears once — and the order kept is the order they are drawn in.
 
 import { Span } from '../clip/Span.js';
-import type { AnyAnnotation } from './Annotation.js';
+import type { Annotation } from './Annotation.js';
 
 export class AnnotationSet {
-  private constructor(readonly all: readonly AnyAnnotation[]) {}
+  private constructor(readonly all: readonly Annotation[]) {}
 
   static readonly EMPTY = new AnnotationSet([]);
 
   /** The set these make, with a repeated id taken once (the first wins). */
-  static of(list: readonly AnyAnnotation[]): AnnotationSet {
+  static of(list: readonly Annotation[]): AnnotationSet {
     const seen = new Set<string>();
-    const out: AnyAnnotation[] = [];
+    const out: Annotation[] = [];
     for (const annotation of list) {
       if (seen.has(annotation.id)) continue;
       seen.add(annotation.id);
@@ -34,18 +34,18 @@ export class AnnotationSet {
     return this.all.length === 0;
   }
 
-  byId(id: string): AnyAnnotation | null {
+  byId(id: string): Annotation | null {
     return this.all.find(annotation => annotation.id === id) ?? null;
   }
 
   /** This set with one more in it. A duplicate id is refused: the set is unchanged. */
-  add(annotation: AnyAnnotation): AnnotationSet {
+  add(annotation: Annotation): AnnotationSet {
     if (this.byId(annotation.id)) return this;
     return new AnnotationSet([...this.all, annotation]);
   }
 
   /** This set with one replaced, keeping its place. An unknown id is refused. */
-  change(id: string, next: AnyAnnotation): AnnotationSet {
+  change(id: string, next: Annotation): AnnotationSet {
     if (!this.byId(id)) return this;
     return new AnnotationSet(this.all.map(annotation => (annotation.id === id ? next : annotation)));
   }
@@ -60,7 +60,7 @@ export class AnnotationSet {
    * The annotations shown at a moment, as a fraction of the clip, in a stable
    * order (by where the stretch starts, then by id) so the draw order never flickers.
    */
-  at(fraction: number): readonly AnyAnnotation[] {
+  at(fraction: number): readonly Annotation[] {
     return this.all
       .filter(annotation => annotation.span.contains(fraction))
       .sort((a, b) => a.span.s - b.span.s || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
@@ -68,9 +68,7 @@ export class AnnotationSet {
 
   /** Every span multiplied — how a set of fractions follows a clip that grew. */
   rebase(factor: number): AnnotationSet {
-    return AnnotationSet.of(this.all.map(annotation => ({
-      ...annotation,
-      span: Span.of(annotation.span.s * factor, annotation.span.e * factor),
-    })));
+    return AnnotationSet.of(this.all.map(annotation =>
+      annotation.withSpan(Span.of(annotation.span.s * factor, annotation.span.e * factor))));
   }
 }
