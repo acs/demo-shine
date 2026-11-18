@@ -14,14 +14,14 @@
     location.replace('https://' + host + location.pathname + location.search + location.hash);
   }
 </script>
-<meta name="description" content="Pure browser screen recorder — 100% offline, no extensions, no server. WebM screen recording with timeline trimming and audio; publishing to a video service is optional.">
+<meta name="description" content="Pure browser screen recorder — 100% offline, no extensions, no server. WebM screen recording with timeline cutting and audio; publishing to a video service is optional.">
 <meta property="og:title" content="DemoShine">
-<meta property="og:description" content="Pure browser screen recorder — 100% offline WebM with trimming and audio. No extensions, no server; publishing to a video service is optional.">
+<meta property="og:description" content="Pure browser screen recorder — 100% offline WebM with cutting and audio. No extensions, no server; publishing to a video service is optional.">
 <meta property="og:url" content="https://acs.github.io/demo-shine/">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="DemoShine">
-<meta name="twitter:description" content="Pure browser screen recorder — 100% offline WebM with trimming and audio. No extensions, no server; publishing to a video service is optional.">
+<meta name="twitter:description" content="Pure browser screen recorder — 100% offline WebM with cutting and audio. No extensions, no server; publishing to a video service is optional.">
 <meta name="theme-color" content="#060710" id="meta-theme">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icon.svg">
@@ -155,11 +155,11 @@
     <div class="tl-header">
       <div class="tl-left">
         <button class="tl-play" id="play-btn" aria-label="Play" title="Play / pause"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>
-        <span class="tl-label" id="tl-label">Timeline · Trim</span>
+        <span class="tl-label" id="tl-label">Timeline · Cut</span>
         <span class="tl-live" id="t-live" aria-hidden="true"><span class="tl-live-dot"></span>REC <span id="t-live-time">00:00</span></span>
-        <span class="tl-trim" id="t-trim">
+        <span class="tl-cut" id="t-cut-wrap">
           <span id="t-cut"></span>
-          <button class="tl-act undo" id="trim-undo" title="Put the trimmed section back" aria-label="Put the trimmed section back">
+          <button class="tl-act undo" id="cut-undo" title="Put the cut back" aria-label="Put the cut back">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-5"/></svg>
           </button>
         </span>
@@ -202,14 +202,14 @@
         <div class="help-num">2</div>
         <div class="help-step-body">
           <div class="help-step-title">Hit record</div>
-          <div class="help-step-desc">Press the crimson button in the middle of the bar to start recording — it starts at once. Press again to stop. <strong>Press it once more after a recording and the new take is added to the end of the clip</strong>, as many times as you like. The share is kept between takes — so they all come from the same tab, window or screen, and there is no second picker. The timeline is there while you record, filling in with the picture and the sound as they are captured, and the recording's duration counts along on it; it becomes the trim timeline when you stop. The red box over the preview shows exactly what will be recorded: it covers the whole screen by default, drag to pick a smaller region, and click to go back to the full screen. Everything exports as WebM, a small sharp video for PRs, docs and chat, or as the MP4 that plays anywhere.</div>
+          <div class="help-step-desc">Press the crimson button in the middle of the bar to start recording — it starts at once. Press again to stop. <strong>Press it once more after a recording and the new take is added to the end of the clip</strong>, as many times as you like. The share is kept between takes — so they all come from the same tab, window or screen, and there is no second picker. The timeline is there while you record, filling in with the picture and the sound as they are captured, and the recording's duration counts along on it; it becomes the timeline you cut on when you stop. The red box over the preview shows exactly what will be recorded: it covers the whole screen by default, drag to pick a smaller region, and click to go back to the full screen. Everything exports as WebM, a small sharp video for PRs, docs and chat, or as the MP4 that plays anywhere.</div>
         </div>
       </div>
       <div class="help-step">
         <div class="help-num">3</div>
         <div class="help-step-body">
           <div class="help-step-title">Stop and cut</div>
-          <div class="help-step-desc">Press ▶ to play the clip back with sound. <strong>Click anywhere on the timeline to play from that moment.</strong> To cut a part out: click where it starts and click where it ends, then press the <strong>scissors</strong> — or just click inside the shaded section — and it leaves the timeline, which closes up over it. The <strong>undo</strong> on the section drops the selection, and the <strong>undo</strong> in the header brings back whatever you just cut. Drag a mark or the shaded section to move it (it resizes if you grab it near an edge), and the clip plays under it as you drag. The estimated file size updates live.</div>
+          <div class="help-step-desc">Press ▶ (or <strong>P</strong>) to play the clip back with sound. <strong>Click anywhere on the timeline to bring the playhead there</strong> — it holds that frame rather than playing, so you can find the exact moment. To cut a part out: click where it starts and click where it ends, then press the <strong>scissors</strong> — or just click inside the shaded section — and it leaves the timeline, which closes up over it. The <strong>undo</strong> on the section drops the selection, and the <strong>undo</strong> in the header brings back whatever you just cut. Drag a mark or the shaded section to move it (it resizes if you grab it near an edge), and the frame under it follows as you drag. <strong>←</strong> / <strong>→</strong> nudge the bar a frame at a time (hold <strong>Shift</strong> for a second), so the cut can land on an exact frame. The estimated file size updates live.</div>
         </div>
       </div>
       <div class="help-step">

@@ -11,7 +11,7 @@ import { initTimeline, updateTimeUI, updateSizeUI } from './ui/timeline-ui.js';
 import { initTimelineMarks } from './ui/marks.js';
 import { toggleRec, toggleScreen, syncSources } from './recorder.js';
 import { doExport, startNewSession } from './exporter.js';
-import { playback } from './ui/playback.js';
+import { playback, initPlaybackKeys } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
 import { initRegion } from './ui/region.js';
 import { initWebcam, toggleWebcam } from './ui/webcam.js';
@@ -56,6 +56,7 @@ function init(): void {
   });
   publishDialog.init();
   el.playBtn.addEventListener('click', () => playback.toggle());
+  initPlaybackKeys();   // P plays and pauses, as the button does
 
   // New is the way back to the share picker — it is how you re-share after
   // forgetting to tick "share audio" — so it is offered while a capture is live
@@ -66,7 +67,7 @@ function init(): void {
   onPhaseChange(showNew);
   showNew(app.phase);
 
-  // Click the timeline to play from that point, mark a section and trim it.
+  // Click the timeline to play from that point, mark a section and cut it.
   initTimelineMarks();
   initTimeline();   // the timeline listens to the clip
 

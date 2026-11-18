@@ -57,7 +57,7 @@ describe('Clip', () => {
     expect(clip.undo()).toBeNull();
   });
 
-  it('remembers what the last trim was worth, for the timeline to say', () => {
+  it('remembers what the last cut was worth, for the timeline to say', () => {
     const clip = clipOf(10);
     clip.approve(Span.of(0.1, 0.2));
     expect(clip.canUndo()).toBe(true);
@@ -79,7 +79,7 @@ describe('Clip', () => {
       .toEqual([[0, 0, 3], [1, 3, 6]]);
   });
 
-  it('and leaves the trimmed stretches out of them, closing the gap', () => {
+  it('and leaves the cut stretches out of them, closing the gap', () => {
     const clip = clipOf(3, 3);
     clip.approve(Span.of(0.7, 0.8));            // 4.2s-4.8s of the 6s clip
     expect(clip.segmentsIn(0, 6).map(s => [s.takeIndex, +s.from.toFixed(2), +s.to.toFixed(2)]))
@@ -106,7 +106,7 @@ describe('Clip, written down and read back', () => {
     expect(snap.cuts.map(c => [c.s, c.e])).toEqual([[0.2, 0.3]]);
   });
 
-  it('restores a clip from a snapshot, as long and as trimmed as it was', () => {
+  it('restores a clip from a snapshot, as long and as cut as it was', () => {
     const clip = Clip.empty(new FakeTakes());
     clip.restore({
       takes: [{ blob: new Blob(['a']), duration: 4 }, { blob: new Blob(['b']), duration: 6 }],
@@ -155,7 +155,7 @@ describe('Clip, announcing what changed', () => {
     clip.onChange(event => seen.push(event));
     clip.approve(Span.of(0.2, 0.3));
     clip.undo();
-    expect(seen.map(e => e.type)).toEqual(['trim-approved', 'trim-undone']);
+    expect(seen.map(e => e.type)).toEqual(['cut-approved', 'cut-undone']);
     expect(seen[0]).toMatchObject({ removed: 1 });
     const undone = seen[1] as { cut: Span };
     expect(undone.cut.equals(Span.of(0.2, 0.3))).toBe(true);
@@ -176,6 +176,6 @@ describe('Clip, announcing what changed', () => {
     clip.approve(Span.of(0.1, 0.2));
     stop();
     clip.approve(Span.of(0.3, 0.4));
-    expect(seen).toEqual(['trim-approved']);
+    expect(seen).toEqual(['cut-approved']);
   });
 });

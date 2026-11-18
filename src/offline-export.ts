@@ -4,7 +4,7 @@
 // and MediaRecorder is the only thing that can encode it as it happens — but the
 // export no longer has to be. Nothing plays here: each take is read with
 // Mediabunny, decoded in order by VideoDecoder, and drawn on a canvas, which is
-// where the trimmed stretches disappear, the sound is faded and the picture
+// where the cut stretches disappear, the sound is faded and the picture
 // dissolves at a join; the canvas goes back to Mediabunny, which encodes it and
 // writes the container, and the sound an OfflineAudioContext rendered off the
 // clock goes the same way. One library reads and writes; the file it writes
