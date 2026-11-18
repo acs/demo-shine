@@ -1,7 +1,7 @@
 // The publish use case: put the clip's export on Bluesky as a video post.
 //
 // It has the shape of the export — read the clip, decide what to write, hand it
-// on — but the "on" is not a download. The kept range is planned as it always is
+// on — but the "on" is not a download. The clip is planned as it always is
 // (`planExport`), the encoder behind `encode` writes it as MP4, and Bluesky's
 // video service is handed the bytes, watched until it has finished, and finally
 // asked for a post that carries the finished video.

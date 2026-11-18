@@ -11,12 +11,11 @@
 // is kept — and the calls are serialized, because a save queued before a clear
 // must not land after it.
 //
-// The takes and the clip's trim are kept in two stores on purpose. A take is
-// megabytes and never changes once recorded; the keep range and the cuts change
-// on every drag and are a few bytes. Written as one record, every drag of a
-// handle re-writes the whole recording — measured at ~15 ms for 24 MB on a
-// desktop, and worse on a phone. Written apart, a take is written once as it
-// arrives and a trim writes nothing but itself.
+// The takes and the clip's cuts are kept in two stores on purpose. A take is
+// megabytes and never changes once recorded; the cuts are a few bytes and change
+// on every trim. Written as one record, every trim re-writes the whole recording —
+// measured at ~15 ms for 24 MB on a desktop, and worse on a phone. Written apart,
+// a take is written once as it arrives and a trim writes nothing but itself.
 //
 // This is deliberately the browser boundary and nothing more: no rules live here,
 // and a failure to write is reported to the caller rather than swallowed.
@@ -42,11 +41,10 @@ interface StoredTake {
   duration: number;
 }
 
-/** The small half: how many takes, the keep range, the cuts, and the sound. */
+/** The small half: how many takes, the cuts, and the sound. */
 interface Meta {
   version: number;
   count: number;
-  trim: { start: number; end: number };
   cuts: Array<{ s: number; e: number }>;
   audio: boolean;
 }
@@ -75,7 +73,7 @@ export function saveTake(clip: Clip, index: number, audio: boolean): Promise<voi
   });
 }
 
-/** The keep range or the cuts moved: only the small half changes. */
+/** The cuts moved: only the small half changes. */
 export function saveMeta(clip: Clip, audio: boolean): Promise<void> {
   return serial(async () => {
     if (clip.takes.isEmpty()) return;
@@ -118,7 +116,7 @@ export function loadClip(): Promise<StoredClip | null> {
     // Every take the small half counts has to be there, or the clip is not one
     // to hand back: a missing take would make every position after it wrong.
     if (takes.length !== meta.count || takes.some(take => !take || !(take.duration > 0))) return null;
-    return { clip: { takes: takes as StoredTake[], trim: meta.trim, cuts: meta.cuts }, audio: !!meta.audio };
+    return { clip: { takes: takes as StoredTake[], cuts: meta.cuts }, audio: !!meta.audio };
   }).catch(() => null);
 }
 
@@ -137,7 +135,6 @@ function metaOf(clip: Clip, audio: boolean): Meta {
   return {
     version: FORMAT,
     count: clip.takes.count(),
-    trim: { start: clip.trim.start, end: clip.trim.end },
     cuts: clip.cuts.spans.map(span => ({ s: span.s, e: span.e })),
     audio,
   };

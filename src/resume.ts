@@ -35,8 +35,8 @@ export function watchClip(): void {
       return;
     }
     // A take is the recording and never changes, so it is written once, at once.
-    // The keep range and the cuts are a few bytes that move on every drag, so
-    // they go on their own and are put off a moment.
+    // The cuts are a few bytes that move on every trim, so they go on their own
+    // and are put off a moment.
     if (event.type === 'take-added') {
       void saveTake(app.clip, event.index, app.recAudio).catch(warn);
       return;
@@ -106,13 +106,13 @@ export async function resumeClip(): Promise<boolean> {
   setPhase('review');
   setStatus('ready', 'Ready to export');
   toast('Your recording was restored', 4000);
-  await openReviewClip(0, app.clip.trim.start * app.clip.total());
+  await openReviewClip(0, 0);
   return true;
 }
 
-// A trim dragged with the handles fires on every input; the write is put off a
-// moment so a drag is one write, not thirty — and what it writes is the few bytes
-// of the keep range, not the recording, which is written once when it arrives.
+// A trim fires on every input; the write is put off a moment so a drag is one
+// write, not thirty — and what it writes is the few bytes of the cuts, not the
+// recording, which is written once when it arrives.
 function scheduleSaveMeta(): void {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {

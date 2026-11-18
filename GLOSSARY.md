@@ -20,7 +20,7 @@ beside it.
 |---|---|---|
 | **session** | one sitting of the app: the clip, and the view state that belongs to showing it. Over at **New**, when the clip is exported, or when the share ends | `Session` (`session.reset()`) |
 | **take** | **one press of Record**: one MediaRecorder WebM with its own length, played in order with the others | `Take` — id, blob, url, duration |
-| **clip** | all the takes, in order, plus the keep range and what was cut out. What everything else asks what to show and what to export | `Clip`, the aggregate |
+| **clip** | all the takes, in order, plus what was cut out. What everything else asks what to show and what to export | `Clip`, the aggregate |
 | **take repository** | where a clip's takes come from, and the only owner of their object URLs | `TakeRepository` (the port), `InMemoryTakeRepository` |
 | **record source** | what a take is made of: the shared **screen**, the **webcam** and the **microphone**. Three independent toggles, **all off at start** — nothing is captured until one is pressed. A take needs a picture: the screen, or the webcam when the screen is off. With the screen off nothing reaches for a share | the source buttons (`#screen-btn`, `#webcam-btn`, `#mic-btn`) |
 | **join** | the seam where one take ends and the next begins — where the sound fades and the picture dissolves | `FADE_S`, `DISSOLVE_S` |
@@ -35,15 +35,15 @@ the way in — and, because the writing is not only for that trip, a reload or a
 version comes back to it too. The session is over, and the kept copy let go, at
 **New** — or when the clip is exported: the file written, or the post published.
 
-A take is megabytes and never changes; the keep range and the cuts are a few
-bytes and move on every drag. They are kept apart, so writing a trim never means
-writing the recording again.
+A take is megabytes and never changes; the cuts are a few bytes and move on every
+trim. They are kept apart, so writing a trim never means writing the recording
+again.
 
 | word | what it is | in the code |
 |---|---|---|
-| **clip snapshot** | everything a clip is made of, written down: its takes (the recording bytes and their lengths), its keep range, its cuts | `ClipSnapshot`, `Clip.snapshot()` |
+| **clip snapshot** | everything a clip is made of, written down: its takes (the recording bytes and their lengths) and its cuts | `ClipSnapshot`, `Clip.snapshot()` |
 | **restore** | rebuilding a clip from a snapshot and opening the review on it. Nothing is announced: it is a load, not a change | `Clip.restore()`, `resumeClip()` |
-| **clip store** | where a snapshot outlives the page: IndexedDB, the only store here that takes a Blob. A take is written once as it arrives; the keep range and the cuts are written on their own. Read at startup, dropped when the session ends | `src/infra/clip-store.ts`, `src/resume.ts` |
+| **clip store** | where a snapshot outlives the page: IndexedDB, the only store here that takes a Blob. A take is written once as it arrives; the cuts are written on their own. Read at startup, dropped when the session ends | `src/infra/clip-store.ts`, `src/resume.ts` |
 
 ## Trimming
 
@@ -52,7 +52,6 @@ writing the recording again.
 | **mark** | a position on the clip placed by a click, as a fraction (0..1). Two marks bound a section. **View state, not the clip's** | `app.marks`, read through `pendingSection()` |
 | **section** | what the two marks bound — what the user is about to cut out. A proposal: nothing has left the clip yet | `pendingSection()`, a `Span` |
 | **cut** | a section that was **approved**: it has left the timeline, and playback and the export skip it | `Clip.cuts`, a `SpanSet` |
-| **keep range** *(also: trim, IN–OUT)* | the range that is kept, dragged with the two handles, as a fraction of the clip | `Clip.trim`, a `Trim` |
 | **span** | a range, half-open: `[s, e)`. The smallest thing a timeline is made of | `Span` |
 | **timeline** | the strip under the preview, drawn in **kept time** — a cut has no width on it | `ui/timeline-ui.ts`, `ui/live-timeline.ts` |
 | **thumbnail** | one cell of the strip: a small picture of a frame, at the take's own shape. A crop's picture is not 16:9, and stretching it into a fixed cell would show a picture the clip does not hold | `thumbBox()`, `drawThumb()` in `ui/thumbnail.ts` |
@@ -68,7 +67,7 @@ time. Passing one where the other was meant is the mistake it exists to prevent.
 |---|---|---|
 | **segment** | a kept stretch of **one take**, in seconds: `{ takeIndex, from, to }`. What an export is made of | `Clip.segmentsIn()` |
 | **export plan** | the kept stretches placed on the output timeline, with the joins marked where they fall — decided before a frame is encoded, so it can be read and tested without a browser | `ExportPlan`, with `ExportPiece` and `ExportStep` |
-| **export** | writing the kept range as a single file — WebM for the download, MP4 (H.264/AAC) for Bluesky — with the joins faded and dissolved | `planExport()` (use case), `exportOffline()` (adapter), driven by `doExport()` (flow) |
+| **export** | writing the kept clip as a single file — WebM for the download, MP4 (H.264/AAC) for Bluesky — with the joins faded and dissolved | `planExport()` (use case), `exportOffline()` (adapter), driven by `doExport()` (flow) |
 | **export target** | which container an export writes — `webm` for the download, `mp4` for Bluesky — the codecs that follow from it, and **the picture** the encoder is given, which is the crop's own except that H.264 refuses an odd edge and is taken down to even | `ExportTarget`, `specFor()`, `evenPicture()` |
 | **fade** | the sound going down over the last 80 ms of a take and back up as the next begins | `FADE_S` |
 | **dissolve** | the picture blending from the last frame of a take into the first frames of the next, over the same 80 ms | `DISSOLVE_S` |
@@ -76,7 +75,7 @@ time. Passing one where the other was meant is the mistake it exists to prevent.
 
 ## Publishing to Bluesky
 
-Publishing takes the export one step further: the kept range is written as **MP4**,
+Publishing takes the export one step further: the kept clip is written as **MP4**,
 handed to Bluesky's video service, and a post is written that carries the finished
 video. Bluesky takes `video/mp4` and nothing else, so this path does not reuse the
 WebM download — it encodes its own MP4. Everything that needs the network or an
@@ -135,6 +134,9 @@ what it holds is the one thing that has to outlive it.
   that records why the take repository exists.
 - **region** for a removed area — a region is the **crop**. A removed area is a
   **cut**.
+- **keep range**, **trim handles**, **IN/OUT** — the range a clip kept, dragged
+  with two sliders. The **cut** does the same job, so it was removed with
+  `Trim.ts` and the two range inputs.
 - **real-time export** — the path that played the clip and recorded the canvas.
   Removed; the export is encoded offline (`git show f73a121`).
 - **a flag kept beside the thing it describes** — `wasCut` beside what the chip

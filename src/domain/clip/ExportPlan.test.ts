@@ -22,7 +22,7 @@ const parts = () => ({
 });
 
 const planOf = (settings = { audio: false, fadeSeconds: 0.08 }): ExportPlan =>
-  ExportPlan.of(parts().segments, takes, { from: 0, to: 10 }, parts().map, settings);
+  ExportPlan.of(parts().segments, takes, 10, parts().map, settings);
 
 describe('ExportPlan', () => {
   it('places the kept stretches end to end, closing the cut', () => {
@@ -32,8 +32,8 @@ describe('ExportPlan', () => {
   });
 
   it('says which stretch of each take to decode, in the take’s own seconds', () => {
-    expect(planOf().steps.map(s => [s.takeIndex, s.local.from, s.local.to]))
-      .toEqual([[0, 0, 5], [1, 0, 5]]);
+    expect(planOf().steps.map(s => [s.takeIndex, s.localTo]))
+      .toEqual([[0, 5], [1, 5]]);
   });
 
   it('marks the join where one take follows another, and nowhere else', () => {
@@ -55,16 +55,16 @@ describe('ExportPlan', () => {
     expect(planOf().startOf(1)).toBeCloseTo(5);
   });
 
-  it('plans a range that begins and ends inside the clip', () => {
+  it('stops each take where the export ends', () => {
     const { map } = parts();
     const plan = ExportPlan.of(
-      [{ takeIndex: 1, from: 5, to: 8 }], takes, { from: 5, to: 8 }, map,
+      [{ takeIndex: 1, from: 5, to: 8 }], takes, 8, map,
       { audio: false, fadeSeconds: 0.08 });
     expect(plan.pieces.map(p => p.at)).toEqual([0]);
     expect(plan.total).toBeCloseTo(3);
     expect(plan.steps[0].joinAt).toBeNull();          // one take only: nothing to join to
-    expect(plan.steps[0].local).toEqual({ from: 0, to: 3 });
-    expect(plan.outputTimeOf(6)).toBeCloseTo(1);       // 5s in is 4s kept, and the file starts there
+    expect(plan.steps[0].localTo).toBeCloseTo(3);     // 5s into the take is 3s of it
+    expect(plan.outputTimeOf(6)).toBeCloseTo(5);      // 6s in is 5s kept, cut included
   });
 
   it('carries what an export needs that is not the clip', () => {

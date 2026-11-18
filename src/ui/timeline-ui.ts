@@ -1,76 +1,49 @@
-// Timeline panel: trim handles, time labels, size estimate and the thumbnail
-// strip.
+// Timeline panel: time labels, size estimate and the thumbnail strip.
 //
-// The timeline shows the clip with its approved trims taken out, so everything
-// here is in timeline time — the handles, the labels and the strip are mapped
-// through the kept-time mapping (clip.ts). The recording's own time is what playback
-// and the export use.
+// The timeline shows the clip with its cuts taken out, so everything here is in
+// timeline time — the labels and the strip are mapped through the kept-time
+// mapping (clip.ts). The recording's own time is what playback and the export use.
 
 import { clock, el } from './dom.js';
 import { app } from '../state.js';
 import { estimateWebmText } from './size-estimate.js';
-import { Trim } from '../domain/clip/Trim.js';
 import { keptLengthNow, keptOf, player, sourceOf } from './clip.js';
-import { playback } from './playback.js';
 import { waveform } from './waveform.js';
 import { drawThumb, thumbBox } from './thumbnail.js';
 
 const COUNT = 22;         // thumbnail frames across the strip
 
 // The timeline is a view of the clip and nothing else, so the clip saying what
-// changed is the whole of the coupling: an approved or undone trim re-cuts the
-// strip, a new take and a dragged handle only move what is drawn from the model.
+// changed is the whole of the coupling: an approved or undone cut re-cuts the
+// strip and the readouts, a new take only moves what is drawn from the model.
 export function initTimeline(): void {
   app.clip.onChange(event => {
     if (event.type === 'trim-approved' || event.type === 'trim-undone') {
       void rebuildTimeline();     // the clip is a different length now
     }
-    updateTrimUI();
+    updateTimeUI();
     updateSizeUI();
     waveform.draw();
   });
 }
 
-export function onTrim(evt: { target: EventTarget | null }): void {
-  const moved: 'start' | 'end' = evt.target === el.rStart ? 'start' : 'end';
-  // The handles work in timeline units (0..1000 of what is left), so the model
-  // keeps its own fractions of the recording.
-  const { start: s, end: en } = Trim.fromSlider(parseInt(el.rStart.value), parseInt(el.rEnd.value)).normalized(moved).slider;
-  app.clip.keepRange(Trim.of(handleFraction(s), handleFraction(en)));
-  updateTrimUI(false);       // the handles are the authority while dragging
-  updateSizeUI();
-  playback.syncToTrim(moved);
-  waveform.draw();
-}
-
-export function updateTrimUI(syncHandles = true): void {
-  const kept = keptLengthNow();
-  const s = keptOf(app.clip.trim.start * app.clip.total());
-  const e = keptOf(app.clip.trim.end * app.clip.total());
-  el.tIn.textContent   = s.toFixed(2) + 's';
-  el.tOut.textContent  = e.toFixed(2) + 's';
-  el.tClip.textContent = Math.max(0, e - s).toFixed(2) + 's';
-  el.rFill.style.left  = pct(kept, s).toFixed(2) + '%';
-  el.rFill.style.width = pct(kept, e - s).toFixed(2) + '%';
-  if (syncHandles) {
-    el.rStart.value = String(Math.round(pct(kept, s) * 10));
-    el.rEnd.value   = String(Math.round(pct(kept, e) * 10));
-  }
+// The clip's own length in the header. The timeline changes length when a cut is
+// approved or taken back, so the readout is drawn again.
+export function updateTimeUI(): void {
+  el.tClip.textContent = keptLengthNow().toFixed(2) + 's';
 }
 
 export function updateSizeUI(): void {
   if (!app.clip.total() || app.phase === 'idle') { el.tSize.textContent = '—'; return; }
   // Cuts are trimmed away, so they shrink the estimate too.
-  const timeline = app.clip.timeline();
-  const clip = timeline.keptLength(app.clip.trim.start * app.clip.total(), app.clip.trim.end * app.clip.total());
-  el.tSize.textContent = estimateWebmText(clip, el.cv.width, el.cv.height);
+  el.tSize.textContent = estimateWebmText(keptLengthNow(), el.cv.width, el.cv.height);
 }
 
 // ── the export's progress ────────────────────────────────────────────────────
 //
 // The export is encoded offline, about ten times faster than the clip, and it
 // says how far it has got as it writes: the playhead travels across the clip and
-// the header counts down how much of it is left to write. `from` and `to` are
+// the header counts down how much of it is left to write. `source` and `to` are
 // times in the recording, and what is counted down is clip time rather than the
 // wait — which is what the number beside "ENCODING" means.
 
@@ -86,10 +59,9 @@ export function beginEncoding(): string {
   return was;
 }
 
-// The range is left as the review drew it: the export is shown the way playback
-// is, by the playhead travelling across the clip, with the time left in the
-// header. `to` is where the export ends; the export runs at the clip's own speed,
-// so what is left of the range is what is left to wait.
+// The clip is shown the way playback is, by the playhead travelling across it,
+// with the time left in the header. `to` is where the export ends; the export runs
+// at the clip's own speed, so what is left of it is what is left to wait.
 export function encodingAt(source: number, to: number): void {
   const kept = Math.max(0.001, keptLengthNow());
   const head = keptOf(source), end = keptOf(to);
@@ -102,14 +74,14 @@ export function endEncoding(was: string): void {
   el.timeline.classList.remove('encoding');
   el.tlLabel.textContent = 'Timeline · Trim';
   el.tCut.textContent = was;
-  updateTrimUI();              // the range and the head come back
+  updateTimeUI();              // the length and the head come back
 }
 
 // Everything that shows how long the clip is: the timeline changes length when a
-// trim is approved or taken back, so it all has to be drawn again. The clip's
+// cut is approved or taken back, so it all has to be drawn again. The clip's
 // length is the timeline's own readout — there is no separate clock.
 export function rebuildTimeline(): void {
-  updateTrimUI();
+  updateTimeUI();
   updateSizeUI();
   waveform.draw();
   void strip.build();
@@ -161,15 +133,3 @@ class Strip {
 }
 
 export const strip = new Strip();
-
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-function pct(kept: number, seconds: number): number {
-  return kept > 0 ? Math.max(0, Math.min(100, (seconds / kept) * 100)) : 0;
-}
-
-// A handle position (0..1000 of the timeline) as a fraction of the recording:
-// the clip's own map is what turns kept time into recording time.
-function handleFraction(units: number): number {
-  return app.clip.timeline().sourceFraction((units / Trim.SLIDER_MAX) * keptLengthNow());
-}
