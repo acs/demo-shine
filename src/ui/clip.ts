@@ -19,8 +19,9 @@
 // playhead over it. The mappings above it hold nothing and stay functions.
 
 import { app } from '../state.js';
-import { el } from './dom.js';
+import { ctx, el } from './dom.js';
 import { drawFrame, seekTo } from './preview.js';
+import { drawAnnotations } from './annotation-layer.js';
 
 // ── the timeline the user sees ───────────────────────────────────────────────
 //
@@ -68,9 +69,13 @@ export class Player {
     return this.loadTake(index).then(() => seekTo(el.rv, local));
   }
 
-  // Bring the video to a time and paint that frame on the preview.
+  // Bring the video to a time and paint that frame on the preview, with whatever
+  // is drawn over it.
   seekAndDraw(time: number): Promise<void> {
-    return this.seek(time).then(() => drawFrame(el.rv));
+    return this.seek(time).then(() => {
+      drawFrame(el.rv);
+      drawAnnotations(ctx, el.cv.width, el.cv.height, app.clip.annotationsAt(time));
+    });
   }
 
   // Load a take from the start (a review opens on one, and the export walks them).

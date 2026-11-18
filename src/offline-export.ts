@@ -35,6 +35,7 @@ import type { ExportPlan } from './domain/clip/ExportPlan.js';
 import { specFor, videoBitrate, type ExportTarget, type TargetSpec, type VideoCodecChoice } from './infra/export-target.js';
 import { ctx as preview, el } from './ui/dom.js';
 import { dissolve } from './ui/dissolve.js';
+import { drawAnnotations } from './ui/annotation-layer.js';
 
 const AUDIO_BITRATE  = 128_000;
 const KEYFRAME_S     = 2;           // seconds between keyframes, so the file seeks
@@ -191,6 +192,9 @@ export async function exportOffline(plan: ExportPlan, options: OfflineOptions = 
             }
             frame.draw(ectx, 0, 0, ec.width, ec.height);
             ectx.globalAlpha = 1;
+            // What is drawn over the picture, at the same moment as the frame —
+            // the same layer the review uses, so the file matches what was seen.
+            drawAnnotations(ectx, ec.width, ec.height, plan.annotationsAt(source));
             // The preview shows what is being written: the export does not play, so
             // nothing else would move.
             preview.drawImage(ec, 0, 0, el.cv.width, el.cv.height);

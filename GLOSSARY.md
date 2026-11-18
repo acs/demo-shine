@@ -49,8 +49,9 @@ again.
 
 | word | what it is | in the code |
 |---|---|---|
-| **mark** | a position on the clip placed by a click, as a fraction (0..1). Two marks bound a section. **View state, not the clip's** | `app.marks`, read through `pendingSection()` |
-| **section** | what the two marks bound — what the user is about to cut out. A proposal: nothing has left the clip yet | `pendingSection()`, a `Span` |
+| **mark** | a position on the clip placed by a click, as a fraction (0..1). Two marks bound a section. **View state, not the clip's** | `selection.marks`, read through `selection.section()` |
+| **section** | what the two marks bound — the stretch the user is pointing at, about to be cut out or annotated. A proposal: nothing has left the clip yet | `selection.section()`, a `Span` |
+| **selection** | the stretch the user is pointing at: the two marks and the section they bound. An action is chosen for it — cut it, or annotate it | `ui/selection.ts` |
 | **cut** | a section that was **approved**: it has left the timeline, and playback and the export skip it | `Clip.cuts`, a `SpanSet` |
 | **span** | a range, half-open: `[s, e)`. The smallest thing a timeline is made of | `Span` |
 | **timeline** | the strip under the preview, drawn in **kept time** — a cut has no width on it | `ui/timeline-ui.ts`, `ui/live-timeline.ts` |
@@ -60,6 +61,27 @@ again.
 
 `TimelineMap` is the only place that converts between recording time and kept
 time. Passing one where the other was meant is the mistake it exists to prevent.
+
+## Annotating
+
+Something drawn over the picture, for a stretch of the clip's time. The first kind
+is the **arrow**; the family is built so the next kind is added by describing it,
+not by reworking the arrow. The stretch is chosen with the **selection** — the same
+one a cut is approved from — so there is one way to point at a stretch of the clip,
+whatever is then done with it.
+
+| word | what it is | in the code |
+|---|---|---|
+| **annotation** | something drawn over the picture of a clip, for a stretch of its time. It has a **kind**, the **span** it is shown over, and a geometry its kind shapes | `Annotation`, `Clip.annotations` |
+| **annotation kind** | what makes one annotation different from another — an arrow today. Its rules (how a geometry is normalised, whether it is worth keeping) live in the domain; how it is drawn and picked lives in the view, under the same id | `AnnotationKind`, `kinds.ts`; `AnnotationRenderer`, `ui/annotation-layer.ts` |
+| **arrow** | the first kind: a line with a head, given by where it starts (`from`) and what it points at (`to`), in fractions of the picture | `arrowKind`, `ArrowGeometry` |
+| **annotation lane** | the row on the timeline showing where the annotations are, in kept time, so one can be found without playing the clip | `ui/annotation-lane.ts` |
+| **annotation layer** | the one place an annotation is drawn, used by playback and by the export alike, so the file matches the review | `ui/annotation-layer.ts` |
+
+An annotation's geometry is held in fractions of the picture, so it lands in the
+same place on the preview, on the export canvas and after a reload. A **cut takes
+its part of an annotation's stretch with it** — the moment is gone from the
+timeline, so nothing is drawn there — and putting the cut back brings it back.
 
 ## Exporting
 

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Clip, type ClipEvent } from './Clip.js';
 import { Span } from './Span.js';
 import { Take } from './Take.js';
+import { createAnnotation, type AnyAnnotation } from '../annotation/Annotation.js';
 import type { TakeRepository } from './TakeRepository.js';
 
 // The port is what makes this possible: the aggregate is tested with the smallest
@@ -51,7 +52,9 @@ describe('Clip', () => {
   it('puts the last one back, once, and says which it was', () => {
     const clip = clipOf(10);
     clip.approve(Span.of(0.2, 0.3));
-    expect(clip.undo()?.equals(Span.of(0.2, 0.3))).toBe(true);
+    const change = clip.undo();
+    expect(change?.type).toBe('cut-approved');
+    expect(change?.type === 'cut-approved' && change.cut.equals(Span.of(0.2, 0.3))).toBe(true);
     expect(clip.keptLength()).toBeCloseTo(10);
     expect(clip.canUndo()).toBe(false);
     expect(clip.undo()).toBeNull();
@@ -177,5 +180,103 @@ describe('Clip, announcing what changed', () => {
     stop();
     clip.approve(Span.of(0.3, 0.4));
     expect(seen).toEqual(['cut-approved']);
+  });
+});
+
+// ── Annotations ────────────────────────────────────────────────────────────────
+
+const arrow = (id: string, s: number, e: number): AnyAnnotation => {
+  const annotation = createAnnotation('arrow', Span.of(s, e),
+    { from: { x: 0.1, y: 0.5 }, to: { x: 0.9, y: 0.5 } }, id);
+  if (!annotation) throw new Error('the test arrow should be usable');
+  return annotation;
+};
+
+describe('Clip, annotations', () => {
+  it('holds what is drawn over the picture, and says which show at a moment', () => {
+    const clip = clipOf(10);
+    clip.addAnnotation(arrow('a', 0.1, 0.3));
+    expect(clip.annotations.count).toBe(1);
+    expect(clip.annotationsAt(2).map(a => a.id)).toEqual(['a']);   // 2s is 0.2 of the clip
+    expect(clip.annotationsAt(5)).toEqual([]);
+  });
+
+  it('takes the last change back, whatever kind it was: an arrow added', () => {
+    const clip = clipOf(10);
+    clip.addAnnotation(arrow('a', 0.1, 0.3));
+    expect(clip.canUndo()).toBe(true);
+    expect(clip.pendingUndo()?.type).toBe('annotation-added');
+    clip.undo();
+    expect(clip.annotations.isEmpty).toBe(true);
+    expect(clip.canUndo()).toBe(false);
+  });
+
+  it('puts a removed arrow back, and a changed one back the way it was', () => {
+    const clip = clipOf(10);
+    clip.addAnnotation(arrow('a', 0.1, 0.3));
+    expect(clip.removeAnnotation('a')?.id).toBe('a');
+    clip.undo();
+    expect(clip.annotations.byId('a')?.span.s).toBeCloseTo(0.1);
+
+    clip.changeAnnotation('a', arrow('a', 0.4, 0.6));
+    expect(clip.annotations.byId('a')?.span.s).toBeCloseTo(0.4);
+    clip.undo();
+    expect(clip.annotations.byId('a')?.span.s).toBeCloseTo(0.1);
+  });
+
+  it('takes an arrow out of the way of a cut, and brings it back when the cut is undone', () => {
+    const clip = clipOf(10);
+    clip.addAnnotation(arrow('a', 0.1, 0.3));          // 1s-3s
+    clip.approve(Span.of(0.15, 0.25));                 // 1.5s-2.5s
+    expect(clip.annotationsAt(2)).toEqual([]);         // inside the cut: nothing drawn
+    expect(clip.annotationsAt(1.2).map(a => a.id)).toEqual(['a']);  // outside it: drawn
+    clip.undo();                                       // the cut goes back
+    expect(clip.annotationsAt(2).map(a => a.id)).toEqual(['a']);
+  });
+
+  it('keeps an arrow over its moment when the clip grows', () => {
+    const clip = clipOf(10);
+    clip.addAnnotation(arrow('a', 0.5, 0.6));          // 5s-6s
+    clip.addTake(new Blob(['x']), 10);                 // now 20s
+    expect(clip.annotations.byId('a')?.span.s).toBeCloseTo(0.25);
+    expect(clip.annotationsAt(5).map(a => a.id)).toEqual(['a']);
+  });
+
+  it('writes the annotations down and reads them back', () => {
+    const clip = clipOf(4);
+    clip.addAnnotation(arrow('a', 0.2, 0.3));
+    const snap = clip.snapshot();
+    expect(snap.annotations?.map(a => a.id)).toEqual(['a']);
+    const back = Clip.empty(new FakeTakes());
+    back.restore(snap);
+    expect(back.annotations.byId('a')?.span.e).toBeCloseTo(0.3);
+    expect(back.snapshot()).toEqual(snap);
+  });
+
+  it('drops an annotation of a kind it does not know, rather than failing', () => {
+    const clip = Clip.empty(new FakeTakes());
+    clip.restore({
+      takes: [{ blob: new Blob(['x']), duration: 4 }],
+      cuts: [],
+      annotations: [{ id: 'z', kind: 'hologram', s: 0.1, e: 0.2, geometry: {} }],
+    });
+    expect(clip.annotations.isEmpty).toBe(true);
+  });
+
+  it('announces an arrow added, changed and removed', () => {
+    const clip = clipOf(10);
+    const seen: ClipEvent[] = [];
+    clip.onChange(event => seen.push(event));
+    clip.addAnnotation(arrow('a', 0.1, 0.3));
+    clip.changeAnnotation('a', arrow('a', 0.2, 0.4));
+    clip.removeAnnotation('a');
+    expect(seen.map(e => e.type)).toEqual(['annotation-added', 'annotation-changed', 'annotation-removed']);
+  });
+
+  it('empties the annotations with the cuts', () => {
+    const clip = clipOf(4);
+    clip.addAnnotation(arrow('a', 0.1, 0.3));
+    clip.clear();
+    expect(clip.annotations.isEmpty).toBe(true);
   });
 });

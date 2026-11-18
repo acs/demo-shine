@@ -13,6 +13,7 @@
 
 import type { Segment } from './Clip.js';
 import type { Take } from './Take.js';
+import type { AnyAnnotation } from '../annotation/Annotation.js';
 import { TimelineMap } from './TimelineMap.js';
 
 /** One kept stretch of one take, placed in the file the export will write. */
@@ -46,6 +47,7 @@ export class ExportPlan {
     readonly total: number,         // seconds the file will hold
     readonly audio: boolean,
     readonly fadeSeconds: number,
+    readonly annotations: readonly AnyAnnotation[],   // what is drawn over the picture
     private readonly map: TimelineMap,
     private readonly starts: readonly number[],
   ) {}
@@ -54,7 +56,8 @@ export class ExportPlan {
    * Place the kept stretches end to end on the output timeline. `segments` is
    * what the clip says survives the cuts; `to` is where the export stops, in
    * seconds of the recording; `map` is the recording and the timeline mapped both
-   * ways, which is where a frame's position comes from.
+   * ways, which is where a frame's position comes from; `annotations` is what the
+   * clip says is drawn over the picture.
    */
   static of(
     segments: readonly Segment[],
@@ -62,6 +65,7 @@ export class ExportPlan {
     to: number,
     map: TimelineMap,
     settings: ExportSettings,
+    annotations: readonly AnyAnnotation[] = [],
   ): ExportPlan {
     const starts: number[] = [];
     let running = 0;
@@ -93,8 +97,20 @@ export class ExportPlan {
 
     return new ExportPlan(
       pieces, steps, takes, to, total, settings.audio, settings.fadeSeconds,
-      map, starts,
+      annotations, map, starts,
     );
+  }
+
+  /**
+   * The annotations shown at a moment of the recording, in draw order. A moment
+   * inside a cut shows nothing, so a cut takes its part of an annotation's stretch
+   * with it — the same answer the clip gives, from the same mapping.
+   */
+  annotationsAt(source: number): readonly AnyAnnotation[] {
+    const length = this.map.length;
+    if (!(length > 0) || this.map.contains(source)) return [];
+    const fraction = source / length;
+    return this.annotations.filter(annotation => annotation.span.contains(fraction));
   }
 
   /** Where a take begins on the recording's own timeline. */
