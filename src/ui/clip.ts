@@ -19,8 +19,9 @@
 // playhead over it. The mappings above it hold nothing and stay functions.
 
 import { app } from '../state.js';
-import { el } from './dom.js';
+import { ctx, el } from './dom.js';
 import { drawFrame, seekTo } from './preview.js';
+import { drawAnnotations } from './annotation-layer.js';
 
 // ── the timeline the user sees ───────────────────────────────────────────────
 //
@@ -43,6 +44,16 @@ export function keptOf(source: number): number {
 // A time on the timeline, as the recording holds it.
 export function sourceOf(kept: number): number {
   return app.clip.timeline().sourceOf(kept);
+}
+
+// Where on the recording a screen x sits, 0..1. The timeline is drawn in timeline
+// time, so this is that mapping back the other way — in one place, because the marks
+// and the annotation lane must not disagree about where a click landed.
+export function fractionAtX(clientX: number): number {
+  const track = el.thumbs.getBoundingClientRect();
+  if (track.width <= 0 || !(app.clip.total() > 0)) return 0;
+  const kept = Math.max(0, Math.min(1, (clientX - track.left) / track.width));
+  return Math.max(0, Math.min(1, sourceOf(kept * keptLengthNow()) / app.clip.total()));
 }
 
 // ── the take in the element ──────────────────────────────────────────────────
@@ -68,9 +79,13 @@ export class Player {
     return this.loadTake(index).then(() => seekTo(el.rv, local));
   }
 
-  // Bring the video to a time and paint that frame on the preview.
+  // Bring the video to a time and paint that frame on the preview, with whatever
+  // is drawn over it.
   seekAndDraw(time: number): Promise<void> {
-    return this.seek(time).then(() => drawFrame(el.rv));
+    return this.seek(time).then(() => {
+      drawFrame(el.rv);
+      drawAnnotations(ctx, el.cv.width, el.cv.height, app.clip.annotationsAt(time));
+    });
   }
 
   // Load a take from the start (a review opens on one, and the export walks them).

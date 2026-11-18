@@ -9,6 +9,8 @@ import { toggleHelp, helpBdClick } from './ui/help.js';
 import { drawGrid } from './ui/preview.js';
 import { initTimeline, updateTimeUI, updateSizeUI } from './ui/timeline-ui.js';
 import { initTimelineMarks } from './ui/marks.js';
+import { initAnnotationEdit } from './ui/annotation-edit.js';
+import { initAnnotationLane } from './ui/annotation-lane.js';
 import { toggleRec, toggleScreen, syncSources } from './recorder.js';
 import { doExport, startNewSession } from './exporter.js';
 import { playback, initPlaybackKeys } from './ui/playback.js';
@@ -70,6 +72,10 @@ function init(): void {
   // Click the timeline to play from that point, mark a section and cut it.
   initTimelineMarks();
   initTimeline();   // the timeline listens to the clip
+
+  // Draw an arrow over the picture: the section arms the gesture, the drag draws it.
+  initAnnotationEdit();
+  initAnnotationLane();   // and the timeline shows where the arrows are
 
   // The clip outlives the page. It is kept written down as it changes — a reload
   // or a new version comes back to it, and the trip a Bluesky sign-in takes is

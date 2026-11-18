@@ -23,5 +23,5 @@ export function planExport(clip: Clip, settings: ExportSettings): ExportPlan | n
   const segments = clip.segmentsIn(0, to);
   if (!segments.length) return null;
 
-  return ExportPlan.of(segments, clip.takes.all(), to, clip.timeline(), settings);
+  return ExportPlan.of(segments, clip.takes.all(), to, clip.timeline(), settings, clip.annotations);
 }

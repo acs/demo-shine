@@ -48,6 +48,7 @@ export const el = {
   waveform:  byId<HTMLCanvasElement>('waveform'),
   thumbs:    byId<HTMLElement>('thumbs'),
   tlMarks:   byId<HTMLElement>('tl-marks'),
+  tlAnnots:  byId<HTMLElement>('tl-annots'),
   tClip:     byId<HTMLElement>('t-clip'),
   toastEl:   byId<HTMLElement>('toast'),
   resBadge:  byId<HTMLElement>('res-badge'),

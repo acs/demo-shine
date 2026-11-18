@@ -11,6 +11,8 @@ import { el, setStatus, toast } from './ui/dom.js';
 import { refreshSourceButtons } from './ui/source-buttons.js';
 import { drawGrid, startMirror, stopMirror, seekWithin } from './ui/preview.js';
 import { strip, updateSizeUI, updateTimeUI } from './ui/timeline-ui.js';
+import { renderMarks } from './ui/marks.js';
+import { renderLane } from './ui/annotation-lane.js';
 import { player } from './ui/clip.js';
 import { playback } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
@@ -448,6 +450,12 @@ export async function openReviewClip(loadIndex: number, park: number): Promise<v
   if (el.rv.videoWidth && el.rv.videoHeight) { el.cv.width = el.rv.videoWidth; el.cv.height = el.rv.videoHeight; }
   updateTimeUI();
   updateSizeUI();
+  // The selection's marks and the annotation lane are drawn here rather than left to
+  // the clip's events: a restore announces nothing — it is a load, not a change — so
+  // the flow that opens the review is what sets every view of the clip up. A view
+  // added later has to be drawn here too.
+  renderMarks();
+  renderLane();
   el.idleOv.classList.add('gone');      // the overlay says "turn a source on"; the clip is picture enough
   void waveform.build(app.clip.takes.all());
   // Building the thumbnails seeks through the clip; once that is done, park the

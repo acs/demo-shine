@@ -138,6 +138,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .tl-act.ok:hover{background:rgba(34,197,94,.14);}
 .tl-act.no{color:var(--crimson);border-color:rgba(229,62,62,.45);}
 .tl-act.no:hover{background:rgba(229,62,62,.14);}
+.tl-act.ann{color:var(--amber);border-color:rgba(245,158,11,.45);}
+.tl-act.ann:hover{background:rgba(245,158,11,.14);}
 .tl-act.undo{color:var(--text-mid);}
 .tl-act.undo:hover{background:var(--glass-b);color:var(--text);}
 .tl-act svg{pointer-events:none;}
@@ -157,6 +159,17 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .tl-sel em{position:absolute;top:18%;left:50%;transform:translate(-50%,-50%);font-family:var(--font-mono);font-style:normal;font-size:8px;letter-spacing:.12em;color:#FFDADA;background:rgba(6,7,16,.75);padding:1px 4px;border-radius:3px;white-space:nowrap;}
 .timeline.dragging{cursor:ew-resize;}
 .timeline.dragging .tl-sel{cursor:grabbing;}
+
+/* The annotation lane: where the arrows are in time. A small mark per arrow, at the
+   start of its stretch, over the strip, in the same kept time the marks use — so a
+   cut closes up over it too, and several arrows over one section do not lie on top of
+   each other (renderLane steps colliding marks aside). */
+.tl-annots{position:absolute;left:0;right:0;bottom:0;height:14px;pointer-events:none;z-index:2;}
+.tl-annot{position:absolute;top:1px;width:12px;height:12px;border-radius:3px;background:rgba(245,158,11,.32);border:1px solid rgba(245,158,11,.8);pointer-events:auto;cursor:grab;display:flex;align-items:center;justify-content:center;color:#FFE7C2;overflow:visible;}
+.tl-annot:hover{background:rgba(245,158,11,.5);}
+.tl-annot.on{background:rgba(245,158,11,.6);border-color:var(--amber);box-shadow:0 0 8px rgba(245,158,11,.55);}
+.timeline.dragging .tl-annot{cursor:grabbing;}
+.timeline.recording .tl-annots,.timeline.encoding .tl-annots{display:none;}
 
 .thumb-strip{display:flex;gap:2px;border-radius:4px;overflow:hidden;height:30px;margin-bottom:7px;cursor:pointer;}
 .thumb-frame{flex:1;background:var(--glass);border-radius:2px;overflow:hidden;}

@@ -13,6 +13,8 @@
 
 import type { Segment } from './Clip.js';
 import type { Take } from './Take.js';
+import { AnnotationSet } from '../annotation/AnnotationSet.js';
+import type { Annotation } from '../annotation/Annotation.js';
 import { TimelineMap } from './TimelineMap.js';
 
 /** One kept stretch of one take, placed in the file the export will write. */
@@ -46,6 +48,7 @@ export class ExportPlan {
     readonly total: number,         // seconds the file will hold
     readonly audio: boolean,
     readonly fadeSeconds: number,
+    readonly annotations: AnnotationSet,   // what is drawn over the picture
     private readonly map: TimelineMap,
     private readonly starts: readonly number[],
   ) {}
@@ -54,7 +57,8 @@ export class ExportPlan {
    * Place the kept stretches end to end on the output timeline. `segments` is
    * what the clip says survives the cuts; `to` is where the export stops, in
    * seconds of the recording; `map` is the recording and the timeline mapped both
-   * ways, which is where a frame's position comes from.
+   * ways, which is where a frame's position comes from; `annotations` is what the
+   * clip says is drawn over the picture.
    */
   static of(
     segments: readonly Segment[],
@@ -62,6 +66,7 @@ export class ExportPlan {
     to: number,
     map: TimelineMap,
     settings: ExportSettings,
+    annotations: AnnotationSet = AnnotationSet.EMPTY,
   ): ExportPlan {
     const starts: number[] = [];
     let running = 0;
@@ -93,8 +98,17 @@ export class ExportPlan {
 
     return new ExportPlan(
       pieces, steps, takes, to, total, settings.audio, settings.fadeSeconds,
-      map, starts,
+      annotations, map, starts,
     );
+  }
+
+  /**
+   * The annotations shown at a moment of the recording, in draw order. This is the
+   * clip's own answer, through the same set and the same mapping the review uses —
+   * so the file cannot disagree with what was seen.
+   */
+  annotationsAt(source: number): readonly Annotation[] {
+    return this.annotations.shownAt(source, this.map);
   }
 
   /** Where a take begins on the recording's own timeline. */

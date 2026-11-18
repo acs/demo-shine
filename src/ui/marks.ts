@@ -23,11 +23,11 @@ import type { ClipEvent } from '../domain/clip/Clip.js';
 import { el } from './dom.js';
 import { Span } from '../domain/clip/Span.js';
 import { updateSizeUI } from './timeline-ui.js';
-import { keptLengthNow, keptOf, player, sourceOf } from './clip.js';
+import { fractionAtX as fractionAt, keptLengthNow, keptOf, player } from './clip.js';
 import { playback } from './playback.js';
 import { typingIn } from '../util.js';
-
-const MIN_SECTION = 0.01;   // a hundredth of the clip: the shortest section worth cutting
+import { MIN_SECTION, selection } from './selection.js';
+import { edit } from './annotation-edit.js';
 
 const DRAG_MIN   = 3;     // px of travel before a press counts as a drag
 const EDGE_GRIP  = 7;     // px near a section's edge that resizes instead of moves
@@ -44,21 +44,27 @@ function followTheClip(event: ClipEvent): void {
       // Fractions of the clip: a new take makes it longer, so the marks move with
       // the moments they were placed over. The first take begins a new clip, which
       // has nothing selected yet.
-      if (event.index === 0) app.marks = [];
+      if (event.index === 0) selection.marks = [];
       else if (event.previousTotal > 0) {
         const k = event.previousTotal / app.clip.total();
-        app.marks = app.marks.map(m => m * k);
+        selection.marks = selection.marks.map(m => m * k);
       }
       break;
     }
     case 'cut-approved':
-      app.marks = [];                              // the selection was spent on it
+      selection.marks = [];                              // the selection was spent on it
       break;
     case 'cut-undone':
-      app.marks = [event.cut.s, event.cut.e];   // the cut, selected again
+      selection.marks = [event.cut.s, event.cut.e];   // the cut, selected again
       break;
     case 'cleared':
-      app.marks = [];
+      selection.marks = [];
+      break;
+    case 'annotation-added':
+      selection.marks = [];                              // the selection was spent on it
+      break;
+    case 'annotation-changed':
+    case 'annotation-removed':
       break;
   }
   renderMarks();
@@ -68,7 +74,7 @@ export function initTimelineMarks(): void {
   app.clip.onChange(followTheClip);
   el.timeline.addEventListener('click', onTimelineClick);
   el.tlMarks.addEventListener('click', onActionClick);     // the scissors and the undo
-  el.cutUndo.addEventListener('click', undoCut);
+  el.cutUndo.addEventListener('click', undoChange);
   el.tlMarks.addEventListener('pointerdown', evt => drag.down(evt));
   window.addEventListener('pointermove', evt => drag.move(evt));
   window.addEventListener('pointerup', evt => drag.up(evt));
@@ -81,7 +87,7 @@ export function initTimelineMarks(): void {
 export function renderMarks(): void {
   const d = app.clip.total();
   const host = el.tlMarks;
-  const section = pendingSection();
+  const section = selection.section();
 
   if (app.phase !== 'review' || !(d > 0)) {
     host.replaceChildren();
@@ -103,29 +109,38 @@ export function renderMarks(): void {
     html += `<span class="tl-acts" style="left:${Math.max(7, Math.min(93, centre)).toFixed(2)}%">`
           + `<button class="tl-act ok" data-act="cut" title="Cut this section out" aria-label="Cut this section out">`
           + `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88"/><path d="M14.47 14.48L20 20"/><path d="M8.12 8.12L12 12"/></svg></button>`
+          + `<button class="tl-act ann" data-act="annotate" title="Annotate this section with an arrow" aria-label="Annotate this section with an arrow">`
+          + `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19L19 5"/><path d="M12 5h7v7"/></svg></button>`
           + `<button class="tl-act no" data-act="keep" title="Undo the selection" aria-label="Undo the selection">`
           + `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-5"/></svg></button>`
           + `</span>`;
   }
-  app.marks.forEach((m, i) => {
+  selection.marks.forEach((m, i) => {
     html += `<div class="tl-mark" data-i="${i}" style="left:${at(m * d)}" title="Mark ${stamp(m * d)} — drag to move"></div>`;
   });
   host.innerHTML = html;
 
-  // the actions: approve or leave the selection, or take the last cut back
+  // the actions: approve or leave the selection, or take the last change back
   if (section) {
     el.tCut.textContent = `CUT ${stamp(section.s * d)}–${stamp(section.e * d)}`;
     el.cutUndo.style.display = 'none';
     el.cutWrap.classList.add('on');
   } else if (app.clip.canUndo()) {
-    el.tCut.textContent = `CUT ${app.clip.lastRemoved().toFixed(2)}s`;
+    el.tCut.textContent = undoLabel();
     el.cutUndo.style.display = '';
     el.cutWrap.classList.add('on');
   } else {
-    el.tCut.textContent = app.marks.length === 1 ? 'mark set — click again to close the section' : '';
+    el.tCut.textContent = selection.marks.length === 1 ? 'mark set — click again to close the section' : '';
     el.cutUndo.style.display = 'none';
-    el.cutWrap.classList.toggle('on', app.marks.length === 1);
+    el.cutWrap.classList.toggle('on', selection.marks.length === 1);
   }
+}
+
+// What the one undo would take back, in the words of the thing it is.
+function undoLabel(): string {
+  const change = app.clip.pendingUndo();
+  if (!change) return '';
+  return change.type === 'cut-approved' ? `CUT ${change.removed.toFixed(2)}s` : 'ARROW';
 }
 
 function pctWidth(section: Span): string {
@@ -139,8 +154,9 @@ function onActionClick(evt: MouseEvent): void {
   const act = (evt.target as HTMLElement | null)?.closest<HTMLElement>('.tl-act');
   if (!act) return;
   evt.stopPropagation();
-  if (act.dataset.act === 'cut') approveCut();
-  else                            dismissSelection();
+  if (act.dataset.act === 'cut')           approveCut();
+  else if (act.dataset.act === 'annotate') annotateSection();
+  else                                     dismissSelection();
 }
 
 // ── Approving, dismissing, undoing ───────────────────────────────────────────
@@ -149,22 +165,33 @@ function onActionClick(evt: MouseEvent): void {
 // playhead lands where the section was.
 function approveCut(): void {
   if (!canEdit()) return;
-  const section = pendingSection();
+  const section = selection.section();
   if (!section) return;
   app.clip.approve(section);                       // it leaves the timeline, and closes up
   afterEdits(section.s * app.clip.total());        // a time in the recording
 }
 
+// The arrow: the section is the stretch, and the gesture is armed for it — the
+// user then draws on the picture, and the arrow belongs to that stretch.
+function annotateSection(): void {
+  if (!canEdit()) return;
+  const section = selection.section();
+  if (!section) return;
+  edit.arm(section);
+  el.tCut.textContent = 'ARROW — drag on the picture';
+}
+
 // The undo: leave the section in and drop the selection.
 function dismissSelection(): void {
-  app.marks = [];
+  selection.marks = [];
   renderMarks();
   updateSizeUI();
 }
 
-// Put the last approved cut back.
-function undoCut(): void {
-  if (!app.clip.undo()) return;                   // the clip puts the section back
+// Put the last change back — a cut, or an arrow — and follow the playhead. The clip
+// says which it was; nothing here has to remember.
+function undoChange(): void {
+  if (!app.clip.undo()) return;
   afterEdits(player.time());
 }
 
@@ -192,13 +219,13 @@ function onTimelineClick(evt: MouseEvent): void {
   const time = f * app.clip.total();
 
   // Inside the selected section: that is the confirmation — cut it out.
-  const section = pendingSection();
+  const section = selection.section();
   if (section && f >= section.s && f <= section.e) { approveCut(); return; }
 
   // Otherwise drop a mark. A click outside the section starts a new pair. The
   // frame at the click is held, not played: the mark has to be placed on the
   // moment the eye is on, and a clip running on from it takes that moment away.
-  app.marks = app.marks.length >= 2 ? [f] : [...app.marks, f].sort((a, b) => a - b);
+  selection.marks = selection.marks.length >= 2 ? [f] : [...selection.marks, f].sort((a, b) => a - b);
   renderMarks();
   playback.hold(time);
 }
@@ -226,11 +253,11 @@ function nudgeMark(seconds: number): void {
   if (!(total > 0)) return;
   const at = player.time();
 
-  if (app.marks.length) {
+  if (selection.marks.length) {
     const nearest = nearestMark(at, total);
-    const moved = Math.min(1, Math.max(0, app.marks[nearest] + seconds / total));
-    app.marks[nearest] = moved;
-    app.marks.sort((a, b) => a - b);
+    const moved = Math.min(1, Math.max(0, selection.marks[nearest] + seconds / total));
+    selection.marks[nearest] = moved;
+    selection.marks.sort((a, b) => a - b);
     renderMarks();
     playback.hold(moved * total);
     return;
@@ -241,8 +268,8 @@ function nudgeMark(seconds: number): void {
 // Which mark sits closest to a moment of the recording, as an index into `marks`.
 function nearestMark(at: number, total: number): number {
   let best = 0;
-  for (let i = 1; i < app.marks.length; i++) {
-    if (Math.abs(app.marks[i] * total - at) < Math.abs(app.marks[best] * total - at)) best = i;
+  for (let i = 1; i < selection.marks.length; i++) {
+    if (Math.abs(selection.marks[i] * total - at) < Math.abs(selection.marks[best] * total - at)) best = i;
   }
   return best;
 }
@@ -290,7 +317,7 @@ class MarkDrag {
     this.press = {
       kind,
       index: Number(bar.dataset.i),
-      offset: kind === 'move' ? fractionAt(evt.clientX) - (pendingSection()?.s ?? 0) : 0,
+      offset: kind === 'move' ? fractionAt(evt.clientX) - (selection.section()?.s ?? 0) : 0,
       fromX: evt.clientX,
       moved: false,
       lastSeek: 0,
@@ -349,18 +376,18 @@ class MarkDrag {
     const p = this.press;
     if (!p) return;
     if (p.kind === 'mark') {
-      app.marks[p.index] = f;
+      selection.marks[p.index] = f;
       return;
     }
     // the section between the marks, moved or resized by an edge
-    const section = pendingSection();
+    const section = selection.section();
     if (!section) return;
     const f0 = section.s, f1 = section.e;        // already fractions of the recording
     const span = Span.of(f0, f1);
     const moved = p.kind === 'move' ? span.movedTo(f - p.offset)
                 : p.kind === 'left' ? span.resized('s', f, MIN_SECTION)
                 : span.resized('e', f, MIN_SECTION);
-    app.marks = [moved.s, moved.e];
+    selection.marks = [moved.s, moved.e];
   }
 }
 
@@ -377,16 +404,9 @@ function track(): DOMRect {
   return el.thumbs.getBoundingClientRect();
 }
 
-// Where on the recording a given screen x sits, 0..1. The timeline is in
-// timeline time, so this is where the mapping comes back the other way.
-function fractionAt(clientX: number): number {
-  const t = track();
-  if (t.width <= 0 || !(app.clip.total() > 0)) return 0;
-  const kept = Math.max(0, Math.min(1, (clientX - t.left) / t.width));
-  return Math.max(0, Math.min(1, sourceOf(kept * keptLengthNow()) / app.clip.total()));
-}
+// Where on the recording a screen x sits lives in clip.ts (fractionAtX), because the
+// annotation lane maps a click the same way and the two must not disagree.
 
-// The span the two pending marks bound, or null while there is not a pair yet.
-function pendingSection(): Span | null {
-  return app.marks.length === 2 ? Span.between(app.marks[0], app.marks[1], MIN_SECTION) : null;
-}
+// The span the two pending marks bound lives with the selection now
+// (src/ui/selection.ts): it is what a Cut or an Annotate action is applied to.
+
