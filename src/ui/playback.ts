@@ -15,8 +15,9 @@
 // owns it; what the session does is end its lifetime, by calling `reset`.
 
 import { app } from '../state.js';
-import { el } from './dom.js';
+import { ctx, el } from './dom.js';
 import { drawClipFrame } from './preview.js';
+import { drawAnnotations } from './annotation-layer.js';
 import { clampToClip, typingIn } from '../util.js';
 import { keptLengthNow, keptOf, player } from './clip.js';
 import { FADE_S, fadeIn, fadeOut, fadeReset } from './fade.js';
@@ -223,6 +224,8 @@ export class Playback {
     }
 
     try { drawClipFrame(el.rv); } catch { /* a frame still decoding — keep the loop alive */ }
+    // What is drawn over the picture, at the moment the playhead holds.
+    drawAnnotations(ctx, el.cv.width, el.cv.height, app.clip.annotationsAt(player.time()));
     this.updatePlayhead();          // video frames on the preview canvas
     app.playRaf = requestAnimationFrame(() => this.loop());   // audio comes from the (unmuted) element
   }

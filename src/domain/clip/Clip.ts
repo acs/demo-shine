@@ -1,17 +1,22 @@
 // The clip: the takes and what was cut away. The aggregate.
 //
-// Everything else in the app asks this object what the clip is. It owns the two
+// Everything else in the app asks this object what the clip is. It owns the three
 // things that have to agree with each other —
 //
 //   * the takes, in order, and so the clip's length (the sum of them, derived, so
 //     it cannot drift from the takes it is made of);
-//   * the cuts — the stretches approved out of it — as a set that cannot overlap.
+//   * the cuts — the stretches approved out of it — as a set that cannot overlap;
+//   * the annotations — what is drawn over the picture — as a set that can.
 //
 // — and it owns the rules that relate them, which used to be spread between the
 // marks module, the exporter and a couple of fields on the app: a cut that is
-// approved leaves the timeline, the last one can be put back, the cuts are
-// fractions of a clip that grows when a new take arrives, and the kept stretches
-// of the clip are what an export is made of.
+// approved leaves the timeline, the cuts and the annotations are fractions of a clip
+// that grows when a new take arrives, and the kept stretches of the clip are what an
+// export is made of.
+//
+// It also owns the one undo the user has. It takes back the last change of any kind
+// — a cut approved, an annotation added, changed or removed — because that is what a
+// person means by "undo", whichever they last did.
 //
 // It takes its takes from a `TakeRepository` (the port), so nothing here touches
 // the browser and the whole thing can be tested with a fake collection.
@@ -19,6 +24,9 @@
 import { Span } from './Span.js';
 import { SpanSet } from './SpanSet.js';
 import { TimelineMap } from './TimelineMap.js';
+import { AnnotationSet } from '../annotation/AnnotationSet.js';
+import { annotationFrom } from '../annotation/kinds.js';
+import type { Annotation, StoredAnnotation } from '../annotation/Annotation.js';
 import type { Take } from './Take.js';
 import type { TakeRepository } from './TakeRepository.js';
 
@@ -27,13 +35,15 @@ export type Segment = { takeIndex: number; from: number; to: number };
 
 /**
  * A clip written down: the takes it is made of (the recording bytes and the
- * length each one has) and its cuts. `snapshot()` gives one and `restore()` takes
- * one back, and it is the shape a store persists — the blobs are the recordings
- * themselves.
+ * length each one has), its cuts and its annotations. `snapshot()` gives one and
+ * `restore()` takes one back, and it is the shape a store persists — the blobs are
+ * the recordings themselves. `annotations` is optional so a clip written down
+ * before annotations existed still reads back.
  */
 export interface ClipSnapshot {
   takes: ReadonlyArray<{ blob: Blob; duration: number }>;
   cuts: ReadonlyArray<{ s: number; e: number }>;
+  annotations?: ReadonlyArray<StoredAnnotation>;
 }
 
 /**
@@ -49,22 +59,36 @@ export type ClipEvent =
   | { type: 'take-added'; take: Take; index: number; previousTotal: number }
   | { type: 'cut-approved'; cut: Span; removed: number }
   | { type: 'cut-undone'; cut: Span }
+  | { type: 'annotation-added'; annotation: Annotation }
+  | { type: 'annotation-changed'; annotation: Annotation; previous: Annotation }
+  | { type: 'annotation-removed'; annotation: Annotation }
   | { type: 'cleared' };
+
+/**
+ * The last change to the clip, and so what the one undo would take back. A cut
+ * carries the set it replaced, so putting it back needs nothing else remembered.
+ */
+export type ClipChange =
+  | { type: 'cut-approved'; cut: Span; removed: number; before: SpanSet }
+  | { type: 'annotation-added'; annotation: Annotation }
+  | { type: 'annotation-changed'; annotation: Annotation; previous: Annotation }
+  | { type: 'annotation-removed'; annotation: Annotation };
 
 export type ClipListener = (event: ClipEvent) => void;
 
 export class Clip {
-  private lastApproved: { before: SpanSet; cut: Span; removed: number } | null = null;
+  private lastChange: ClipChange | null = null;
   private readonly listeners = new Set<ClipListener>();
 
   private constructor(
     private readonly repo: TakeRepository,
     private removed: SpanSet,
+    private notes: AnnotationSet,
   ) {}
 
   /** A clip with nothing in it yet. */
   static empty(takes: TakeRepository): Clip {
-    return new Clip(takes, SpanSet.EMPTY);
+    return new Clip(takes, SpanSet.EMPTY, AnnotationSet.EMPTY);
   }
 
   /** Listen for what happens to the clip. Call the returned function to stop. */
@@ -80,6 +104,11 @@ export class Clip {
   /** What was cut away, as fractions of the clip, in one non-overlapping set. */
   get cuts(): SpanSet {
     return this.removed;
+  }
+
+  /** What is drawn over the picture, as fractions of the clip. May overlap. */
+  get annotations(): AnnotationSet {
+    return this.notes;
   }
 
   /** How long the clip is: the sum of its takes, never a field beside them. */
@@ -98,16 +127,21 @@ export class Clip {
   }
 
   /**
-   * A new recording at the end. The clip is longer, and the cuts are
-   * fractions of it, so they are re-based to stay over the same moments — and the
-   * last one cannot be undone across a join it was never measured against.
+   * A new recording at the end. The clip is longer, and the cuts and the
+   * annotations are fractions of it, so they are re-based to stay over the same
+   * moments — and the last change cannot be undone across a join it was never
+   * measured against.
    */
   addTake(blob: Blob, duration: number): Take {
     const before = this.total();
     const take = this.repo.add(blob, duration);
     const now = this.total();
-    if (before > 0 && now > before) this.removed = this.removed.scaled(before / now);
-    this.lastApproved = null;
+    if (before > 0 && now > before) {
+      const k = before / now;
+      this.removed = this.removed.scaled(k);
+      this.notes = this.notes.rebase(k);
+    }
+    this.lastChange = null;
     this.announce({ type: 'take-added', take, index: this.repo.count() - 1, previousTotal: before });
     return take;
   }
@@ -121,29 +155,94 @@ export class Clip {
     const previous = this.removed;
     this.removed = this.removed.add(cut);
     const removed = before - this.keptLength();
-    this.lastApproved = { before: previous, cut, removed };
+    this.lastChange = { type: 'cut-approved', cut, removed, before: previous };
     this.announce({ type: 'cut-approved', cut, removed });
     return removed;
   }
 
-  /** Is there a cut to put back? */
+  // ── Annotations ────────────────────────────────────────────────────────────
+
+  /** A new annotation, at the end of the order. */
+  addAnnotation(annotation: Annotation): void {
+    this.notes = this.notes.add(annotation);
+    this.lastChange = { type: 'annotation-added', annotation };
+    this.announce({ type: 'annotation-added', annotation });
+  }
+
+  /** Replace one, keeping its id. Says whether it was there to replace. */
+  changeAnnotation(id: string, next: Annotation): boolean {
+    const previous = this.notes.byId(id);
+    if (!previous) return false;
+    this.notes = this.notes.change(id, next);
+    this.lastChange = { type: 'annotation-changed', annotation: next, previous };
+    this.announce({ type: 'annotation-changed', annotation: next, previous });
+    return true;
+  }
+
+  /** Take one out. Returns what was removed, or null when there was none. */
+  removeAnnotation(id: string): Annotation | null {
+    const annotation = this.notes.byId(id);
+    if (!annotation) return null;
+    this.notes = this.notes.remove(id);
+    this.lastChange = { type: 'annotation-removed', annotation };
+    this.announce({ type: 'annotation-removed', annotation });
+    return annotation;
+  }
+
+  /**
+   * The annotations shown at a moment of the recording, in draw order. A moment
+   * inside a cut shows nothing — the annotation is still the clip's, it is only
+   * that the picture under it is gone — which is how a cut takes its part of an
+   * annotation's stretch with it, with no rule of its own.
+   */
+  annotationsAt(source: number): readonly Annotation[] {
+    return this.notes.shownAt(source, this.timeline());
+  }
+
+  // ── Undo ───────────────────────────────────────────────────────────────────
+
+  /** Is there a change to take back? */
   canUndo(): boolean {
-    return this.lastApproved !== null;
+    return this.lastChange !== null;
   }
 
-  /** How many seconds the last approved cut took off the timeline. */
+  /** What the one undo would take back, or null. */
+  pendingUndo(): ClipChange | null {
+    return this.lastChange;
+  }
+
+  /** How many seconds the last approved cut took off the timeline, or 0. */
   lastRemoved(): number {
-    return this.lastApproved?.removed ?? 0;
+    return this.lastChange?.type === 'cut-approved' ? this.lastChange.removed : 0;
   }
 
-  /** Put the last approved cut back, and say which one it was. */
-  undo(): Span | null {
-    const last = this.lastApproved;
+  /**
+   * Put the last change back — a cut, or an annotation added, changed or removed —
+   * and say what it was, so the view can follow. One action, whatever kind it was.
+   */
+  undo(): ClipChange | null {
+    const last = this.lastChange;
     if (!last) return null;
-    this.removed = last.before;
-    this.lastApproved = null;
-    this.announce({ type: 'cut-undone', cut: last.cut });
-    return last.cut;
+    this.lastChange = null;
+    switch (last.type) {
+      case 'cut-approved':
+        this.removed = last.before;
+        this.announce({ type: 'cut-undone', cut: last.cut });
+        break;
+      case 'annotation-added':
+        this.notes = this.notes.remove(last.annotation.id);
+        this.announce({ type: 'annotation-removed', annotation: last.annotation });
+        break;
+      case 'annotation-removed':
+        this.notes = this.notes.add(last.annotation);
+        this.announce({ type: 'annotation-added', annotation: last.annotation });
+        break;
+      case 'annotation-changed':
+        this.notes = this.notes.change(last.annotation.id, last.previous);
+        this.announce({ type: 'annotation-changed', annotation: last.previous, previous: last.annotation });
+        break;
+    }
+    return last;
   }
 
   /**
@@ -171,33 +270,43 @@ export class Clip {
 
   /**
    * Everything this clip is made of, so it can be written down and read back:
-   * its takes and its cuts.
+   * its takes, its cuts and its annotations.
    */
   snapshot(): ClipSnapshot {
     return {
       takes: this.repo.all().map(take => ({ blob: take.blob, duration: take.duration })),
       cuts: this.removed.spans.map(span => ({ s: span.s, e: span.e })),
+      annotations: this.notes.all.map(annotation => annotation.stored()),
     };
   }
 
   /**
-   * Rebuild this clip from a snapshot — the takes and the cuts. Nothing is
-   * announced: a restore is a load rather than a change to a clip already on
-   * screen, and the flow that restores sets the view up itself. The takes already
-   * in the repository are dropped, object URLs and all.
+   * Rebuild this clip from a snapshot — the takes, the cuts and the annotations.
+   * Nothing is announced: a restore is a load rather than a change to a clip
+   * already on screen, and the flow that restores sets the view up itself. The
+   * takes already in the repository are dropped, object URLs and all.
+   *
+   * An annotation of a kind this version does not know is dropped rather than
+   * throwing, so a clip written by a later version still opens.
    */
   restore(snapshot: ClipSnapshot): void {
     this.repo.clear();
     for (const take of snapshot.takes) this.repo.add(take.blob, take.duration);
     this.removed = SpanSet.of(snapshot.cuts);
-    this.lastApproved = null;
+    this.notes = AnnotationSet.of(
+      (snapshot.annotations ?? [])
+        .map(stored => annotationFrom(stored))
+        .filter((annotation): annotation is Annotation => annotation !== null),
+    );
+    this.lastChange = null;
   }
 
   /** The session is over. */
   clear(): void {
     this.repo.clear();
     this.removed = SpanSet.EMPTY;
-    this.lastApproved = null;
+    this.notes = AnnotationSet.EMPTY;
+    this.lastChange = null;
     this.announce({ type: 'cleared' });
   }
 

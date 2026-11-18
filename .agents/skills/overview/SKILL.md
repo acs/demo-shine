@@ -47,7 +47,8 @@ over" — the **New** button, or an exported clip:
 ```
 src/
   domain/       pure rules — no DOM, no browser. Span, SpanSet, TimelineMap, Take,
-                Clip (the aggregate), ExportPlan
+                Clip (the aggregate), ExportPlan, the annotation family (Annotation
+                and its kinds, AnnotationSet)
   infra/        the browser boundary: codecs, download, the takes' object URLs,
                 the export adapter, the clip store
   ui/           the DOM and the interaction — renders the model, owns no rules

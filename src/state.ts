@@ -24,11 +24,9 @@ export interface AppState {
   stream: MediaStream | null;   // from getDisplayMedia
   rec: MediaRecorder | null;    // live recording
   chunks: Blob[];               // blobs of the recording in progress
-  clip: Clip;                   // the takes and what was cut away —
-                                // everything else asks this object what the clip is
-
-  marks: number[];              // 0..1, up to two pending marks bounding the section to cut —
-                                // the half-made selection, which the view owns
+  clip: Clip;                   // the takes, what was cut away and what is drawn
+                                // over the picture — everything else asks this
+                                // object what the clip is
 
   startAt: number | null;       // recording start timestamp
   rafId: number | null;         // mirror render loop id
@@ -63,8 +61,6 @@ export const app: AppState = {
   rec: null,
   chunks: [],
   clip: Clip.empty(new InMemoryTakeRepository()),
-
-  marks: [],
 
   startAt: null,
   rafId: null,
