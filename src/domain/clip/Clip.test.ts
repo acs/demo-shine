@@ -201,6 +201,13 @@ describe('Clip, annotations', () => {
     expect(clip.annotationsAt(5)).toEqual([]);
   });
 
+  it('is not shown at the exact end of its stretch, which is half-open', () => {
+    const clip = clipOf(10);
+    clip.addAnnotation(arrow('a', 0.2, 0.4));          // 2s-4s
+    expect(clip.annotationsAt(2).map(a => a.id)).toEqual(['a']);   // the start is inside
+    expect(clip.annotationsAt(4)).toEqual([]);                    // the end is not
+  });
+
   it('takes the last change back, whatever kind it was: an arrow added', () => {
     const clip = clipOf(10);
     clip.addAnnotation(arrow('a', 0.1, 0.3));
