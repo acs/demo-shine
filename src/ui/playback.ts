@@ -76,6 +76,15 @@ export class Playback {
     void player.seekAndDraw(t);
   }
 
+  // Move the playhead marker to a moment, without moving the picture. Drawing the
+  // frame means seeking the element, which costs; the marker does not. So while a
+  // bar is dragged the marker can follow the pointer on every move and the frame
+  // can be drawn at the throttle's rate.
+  showHead(time: number): void {
+    if (app.phase !== 'review') return;
+    this.updatePlayhead(clampToClip(time, 0, app.clip.total()));
+  }
+
   private beginPlayback(): void {
     app.playing = true;
     this.askedSkip = 0;

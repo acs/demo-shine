@@ -71,7 +71,7 @@ export function initTimelineMarks(): void {
   el.trimUndo.addEventListener('click', undoTrim);
   el.tlMarks.addEventListener('pointerdown', evt => drag.down(evt));
   window.addEventListener('pointermove', evt => drag.move(evt));
-  window.addEventListener('pointerup', () => drag.up());
+  window.addEventListener('pointerup', evt => drag.up(evt));
   window.addEventListener('pointercancel', () => drag.up());
   window.addEventListener('keydown', onNudgeKey);
 }
@@ -310,17 +310,25 @@ class MarkDrag {
     const f = fractionAt(evt.clientX);
     this.dragTo(f);
     renderMarks();
-    // Hold the frame the bar is over, so the exact point can be found by eye.
+    // The marker follows the pointer on every move; the frame follows at the
+    // throttle's rate, because drawing it means a seek and the marker does not.
+    const t = f * app.clip.total();
+    playback.showHead(t);
     const now = Date.now();
-    if (now - press.lastSeek >= SEEK_EVERY) { press.lastSeek = now; playback.hold(f * app.clip.total()); }
+    if (now - press.lastSeek >= SEEK_EVERY) { press.lastSeek = now; playback.hold(t); }
   }
 
   /** The pointer came up. */
-  up(): void {
+  up(evt?: PointerEvent): void {
     const press = this.press;
     if (!press) return;
+    const moved = press.moved;
     this.cancel();
-    this.swallow = press.moved;    // the click that follows a drag must not re-trim
+    this.swallow = moved;    // the click that follows a drag must not re-trim
+    // The frame is drawn at a throttle while the bar moves, so the last draw may
+    // not be where the pointer came to rest. Draw it once more, so the playhead
+    // and the bar finish together.
+    if (moved && evt) playback.hold(fractionAt(evt.clientX) * app.clip.total());
   }
 
   /** Is the click that follows the drag the drag's own, rather than a new mark? */
