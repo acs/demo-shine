@@ -57,6 +57,12 @@ export abstract class Annotation {
   /** The same annotation over a different stretch — how it follows a clip that grew. */
   abstract withSpan(span: Span): Annotation;
 
+  /**
+   * A new annotation like this one, with its own identity — what a paste makes. The
+   * stretch is given, because where a copy goes is not the copy's business.
+   */
+  abstract duplicated(span: Span): Annotation;
+
   /** Is a point (fractions of the picture) on it, within `tolerancePx`? */
   abstract hitTest(x: number, y: number, w: number, h: number, tolerancePx: number): boolean;
 
