@@ -4,6 +4,8 @@
 :root{
   --crimson:#E53E3E;
   --crimson-glow:rgba(229,62,62,0.45);
+  /* The orange of the wordmark's "Clip", taken from public/branding/logo.svg. */
+  --brand-orange:#FF6C23;
   --bg:#060710;
   --surface:rgba(7,8,18,0.92);
   --surface-2:rgba(8,9,20,0.82);
@@ -58,7 +60,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 [data-theme="light"] .logo-mark-light{display:block;}
 [data-theme="light"] .logo-mark-dark{display:none;}
 .logo-name{display:flex;flex-direction:column;gap:1px;}
-.logo-title{font-size:13px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--text);line-height:1;}
+.logo-title{font-size:13px;font-weight:800;letter-spacing:.02em;color:var(--text);line-height:1;}
+.logo-title-accent{color:var(--brand-orange);}
 .logo-sub{font-family:var(--font-mono);font-size:9px;letter-spacing:.2em;color:var(--text-dim);text-transform:uppercase;}
 /* The build's version, beside the logo: the one number that says which deployed
    build this window is running. */
