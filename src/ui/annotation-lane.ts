@@ -2,10 +2,13 @@
 //
 // An arrow is invisible outside its stretch, so the timeline has to show where it
 // is — otherwise a person who forgot where they put one has to scrub the whole clip
-// to find it. A bar per annotation, laid out in timeline (kept) time exactly as the
-// marks are, so a cut closes up over it too. Clicking a bar picks that arrow and
-// brings the playhead to it; dragging a bar moves the stretch it is shown over; the
-// picked one carries a delete.
+// to find it. A mark per annotation, at the start of its stretch, laid out in
+// timeline (kept) time exactly as the marks are, so a cut closes up over it too.
+// Clicking a mark picks that arrow and brings the playhead to it; dragging a mark
+// moves the stretch it is shown over.
+//
+// Removing an arrow is done on the arrow itself — pick it and press Delete — so this
+// lane is only a finder and carries no delete of its own.
 //
 // It is a view of the clip and nothing else: the clip saying what changed is the
 // whole of the coupling, and the picture's selection is followed through
@@ -88,10 +91,8 @@ function onDown(e: PointerEvent): void {
   const bar = (e.target as HTMLElement | null)?.closest<HTMLElement>('.tl-annot');
   if (!bar) return;
   e.stopPropagation();
-  const id = bar.dataset.id ?? '';
-  if ((e.target as HTMLElement | null)?.closest('.tl-annot-del')) { app.clip.removeAnnotation(id); return; }
-  pick(id);
-  drag.down(e, id);
+  pick(bar.dataset.id ?? '');
+  drag.down(e, bar.dataset.id ?? '');
   e.preventDefault();
 }
 
@@ -138,8 +139,7 @@ export function renderLane(): void {
     const on = annotation.id === selected;
     html += `<div class="tl-annot${on ? ' on' : ''}" data-id="${annotation.id}"`
           + ` style="left:${((x / width) * 100).toFixed(3)}%;margin-left:${nudge}px"`
-          + ` title="Arrow at ${s.toFixed(2)}s — click to go to it, drag to move when it shows">${ARROW_ICON}`
-          + (on ? `<button class="tl-annot-del" title="Delete this arrow" aria-label="Delete this arrow">×</button>` : '')
+          + ` title="Arrow at ${s.toFixed(2)}s — click to go to it, drag to move when it shows, Delete to remove it">${ARROW_ICON}`
           + `</div>`;
   }
   host.innerHTML = html;
