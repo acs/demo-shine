@@ -1,4 +1,9 @@
-# 🎬 DemoClip
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/branding/logo-dark.png">
+    <img src="public/branding/logo-transparent.png" alt="DemoClip" width="420">
+  </picture>
+</h1>
 
 **🚀 Live App**: [https://acs.github.io/democlip/](https://acs.github.io/democlip/)
 
@@ -117,7 +122,7 @@ democlip/
 │   ├── manifest.json       # PWA manifest
 │   ├── sw.js               # Service worker — cache-first offline support
 │   ├── oauth-client-metadata.json # the Bluesky OAuth client_id document
-│   └── icon.svg            # App icon
+│   └── branding/           # Logo (with background, transparent, dark), icon-only mark, app icons
 ├── vite.config.ts        # Dev server + build config
 ├── tsconfig.json         # TypeScript config (type-check / editor)
 ├── eslint.config.js      # ESLint (flat config)

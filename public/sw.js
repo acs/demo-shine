@@ -1,7 +1,8 @@
 const CACHE = 'democlip-v1';
 // The app shell. Vite emits hashed JS/CSS filenames, so those are cached at
 // runtime on first load rather than listed here.
-const CORE  = ['./', './index.html', './manifest.json', './icon.svg'];
+const CORE  = ['./', './index.html', './manifest.json',
+               './branding/logo-small.png', './branding/logo-small-dark.png', './branding/icon-192.png'];
 
 self.addEventListener('install', e =>
   e.waitUntil(
