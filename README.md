@@ -8,7 +8,7 @@ Capture. Create. Share.
 
 DemoClip is a lightweight video studio that runs entirely in your browser. Record your screen, webcam or microphone — independently or in any combination — to create software demos, tutorials or personal video updates.
 
-Review your recordings, make quick cuts, and publish directly to Bluesky. Or simply export your video to a file.
+Review your recordings, make quick cuts, point at what matters with an arrow, and publish directly to Bluesky. Or simply export your video to a file.
 
 No installation. No recording server. Just open DemoClip and start creating.
 
@@ -74,13 +74,18 @@ democlip/
 │   ├── globals.d.ts      # Ambient types (prefixed AudioContext, captureStream)
 │   ├── vite-env.d.ts     # Vite client types
 │   ├── domain/clip/      # Pure logic — no DOM, no browser APIs; a test beside every rule
-│   │   ├── Clip.ts         # The aggregate: takes + cuts + the kept segments
+│   │   ├── Clip.ts         # The aggregate: the takes, the cuts, the annotations
 │   │   ├── Take.ts         # One press of Record: id, blob, url, duration
 │   │   ├── TakeRepository.ts # The port the clip takes its takes from
 │   │   ├── Span.ts         # A half-open range: [s, e)
 │   │   ├── SpanSet.ts      # Ranges that cannot overlap — what was cut
 │   │   ├── TimelineMap.ts  # Recording time ↔ kept time, in one place
-│   │   └── ExportPlan.ts   # What the file will hold, decided before a frame is encoded
+│   │   └── ExportPlan.ts   # What the file will hold, and the annotations to draw
+│   ├── domain/annotation/ # What is drawn over the picture: the family, and the arrow
+│   │   ├── Annotation.ts   # The base class: identity, the stretch, and the geometry
+│   │   ├── Arrow.ts        # The first kind: its two ends, its aiming, its hit test
+│   │   ├── AnnotationSet.ts # The clip's annotations: identified, and free to overlap
+│   │   └── kinds.ts        # The register: how a written-down annotation is read back
 │   ├── domain/bluesky/   # Pure logic for publishing: what a Bluesky post may hold
 │   │   ├── AspectRatio.ts  # width:height, whole numbers, reducible to smallest terms
 │   │   ├── PublishableVideo.ts # the MP4 Bluesky takes, up to 300 MB
@@ -104,7 +109,11 @@ democlip/
 │       ├── live-timeline.ts # The strip and the levels while a take records (LiveTimeline)
 │       ├── thumbnail.ts    # The shape of a strip cell: a frame at the picture's own aspect
 │       ├── clip.ts         # The joined clip, played as one timeline (Player)
-│       ├── marks.ts        # Marks and sections: click, drag (MarkDrag), overlay
+│       ├── selection.ts    # The stretch the user is pointing at (Selection)
+│       ├── marks.ts        # The marks, the section, and its actions (MarkDrag)
+│       ├── annotation-layer.ts # Drawing the annotations, and the grips on a picked one
+│       ├── annotation-edit.ts  # Drawing an arrow on the picture, and aiming a picked one
+│       ├── annotation-lane.ts  # The timeline lane: where the arrows are (LaneDrag)
 │       ├── playback.ts     # Playback on the preview, skipping the cuts (Playback)
 │       ├── fade.ts         # Short fades at the joins between takes
 │       ├── dissolve.ts     # Short dissolves at the joins between takes (Dissolve)
@@ -128,6 +137,7 @@ democlip/
 ├── VERSIONING.md         # How the version is bumped, tagged and shown
 ├── FEATURES.md           # Every feature in full — the README keeps the summary
 ├── GLOSSARY.md           # The words this project uses — the ubiquitous language
+├── specs/                # A feature's spec, plan, tasks and contracts — one directory per feature
 ├── THIRD-PARTY-NOTICES.template.txt  # Licences of what we bundle; the build fills in the versions
 ├── .agents/skills/       # How work is done here: verifying a change, the domain model, the workflow, branding
 └── .husky/pre-commit     # Runs lint-staged on commit

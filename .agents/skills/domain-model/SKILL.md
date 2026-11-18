@@ -10,7 +10,8 @@ description: How to work in DemoClip's domain — value objects, the Clip aggreg
 ```
 src/
   domain/      pure rules: no DOM, no browser API, no import from ui/ or infra/
-    clip/      Span, SpanSet, TimelineMap, Trim, Take, TakeRepository (a port), Clip (the aggregate)
+    clip/      Span, SpanSet, TimelineMap, Take, TakeRepository (a port), Clip (the aggregate)
+    annotation/ Annotation (the base class), its kinds (Arrow), AnnotationSet, the register
   infra/       the browser boundary: codecs, download, takes (the object URLs), the export adapter
   ui/          the DOM and the interaction: renders the model, owns no rules
   recorder.ts, exporter.ts   the flows that sequence browser work
