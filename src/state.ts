@@ -50,7 +50,7 @@ export interface AppState {
   captureH: number;
 
   // Export audio passthrough — the review clip's soundtrack is fed into the
-  // export recorder so trimmed WebM exports keep their audio.
+  // export recorder so a cut export keeps its audio.
   recAudio: boolean;            // did the last recording capture an audio track?
   audioCtx: AudioContext | null;
   audioGain: GainNode | null;           // the element's sound, for fades at joins

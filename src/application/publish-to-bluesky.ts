@@ -76,7 +76,7 @@ export async function publishToBluesky(
   // Bluesky's ceiling: ten minutes. Refuse here rather than after encoding, where
   // the video service would say it anyway, having spent the upload.
   if (plan.total > VIDEO_MAX_SECONDS) {
-    throw new Error(`Bluesky takes videos up to ${VIDEO_MAX_SECONDS / 60} minutes — trim this clip to publish it`);
+    throw new Error(`Bluesky takes videos up to ${VIDEO_MAX_SECONDS / 60} minutes — cut this clip to publish it`);
   }
 
   const now = deps.now ?? (() => new Date());

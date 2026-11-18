@@ -35,7 +35,7 @@ export function watchClip(): void {
       return;
     }
     // A take is the recording and never changes, so it is written once, at once.
-    // The cuts are a few bytes that move on every trim, so they go on their own
+    // The cuts are a few bytes that move on every cut, so they go on their own
     // and are put off a moment.
     if (event.type === 'take-added') {
       void saveTake(app.clip, event.index, app.recAudio).catch(warn);
@@ -110,7 +110,7 @@ export async function resumeClip(): Promise<boolean> {
   return true;
 }
 
-// A trim fires on every input; the write is put off a moment so a drag is one
+// A cut fires on every input; the write is put off a moment so a drag is one
 // write, not thirty — and what it writes is the few bytes of the cuts, not the
 // recording, which is written once when it arrives.
 function scheduleSaveMeta(): void {

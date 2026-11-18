@@ -18,7 +18,7 @@ const COUNT = 22;         // thumbnail frames across the strip
 // strip and the readouts, a new take only moves what is drawn from the model.
 export function initTimeline(): void {
   app.clip.onChange(event => {
-    if (event.type === 'trim-approved' || event.type === 'trim-undone') {
+    if (event.type === 'cut-approved' || event.type === 'cut-undone') {
       void rebuildTimeline();     // the clip is a different length now
     }
     updateTimeUI();
@@ -35,7 +35,7 @@ export function updateTimeUI(): void {
 
 export function updateSizeUI(): void {
   if (!app.clip.total() || app.phase === 'idle') { el.tSize.textContent = '—'; return; }
-  // Cuts are trimmed away, so they shrink the estimate too.
+  // Cuts are taken out, so they shrink the estimate too.
   el.tSize.textContent = estimateWebmText(keptLengthNow(), el.cv.width, el.cv.height);
 }
 
@@ -72,7 +72,7 @@ export function encodingAt(source: number, to: number): void {
 
 export function endEncoding(was: string): void {
   el.timeline.classList.remove('encoding');
-  el.tlLabel.textContent = 'Timeline · Trim';
+  el.tlLabel.textContent = 'Timeline · Cut';
   el.tCut.textContent = was;
   updateTimeUI();              // the length and the head come back
 }
