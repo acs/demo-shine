@@ -27,7 +27,7 @@ import { keptLengthNow, keptOf, player, sourceOf } from './clip.js';
 import { playback } from './playback.js';
 import { typingIn } from '../util.js';
 
-const MIN_SECTION = 0.01;   // a hundredth of the clip: the shortest section worth trimming
+const MIN_SECTION = 0.01;   // a hundredth of the clip: the shortest section worth cutting
 
 const DRAG_MIN   = 3;     // px of travel before a press counts as a drag
 const EDGE_GRIP  = 7;     // px near a section's edge that resizes instead of moves
@@ -51,10 +51,10 @@ function followTheClip(event: ClipEvent): void {
       }
       break;
     }
-    case 'trim-approved':
+    case 'cut-approved':
       app.marks = [];                              // the selection was spent on it
       break;
-    case 'trim-undone':
+    case 'cut-undone':
       app.marks = [event.cut.s, event.cut.e];   // the cut, selected again
       break;
     case 'cleared':
@@ -68,7 +68,7 @@ export function initTimelineMarks(): void {
   app.clip.onChange(followTheClip);
   el.timeline.addEventListener('click', onTimelineClick);
   el.tlMarks.addEventListener('click', onActionClick);     // the scissors and the undo
-  el.trimUndo.addEventListener('click', undoTrim);
+  el.cutUndo.addEventListener('click', undoCut);
   el.tlMarks.addEventListener('pointerdown', evt => drag.down(evt));
   window.addEventListener('pointermove', evt => drag.move(evt));
   window.addEventListener('pointerup', evt => drag.up(evt));
@@ -85,7 +85,7 @@ export function renderMarks(): void {
 
   if (app.phase !== 'review' || !(d > 0)) {
     host.replaceChildren();
-    el.tTrim.classList.remove('on');
+    el.cutWrap.classList.remove('on');
     return;
   }
 
@@ -97,11 +97,11 @@ export function renderMarks(): void {
 
   if (section) {
     html += `<div class="tl-sel" style="left:${at(section.s * d)};width:${pctWidth(section)}">`
-          + `<em>TRIM ${stamp(section.s * d)}–${stamp(section.e * d)}</em></div>`;
+          + `<em>CUT ${stamp(section.s * d)}–${stamp(section.e * d)}</em></div>`;
     // the two answers sit on the section itself, clamped so they stay reachable
     const centre = (keptOf(section.s * d) + keptOf(section.e * d)) / 2 / Math.max(0.001, keptLengthNow()) * 100;
     html += `<span class="tl-acts" style="left:${Math.max(7, Math.min(93, centre)).toFixed(2)}%">`
-          + `<button class="tl-act ok" data-act="trim" title="Trim this section out" aria-label="Trim this section out">`
+          + `<button class="tl-act ok" data-act="cut" title="Cut this section out" aria-label="Cut this section out">`
           + `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88"/><path d="M14.47 14.48L20 20"/><path d="M8.12 8.12L12 12"/></svg></button>`
           + `<button class="tl-act no" data-act="keep" title="Undo the selection" aria-label="Undo the selection">`
           + `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-5"/></svg></button>`
@@ -112,19 +112,19 @@ export function renderMarks(): void {
   });
   host.innerHTML = html;
 
-  // the actions: approve or leave the selection, or take the last trim back
+  // the actions: approve or leave the selection, or take the last cut back
   if (section) {
-    el.tCut.textContent = `TRIM ${stamp(section.s * d)}–${stamp(section.e * d)}`;
-    el.trimUndo.style.display = 'none';
-    el.tTrim.classList.add('on');
+    el.tCut.textContent = `CUT ${stamp(section.s * d)}–${stamp(section.e * d)}`;
+    el.cutUndo.style.display = 'none';
+    el.cutWrap.classList.add('on');
   } else if (app.clip.canUndo()) {
-    el.tCut.textContent = `TRIMMED ${app.clip.lastRemoved().toFixed(2)}s`;
-    el.trimUndo.style.display = '';
-    el.tTrim.classList.add('on');
+    el.tCut.textContent = `CUT ${app.clip.lastRemoved().toFixed(2)}s`;
+    el.cutUndo.style.display = '';
+    el.cutWrap.classList.add('on');
   } else {
     el.tCut.textContent = app.marks.length === 1 ? 'mark set — click again to close the section' : '';
-    el.trimUndo.style.display = 'none';
-    el.tTrim.classList.toggle('on', app.marks.length === 1);
+    el.cutUndo.style.display = 'none';
+    el.cutWrap.classList.toggle('on', app.marks.length === 1);
   }
 }
 
@@ -139,7 +139,7 @@ function onActionClick(evt: MouseEvent): void {
   const act = (evt.target as HTMLElement | null)?.closest<HTMLElement>('.tl-act');
   if (!act) return;
   evt.stopPropagation();
-  if (act.dataset.act === 'trim') approveTrim();
+  if (act.dataset.act === 'cut') approveCut();
   else                            dismissSelection();
 }
 
@@ -147,7 +147,7 @@ function onActionClick(evt: MouseEvent): void {
 
 // The scissors: take the section out. The timeline closes up over it, and the
 // playhead lands where the section was.
-function approveTrim(): void {
+function approveCut(): void {
   if (!canEdit()) return;
   const section = pendingSection();
   if (!section) return;
@@ -162,8 +162,8 @@ function dismissSelection(): void {
   updateSizeUI();
 }
 
-// Put the last approved trim back.
-function undoTrim(): void {
+// Put the last approved cut back.
+function undoCut(): void {
   if (!app.clip.undo()) return;                   // the clip puts the section back
   afterEdits(player.time());
 }
@@ -193,7 +193,7 @@ function onTimelineClick(evt: MouseEvent): void {
 
   // Inside the selected section: that is the confirmation — cut it out.
   const section = pendingSection();
-  if (section && f >= section.s && f <= section.e) { approveTrim(); return; }
+  if (section && f >= section.s && f <= section.e) { approveCut(); return; }
 
   // Otherwise drop a mark. A click outside the section starts a new pair. The
   // frame at the click is held, not played: the mark has to be placed on the
@@ -264,7 +264,7 @@ interface Press {
 // that follows it belongs to the drag rather than being a new mark. It is the
 // interaction's own state and nothing else can see it, so it lives on an object
 // with a lifetime — and the session ends that lifetime, because a drag must not
-// outlive the clip it was trimming.
+// outlive the clip it was cutting.
 class MarkDrag {
   private press: Press | null = null;
   private swallow = false;
@@ -324,7 +324,7 @@ class MarkDrag {
     if (!press) return;
     const moved = press.moved;
     this.cancel();
-    this.swallow = moved;    // the click that follows a drag must not re-trim
+    this.swallow = moved;    // the click that follows a drag must not re-cut
     // The frame is drawn at a throttle while the bar moves, so the last draw may
     // not be where the pointer came to rest. Draw it once more, so the playhead
     // and the bar finish together.

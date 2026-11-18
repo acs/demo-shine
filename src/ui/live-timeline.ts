@@ -75,7 +75,7 @@ export class LiveTimeline {
     this.analyser = null;
     this.buf = new Uint8Array(0);
     el.timeline.classList.remove('recording');
-    el.tlLabel.textContent = 'Timeline · Trim';
+    el.tlLabel.textContent = 'Timeline · Cut';
     el.tLive.classList.remove('on');
     el.waveform.style.display = 'none';
   }
@@ -177,7 +177,7 @@ export class LiveTimeline {
       const bw = Math.max(0.7, (w / span) * step);
       for (let i = 0; i < this.echo.length; i++) {
         const at = (i + 0.5) * step;
-        if (gone.contains(at)) continue;                   // trimmed away: not in the clip
+        if (gone.contains(at)) continue;                   // cut away: not in the clip
         bar(this.echo[i], keptOf(at), bw);
       }
     }

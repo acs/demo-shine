@@ -6,7 +6,7 @@ Capture. Create. Share.
 
 DemoShine is a lightweight video studio that runs entirely in your browser. Record your screen, webcam or microphone — independently or in any combination — to create software demos, tutorials or personal video updates.
 
-Review your recordings, make quick trims, and publish directly to Bluesky. Or simply export your video to a file.
+Review your recordings, make quick cuts, and publish directly to Bluesky. Or simply export your video to a file.
 
 No installation. No recording server. Just open DemoShine and start creating.
 
@@ -19,7 +19,7 @@ No installation. No recording server. Just open DemoShine and start creating.
 [![PWA](https://img.shields.io/badge/PWA-offline-5A0FC8)](https://web.dev/progressive-web-apps/)
 [![Bluesky](https://img.shields.io/badge/Bluesky-AT_Protocol-0285FF)](https://atproto.com/)
 
-A minute and a half of DemoShine recording, trimming and exporting a clip — recorded with DemoShine itself:
+A minute and a half of DemoShine recording, cutting and exporting a clip — recorded with DemoShine itself:
 
 https://github.com/user-attachments/assets/81f83dc4-a036-4e10-a398-b36ceca93122
 
@@ -32,7 +32,7 @@ The headline capabilities; the **[full list is in FEATURES.md](FEATURES.md)**.
 - **Screen, webcam and mic** — record a screen, window or tab with its audio, the camera, the microphone, or any combination of them
 - **Nothing captured until you ask** — every source starts off, so the app never opens a screen picker on its own
 - **Region crop** — drag a box over the preview to record just part of the screen, and click to reset
-- **Timeline trimmer** — click twice to select a section, cut it out with the scissors, and undo it
+- **Timeline cutting** — click twice to select a section, cut it out with the scissors, and undo it
 - **Add more takes** — Record again appends to the end of the clip, with a fade and a dissolve across the join
 - **Export to a file, encoded offline** — WebM for size or MP4 for compatibility, written in the browser by WebCodecs about 10× faster than the clip, with a duration and cue points any player can scrub
 - **Nothing leaves your machine** — recording, playback and export are entirely local; publishing to Bluesky is optional, and only happens when you ask
@@ -210,7 +210,7 @@ commits, pull requests).
 Screen capture needs `getDisplayMedia`. **No mobile browser had it until Safari 27
 on iOS** — Chrome and Firefox on Android still cannot share a screen. A phone or
 tablet records the **webcam and the microphone** instead, with the same timeline,
-trimming and export; the Screen button is out there, and the header says why.
+cutting and export; the Screen button is out there, and the header says why.
 
 The export needs WebCodecs (`VideoEncoder` and `AudioEncoder`): Chrome and Edge
 94+, Firefox 130+ and Safari 26+. **Firefox 113–129 can record but not export** —
