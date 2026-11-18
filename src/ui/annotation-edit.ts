@@ -55,6 +55,12 @@ class ArrowEdit {
     this.span = span;
     this.pickId = null;
     el.cv.style.cursor = 'crosshair';
+    // The frame under the gesture has to be one of the stretch's own. A playhead
+    // sitting exactly on the section's end is outside its half-open span — the
+    // second mark leaves it there — and the arrow would vanish the moment it was
+    // made, because `annotationsAt` would have nothing to answer with.
+    const total = app.clip.total();
+    if (total > 0 && !span.contains(player.time() / total)) playback.hold(span.s * total);
     announceSelection();
     repaint();
   }
@@ -135,9 +141,15 @@ class ArrowEdit {
       this.live = false;
       if (span) {
         const annotation = createAnnotation('arrow', span, geometry);
-        if (annotation) app.clip.addAnnotation(annotation);
-        this.span = null;                  // the selection was spent on it
-        el.cv.style.cursor = '';
+        if (annotation) {
+          app.clip.addAnnotation(annotation);
+          this.span = null;                // the selection was spent on it
+          el.cv.style.cursor = '';
+        } else {
+          // A stray click is not an arrow. Stay armed, so the next try is a drag
+          // away rather than a selection to be made again.
+          el.tCut.textContent = 'ARROW — drag across the picture';
+        }
       }
       repaint();
       return;
@@ -170,6 +182,15 @@ export function initAnnotationEdit(): void {
   window.addEventListener('pointermove', e => edit.move(e));
   window.addEventListener('pointerup', () => edit.end());
   window.addEventListener('pointercancel', () => edit.end());
+
+  // Escape lets go of an armed arrow, or of the one in hand.
+  window.addEventListener('keydown', evt => {
+    if (evt.key !== 'Escape') return;
+    if (!edit.armed && !edit.selectedId) return;
+    if (edit.armed) edit.cancel();
+    else            edit.forget();
+    repaint();
+  });
 
   // The clip says what changed; this is where the preview follows.
   app.clip.onChange(event => {
