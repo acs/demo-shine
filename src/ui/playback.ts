@@ -17,7 +17,7 @@
 import { app } from '../state.js';
 import { el } from './dom.js';
 import { drawClipFrame } from './preview.js';
-import { clampToClip } from '../util.js';
+import { clampToClip, typingIn } from '../util.js';
 import { keptLengthNow, keptOf, player } from './clip.js';
 import { FADE_S, fadeIn, fadeOut, fadeReset } from './fade.js';
 import { dissolve } from './dissolve.js';
@@ -230,3 +230,16 @@ export class Playback {
 }
 
 export const playback = new Playback();
+
+// The transport from the keyboard: `P` plays and pauses, as the ▶ button does. It
+// is offered only where the transport means something — a clip in review, and not
+// while a field has the keys.
+export function initPlaybackKeys(): void {
+  window.addEventListener('keydown', evt => {
+    if (evt.key.toLowerCase() !== 'p') return;
+    if (evt.altKey || evt.ctrlKey || evt.metaKey) return;     // leave the browser's own
+    if (typingIn(evt.target) || app.phase !== 'review') return;
+    evt.preventDefault();
+    playback.toggle();
+  });
+}
