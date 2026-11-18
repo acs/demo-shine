@@ -80,9 +80,9 @@ export function initAnnotationLane(): void {
 
   // The clip says what changed; the lane follows. And the picture's selection is
   // followed too, so the bar and the arrow are never picked apart.
-  app.clip.onChange(event => {
-    if (event.type !== 'take-added') renderLane();
-  });
+  // The clip says what changed; the lane follows — on every event, `take-added`
+  // included: a longer clip moves every mark, because a mark is a fraction of it.
+  app.clip.onChange(() => renderLane());
   onSelectionChange(renderLane);
   renderLane();
 }
