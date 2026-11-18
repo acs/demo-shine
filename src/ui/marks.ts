@@ -31,6 +31,7 @@ const MIN_SECTION = 0.01;   // a hundredth of the clip: the shortest section wor
 const DRAG_MIN   = 3;     // px of travel before a press counts as a drag
 const EDGE_GRIP  = 7;     // px near a section's edge that resizes instead of moves
 const SEEK_EVERY = 70;    // ms between seeks while dragging
+const FRAME_S    = 1 / 30;   // the app records at 30 fps: one step is one frame
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -71,6 +72,7 @@ export function initTimelineMarks(): void {
   window.addEventListener('pointermove', evt => drag.move(evt));
   window.addEventListener('pointerup', () => drag.up());
   window.addEventListener('pointercancel', () => drag.up());
+  window.addEventListener('keydown', onNudgeKey);
 }
 
 // Paint the marks and the selected section over the timeline, and the actions
@@ -198,6 +200,51 @@ function onTimelineClick(evt: MouseEvent): void {
   app.marks = app.marks.length >= 2 ? [f] : [...app.marks, f].sort((a, b) => a - b);
   renderMarks();
   playback.hold(time);
+}
+
+// ── Stepping a frame ─────────────────────────────────────────────────────────
+//
+// A drag cannot land on an exact frame, and the eye cannot hear a word boundary.
+// The arrow keys step the bar nearest the playhead — the one being worked on,
+// since a drag holds the frame at it — a frame at a time, and the frame follows;
+// Shift steps a whole second. With nothing placed, the playhead itself steps.
+
+function onNudgeKey(evt: KeyboardEvent): void {
+  if (evt.key !== 'ArrowLeft' && evt.key !== 'ArrowRight') return;
+  if (evt.altKey || evt.ctrlKey || evt.metaKey) return;      // leave the browser's own
+  const target = evt.target as HTMLElement | null;
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+  if (app.phase !== 'review') return;
+  evt.preventDefault();
+  const step = evt.shiftKey ? 1 : FRAME_S;
+  nudgeMark(evt.key === 'ArrowLeft' ? -step : step);
+}
+
+function nudgeMark(seconds: number): void {
+  if (!canEdit()) return;
+  const total = app.clip.total();
+  if (!(total > 0)) return;
+  const at = player.time();
+
+  if (app.marks.length) {
+    const nearest = nearestMark(at, total);
+    const moved = Math.min(1, Math.max(0, app.marks[nearest] + seconds / total));
+    app.marks[nearest] = moved;
+    app.marks.sort((a, b) => a - b);
+    renderMarks();
+    playback.hold(moved * total);
+    return;
+  }
+  playback.hold(at + seconds);
+}
+
+// Which mark sits closest to a moment of the recording, as an index into `marks`.
+function nearestMark(at: number, total: number): number {
+  let best = 0;
+  for (let i = 1; i < app.marks.length; i++) {
+    if (Math.abs(app.marks[i] * total - at) < Math.abs(app.marks[best] * total - at)) best = i;
+  }
+  return best;
 }
 
 // ── Dragging a bar ───────────────────────────────────────────────────────────
