@@ -13,3 +13,6 @@ words, and the words we do not use.
   request, and CI owns the version, so never bump `package.json` by hand — and the
   **Verification** skill: a rule in `src/domain/` is proved by a unit test, and
   anything drawn, played or encoded needs a browser harness.
+- **The logo and the name:** the **Branding** skill — the mark is an image and the
+  name is live text, so the app sets its font; the colours come from `logo.svg`,
+  and the files that carry the text banner are only for places with no CSS.
