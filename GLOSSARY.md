@@ -51,11 +51,11 @@ again.
 |---|---|---|
 | **mark** | a position on the clip placed by a click, as a fraction (0..1). Two marks bound a section. **View state, not the clip's** | `selection.marks`, read through `selection.section()` |
 | **section** | what the two marks bound — the stretch the user is pointing at, about to be cut out or annotated. A proposal: nothing has left the clip yet | `selection.section()`, a `Span` |
-| **selection** | the stretch the user is pointing at: the two marks and the section they bound. An action is chosen for it — cut it, or annotate it | `ui/selection.ts` |
+| **selection** | the stretch the user is pointing at: the two marks and the section they bound. An action is chosen for it — cut it, or annotate it | `ui/cutting/selection.ts` |
 | **cut** | a section that was **approved**: it has left the timeline, and playback and the export skip it | `Clip.cuts`, a `SpanSet` |
 | **span** | a range, half-open: `[s, e)`. The smallest thing a timeline is made of | `Span` |
-| **timeline** | the strip under the preview, drawn in **kept time** — a cut has no width on it | `ui/timeline-ui.ts`, `ui/live-timeline.ts` |
-| **thumbnail** | one cell of the strip: a small picture of a frame, at the take's own shape. A crop's picture is not 16:9, and stretching it into a fixed cell would show a picture the clip does not hold | `thumbBox()`, `drawThumb()` in `ui/thumbnail.ts` |
+| **timeline** | the strip under the preview, drawn in **kept time** — a cut has no width on it | `ui/clip/timeline-ui.ts`, `ui/recording/live-timeline.ts` |
+| **thumbnail** | one cell of the strip: a small picture of a frame, at the take's own shape. A crop's picture is not 16:9, and stretching it into a fixed cell would show a picture the clip does not hold | `thumbBox()`, `drawThumb()` in `ui/clip/thumbnail.ts` |
 | **recording time** | where a moment is *in the recording* | `TimelineMap.sourceOf()` |
 | **kept time** | where that moment *appears on the timeline* | `TimelineMap.keptOf()` |
 
@@ -73,10 +73,10 @@ whatever is then done with it.
 | word | what it is | in the code |
 |---|---|---|
 | **annotation** | something drawn over the picture of a clip, for a stretch of its time. It has a **kind**, the **span** it is shown over, and a geometry its kind shapes | `Annotation`, `Clip.annotations` |
-| **annotation kind** | what makes one annotation different from another — an arrow today. Its rules (how a geometry is normalised, whether it is worth keeping) live in the domain; how it is drawn and picked lives in the view, under the same id | `AnnotationKind`, `kinds.ts`; `AnnotationRenderer`, `ui/annotation-layer.ts` |
+| **annotation kind** | what makes one annotation different from another — an arrow today. Its rules (how a geometry is normalised, whether it is worth keeping) live in the domain; how it is drawn and picked lives in the view, under the same id | `AnnotationKind`, `kinds.ts`; `AnnotationRenderer`, `ui/annotating/annotation-layer.ts` |
 | **arrow** | the first kind: a line with a head, given by where it starts (`from`) and what it points at (`to`), in fractions of the picture | `arrowKind`, `ArrowGeometry` |
-| **annotation lane** | the row on the timeline marking each annotation at the start of its stretch, in kept time, so one can be found without playing the clip | `ui/annotation-lane.ts` |
-| **annotation layer** | the one place an annotation is drawn, used by playback and by the export alike, so the file matches the review | `ui/annotation-layer.ts` |
+| **annotation lane** | the row on the timeline marking each annotation at the start of its stretch, in kept time, so one can be found without playing the clip | `ui/annotating/annotation-lane.ts` |
+| **annotation layer** | the one place an annotation is drawn, used by playback and by the export alike, so the file matches the review | `ui/annotating/annotation-layer.ts` |
 
 An annotation's geometry is held in fractions of the picture, so it lands in the
 same place on the preview, on the export canvas and after a reload. A **cut takes
@@ -164,10 +164,16 @@ browser capability sits behind a port; the adapter that implements it lives in
 | **port** | a named browser capability a use case needs, described without the browser. An interface the use case owns | `src/application/ports/` |
 | **adapter** | the implementation of a port in the browser boundary. It owns the browser resource it acquires and releases it | `src/infra/` |
 | **use case** | a sequence that delivers an outcome — record a take, export a clip, publish a clip, keep a clip, restore a clip. It runs in node with fakes behind its ports | `src/application/` |
-| **view flow** | the composition of a use case with the view and the browser: the button, the status line, the phase and the sequencing. It sequences and reports; it holds no rule | `src/ui/*-flow.ts` |
+| **view flow** | the composition of a use case with the view and the browser: the button, the status line, the phase and the sequencing. It sequences and reports; it holds no rule | `src/ui/*/*-flow.ts` |
 | **phase** | the session's state — idle, starting, live, recording, review, encoding. The one piece of genuinely shared state: one owner and one change event | `src/state.ts` |
 | **source set** | which of the three record sources are on: screen, webcam, microphone. A take needs a picture: screen or webcam | `SourceSet` (`src/domain/capture/SourceSet.ts`) |
 | **session** | one sitting of the app: the clip and the audio flag. It ends on one event — New, an export, a publish, or a share that went away | `Session` (`src/application/session.ts`) |
+
+`ui/` is grouped by the concept it serves: `shell/` the frame, `recording/` a
+take, `clip/` the clip and its review, `cutting/` a stretch and its cut,
+`annotating/` the drawing, `exporting/` the file, `publishing/` the post,
+`keeping/` a kept clip and its restore, and `lifecycle/` the start and end of a
+session. `dom.ts` stays at the root as the one registry every group reaches.
 
 ## Words we do not use
 
