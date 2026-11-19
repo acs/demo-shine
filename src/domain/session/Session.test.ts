@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { Session } from './session.js';
-import { Clip, type ClipEvent } from '../domain/clip/Clip.js';
-import { Take } from '../domain/clip/Take.js';
-import type { TakeRepository } from '../domain/clip/TakeRepository.js';
+import { Session } from './Session.js';
+import { Clip, type ClipEvent } from '../clip/Clip.js';
+import { Take } from '../clip/Take.js';
+import type { TakeRepository } from '../clip/TakeRepository.js';
 
 // A collection that behaves like the app's without a browser.
 class FakeTakes implements TakeRepository {

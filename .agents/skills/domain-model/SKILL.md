@@ -14,11 +14,11 @@ src/
     annotation/ Annotation (the base class), its kinds (Arrow), AnnotationSet, the register
     capture/   CropRegion and SourceSet — the crop and the three source toggles
     export/    ExportTarget — the container an export writes
+    session/   Session — the sitting: the clip and the audio flag
   application/ the use cases that run in node, and the ports they own
     ports/     CapturePort, WebcamPort, MicrophonePort, TakeRecorderPort,
                CompositorPort, TakeProbePort, ClockPort, EncoderPort,
                DownloadPort, FrameRendererPort, KeptClipPort
-    session.ts the Session: the clip and its audio
   infra/       the browser boundary: capture, compositor, recorder, probe, clock,
                encoder, codecs, download, takes (the object URLs), the clip store, Bluesky
   ui/          the DOM and the interaction: renders the model, owns no rules

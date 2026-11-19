@@ -18,7 +18,7 @@ beside it.
 
 | word | what it is | in the code |
 |---|---|---|
-| **session** | one sitting of the app: the clip, and the view state that belongs to showing it. Over at **New**, when the clip is exported, or when the share ends | `Session` (`session.reset()`) |
+| **session** | one sitting of the app: the clip and the audio flag. Over at **New**, when the clip is exported, or when the share ends | `Session` (`src/domain/session/Session.ts`, `session.end()`) |
 | **take** | **one press of Record**: one MediaRecorder WebM with its own length, played in order with the others | `Take` — id, blob, url, duration |
 | **clip** | all the takes, in order, plus what was cut out. What everything else asks what to show and what to export | `Clip`, the aggregate |
 | **take repository** | where a clip's takes come from, and the only owner of their object URLs | `TakeRepository` (the port), `InMemoryTakeRepository` |
@@ -140,7 +140,7 @@ can end it:
 | `Clipboard` | the annotation a copy put aside, for a paste | the session |
 | `Output`, `Mixer` | the canvas a take is drawn on, and the graph that mixes system audio with the microphone | a take |
 
-`Session` is what ends them: `session.reset()` is the whole of "this session is
+`Session` is what ends them: `session.end()` is the whole of "this session is
 over", and the New button is only the flow around it.
 
 A few spots keep module-level state, all deliberately. The toast timer in
@@ -167,7 +167,7 @@ browser capability sits behind a port; the adapter that implements it lives in
 | **view flow** | the composition of a use case with the view and the browser: the button, the status line, the phase and the sequencing. It sequences and reports; it holds no rule | `src/ui/*/*-flow.ts` |
 | **phase** | the session's state — idle, starting, live, recording, review, encoding. The one piece of genuinely shared state: one owner and one change event | `src/state.ts` |
 | **source set** | which of the three record sources are on: screen, webcam, microphone. A take needs a picture: screen or webcam | `SourceSet` (`src/domain/capture/SourceSet.ts`) |
-| **session** | one sitting of the app: the clip and the audio flag. It ends on one event — New, an export, a publish, or a share that went away | `Session` (`src/application/session.ts`) |
+| **session** | one sitting of the app: the clip and the audio flag. It ends on one event — New, an export, a publish, or a share that went away | `Session` (`src/domain/session/Session.ts`) |
 
 `ui/` is grouped by the concept it serves: `shell/` the frame, `recording/` a
 take, `clip/` the clip and its review, `cutting/` a stretch and its cut,
