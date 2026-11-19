@@ -87,12 +87,13 @@ democlip/
 │   │   ├── Arrow.ts        # The first kind: its two ends, its aiming, its hit test
 │   │   ├── AnnotationSet.ts # The clip's annotations: identified, and free to overlap
 │   │   └── kinds.ts        # The register: how a written-down annotation is read back
+│   ├── domain/session/   # The sitting: the clip and the audio flag
+│   │   └── Session.ts      # The sitting's one rule: ending it clears the clip and the audio
 │   ├── domain/bluesky/   # Pure logic for publishing: what a Bluesky post may hold
 │   │   ├── AspectRatio.ts  # width:height, whole numbers, reducible to smallest terms
 │   │   ├── PublishableVideo.ts # the MP4 Bluesky takes, up to 300 MB
 │   │   └── BlueskyPost.ts  # the app.bsky.feed.post record carrying the video embed
 │   ├── application/      # Use cases: the thinking, without a browser
-│   │   ├── session.ts      # The Session: owns the clip and the audio; end() clears the clip
 │   │   ├── record-take.ts  # RecordTake: sources → mix → record → stop → take added
 │   │   ├── export-video.ts # ExportVideo: the plan encoded, or a refusal
 │   │   ├── keep-clip.ts    # KeepClip: the clip written down as it changes
