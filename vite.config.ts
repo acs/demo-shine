@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) => ({
   // Relative asset URLs, so the build works from any base path
   // (localhost root, a GitHub Pages project page, a custom domain).
   base: './',
-  // Baked into the bundle so the app can show which build it is (src/ui/version.ts).
+  // Baked into the bundle so the app can show which build it is (src/ui/shell/version.ts).
   define: { __APP_VERSION__: JSON.stringify(version) },
   optimizeDeps: {
     // The publish client is reached only through a dynamic import — nothing loads it
@@ -43,7 +43,7 @@ export default defineConfig(({ mode }) => ({
     {
       // `version.json` says which version the deployment is serving, for the app
       // to compare its own against and offer a reload when a newer build is out
-      // (see src/ui/version.ts). Written for the build only: under the dev
+      // (see src/ui/shell/version.ts). Written for the build only: under the dev
       // server there is no deployment that could be newer.
       name: 'democlip-version',
       apply: 'build',

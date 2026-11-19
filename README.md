@@ -114,39 +114,51 @@ democlip/
 │   │   ├── export-target.ts # which container an export writes (WebM, MP4) and its codecs
 │   │   ├── bluesky.ts      # the OAuth session + XRPC calls; loaded only when publishing
 │   │   └── download.ts     # Blob download trigger, behind DownloadPort
-│   └── ui/               # View layer (DOM) — one module per widget, each exporting the object its state lives on
+│   └── ui/               # View layer (DOM) — one module per widget, grouped by domain concept
 │       ├── dom.ts          # Central element registry + status/toast helpers
-│       ├── record-flow.ts  # The source buttons, Record and the preview — a sequence over RecordTake
-│       ├── review-flow.ts  # Opening the review after a take or a restore
-│       ├── export-flow.ts  # The Export button — a sequence over ExportVideo
-│       ├── publish-flow.ts # The Publish button — a sequence over publishToBluesky
-│       ├── resume-flow.ts  # The startup restore — a sequence over RestoreClip
-│       ├── new-session-flow.ts # The New button — end the session and go back for a source
-│       ├── view-lifetime.ts # The view's answer to clip.cleared: every view resets itself
-│       ├── keep.ts         # The KeepClip composition the app uses
-│       ├── frame-renderer.ts # The FrameRendererPort the encoder draws through
-│       ├── preview.ts      # Preview canvas, seeking, live mirror
-│       ├── region.ts       # Crop-region selection + overlay (CropDrag)
-│       ├── timeline-ui.ts  # Time labels, size estimate, the thumbnail strip (Strip)
-│       ├── live-timeline.ts # The strip and the levels while a take records (LiveTimeline)
-│       ├── thumbnail.ts    # The shape of a strip cell: a frame at the picture's own aspect
-│       ├── clip.ts         # The joined clip, played as one timeline (Player)
-│       ├── selection.ts    # The stretch the user is pointing at (Selection)
-│       ├── marks.ts        # The marks, the section, and its actions (MarkDrag)
-│       ├── annotation-layer.ts # Drawing the annotations, and the grips on a picked one
-│       ├── annotation-edit.ts  # Drawing an arrow on the picture, and aiming a picked one
-│       ├── annotation-lane.ts  # The timeline lane: where the arrows are (LaneDrag)
-│       ├── playback.ts     # Playback on the preview, skipping the cuts (Playback)
-│       ├── fade.ts         # Short fades at the joins between takes
-│       ├── dissolve.ts     # Short dissolves at the joins between takes (Dissolve)
-│       ├── waveform.ts     # The audio track under the strip (Waveform)
-│       ├── size-estimate.ts # What the export will weigh
-│       ├── mic.ts          # Microphone capture + level meter (Meter)
-│       ├── webcam.ts       # The webcam source: a bubble, or the whole picture
-│       ├── source-buttons.ts # The source buttons' enabled state
-│       ├── theme.ts        # Light / dark theme
-│       ├── help.ts         # Instructions modal
-│       └── version.ts      # The version badge, and the newer-build offer
+│       ├── shell/          # The frame around the app
+│       │   ├── theme.ts      # Light / dark theme
+│       │   ├── help.ts       # Instructions modal
+│       │   └── version.ts    # The version badge, and the newer-build offer
+│       ├── recording/      # Making a take
+│       │   ├── preview.ts    # Preview canvas, seeking, live mirror
+│       │   ├── region.ts     # Crop-region selection + overlay (CropDrag)
+│       │   ├── webcam.ts     # The webcam source: a bubble, or the whole picture
+│       │   ├── mic.ts        # Microphone capture + level meter (Meter)
+│       │   ├── source-buttons.ts # The source buttons' enabled state
+│       │   ├── record-flow.ts # The source buttons, Record and the preview — a sequence over RecordTake
+│       │   └── live-timeline.ts # The strip and the levels while a take records (LiveTimeline)
+│       ├── clip/           # The clip and its review
+│       │   ├── clip.ts       # The joined clip, played as one timeline (Player)
+│       │   ├── playback.ts   # Playback on the preview, skipping the cuts (Playback)
+│       │   ├── timeline-ui.ts # Time labels, size estimate, the thumbnail strip (Strip)
+│       │   ├── thumbnail.ts  # The shape of a strip cell: a frame at the picture's own aspect
+│       │   ├── waveform.ts   # The audio track under the strip (Waveform)
+│       │   ├── fade.ts       # Short fades at the joins between takes
+│       │   ├── dissolve.ts   # Short dissolves at the joins between takes (Dissolve)
+│       │   ├── size-estimate.ts # What the export will weigh
+│       │   └── review-flow.ts # Opening the review after a take or a restore
+│       ├── cutting/        # Choosing a stretch and cutting it
+│       │   ├── selection.ts  # The stretch the user is pointing at (Selection)
+│       │   └── marks.ts      # The marks, the section, and its actions (MarkDrag)
+│       ├── annotating/     # Drawing on the clip
+│       │   ├── annotation-layer.ts # Drawing the annotations, and the grips on a picked one
+│       │   ├── annotation-edit.ts  # Drawing an arrow on the picture, and aiming a picked one
+│       │   ├── annotation-lane.ts  # The timeline lane: where the arrows are (LaneDrag)
+│       │   └── annotation-clipboard.ts # The annotation a copy put aside, for a paste (Clipboard)
+│       ├── exporting/      # Writing the file
+│       │   ├── export-flow.ts  # The Export button — a sequence over ExportVideo
+│       │   ├── export-menu.ts  # The File/Bluesky menu under the Export button (ExportMenu)
+│       │   └── frame-renderer.ts # The FrameRendererPort the encoder draws through
+│       ├── publishing/     # Posting to Bluesky
+│       │   ├── publish-flow.ts # The Publish button — a sequence over publishToBluesky
+│       │   └── publish-dialog.ts # The post's settings and preview
+│       ├── keeping/        # Keeping a clip and coming back to it
+│       │   ├── keep.ts       # The KeepClip composition the app uses
+│       │   └── resume-flow.ts # The startup restore — a sequence over RestoreClip
+│       └── lifecycle/      # Starting and ending a session
+│           ├── new-session-flow.ts # The New button — end the session and go back for a source
+│           └── view-lifetime.ts # The view's answer to clip.cleared: every view resets itself
 ├── public/               # Copied verbatim into the build
 │   ├── manifest.json       # PWA manifest
 │   ├── sw.js               # Service worker — cache-first offline support

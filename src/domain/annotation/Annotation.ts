@@ -7,7 +7,7 @@
 // rules for it.
 //
 // Nothing here draws. `src/domain/` may not touch a canvas, so how a kind looks
-// lives in the view under the same id (`src/ui/annotation-layer.ts`), for the same
+// lives in the view under the same id (`src/ui/annotating/annotation-layer.ts`), for the same
 // reason `TakeRepository` is a port: the rules and the browser are kept apart.
 
 import { Span } from '../clip/Span.js';
