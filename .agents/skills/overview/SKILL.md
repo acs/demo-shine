@@ -48,7 +48,7 @@ over" — the **New** button, or an exported clip:
 src/
   domain/       pure rules — no DOM, no browser. Span, SpanSet, TimelineMap, Take,
                 Clip (the aggregate), ExportPlan, the annotation family,
-                CropRegion and SourceSet
+                CropRegion and SourceSet, Session (the clip and the audio flag)
   application/  the use cases that run in node, and the ports they own:
                 record a take, export a clip, publish, keep and restore a clip
   infra/        the browser boundary: capture, compositor, recorder, probe, clock,

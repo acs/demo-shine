@@ -4,7 +4,7 @@
 // cleared, and every view that shows the clip hears `cleared` and ends its own
 // lifetime. The session imports no view module and holds no view state.
 
-import type { Clip } from '../domain/clip/Clip.js';
+import type { Clip } from '../clip/Clip.js';
 
 export class Session {
   audio: boolean;
