@@ -165,17 +165,23 @@ events are specific (`take-added`, `cut-approved`) and listeners want to know wh
 ## D10 — The timeline lane
 
 **Decision**: a new overlay element in the timeline (`#tl-annots`, beside `#tl-marks`)
-shows each annotation's kept stretch as a small bar, mapped through `keptOf` /
-`keptLengthNow` exactly as the marks are. Clicking a bar selects that annotation and
-moves the playhead to it.
+marks each annotation at the start of its stretch — the kind's symbol, not a bar over the
+whole stretch — mapped through `keptOf` / `keptLengthNow` exactly as the marks are, with
+colliding marks stepping aside by one mark's width. Clicking a mark picks that annotation
+and moves the playhead to it.
 
-**Rationale**: FR-016 and SC-007 — an annotation is invisible outside its stretch, so
-the timeline has to show where it is. The marks overlay is the pattern: an absolutely
-positioned layer over the strip, laid out in timeline (kept) time.
+**Rationale**: FR-016 and SC-007 — an annotation is invisible outside its stretch, so the
+timeline has to show where it is. The marks overlay is the pattern: an absolutely
+positioned layer over the strip, laid out in timeline (kept) time. A mark at the start
+rather than a bar over the stretch, because several arrows made from one section share a
+stretch, and their bars were exactly coincident.
 
-**Alternatives considered**: reusing the thumbnail strip's cells — rejected, the strip
-is pictures, not controls; a separate timeline row — rejected as more layout than the
-change needs (a lane over the existing strip is enough).
+**Alternatives considered**: reusing the thumbnail strip's cells — rejected, the strip is
+pictures, not controls; a separate timeline row — rejected as more layout than the change
+needs (a lane over the existing strip is enough); **dragging a mark to change the stretch**
+— built, then removed: it was the only way to change when an arrow shows, and a press that
+moved a little moved an arrow by accident. Copy and paste at the playhead (FR-017) is how
+a callout is repeated at another moment, so a mark is a finder now.
 
 ## D11 — The arrow's look
 
