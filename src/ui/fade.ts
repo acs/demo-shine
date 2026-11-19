@@ -10,29 +10,33 @@
 // through an OfflineAudioContext — but it applies the same fades to it, so what is
 // heard while reviewing and what ends up in the file still agree.
 
-import { app } from '../state.js';
 import { el } from './dom.js';
 
 export const FADE_S = 0.08;   // how long either side of a join, in seconds
 const FULL   = 1;       // the level the sound sits at
 
+// The element's audio graph, owned by this view module: it exists while the review
+// is open and goes when the page does.
+let audioCtx: AudioContext | null = null;
+let audioGain: GainNode | null = null;
+
 // The element's sound through the gain node, made once. Null if the browser will
 // not give us an audio context.
 export function elementAudio(): { ctx: AudioContext; gain: GainNode } | null {
-  if (app.audioCtx && app.audioGain) return { ctx: app.audioCtx, gain: app.audioGain };
+  if (audioCtx && audioGain) return { ctx: audioCtx, gain: audioGain };
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if (!Ctx) return null;
   try {
-    const ctx = app.audioCtx ?? new Ctx();
+    const ctx = audioCtx ?? new Ctx();
     const gain = ctx.createGain();
     gain.gain.value = FULL;
     ctx.createMediaElementSource(el.rv).connect(gain);
     gain.connect(ctx.destination);          // the preview goes on being audible
-    app.audioCtx = ctx;
-    app.audioGain = gain;
+    audioCtx = ctx;
+    audioGain = gain;
     // Autoplay policy can leave the context suspended; resume it on play.
     el.rv.addEventListener('play', () => {
-      if (app.audioCtx && app.audioCtx.state === 'suspended') app.audioCtx.resume().catch(() => {});
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
     });
     void ctx.resume().catch(() => {});
     return { ctx, gain };
@@ -55,7 +59,7 @@ export function fadeIn(): void {
 // half-applied, or the rest of the clip would be silent. Nothing to do when the
 // element's sound was never routed through the gain node.
 export function fadeReset(): void {
-  const ctx = app.audioCtx, gain = app.audioGain;
+  const ctx = audioCtx, gain = audioGain;
   if (!ctx || !gain) return;
   const now = ctx.currentTime;
   gain.gain.cancelScheduledValues(now);

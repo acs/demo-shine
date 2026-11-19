@@ -2,7 +2,7 @@
 // mirror loop.
 
 import { el, ctx } from './dom.js';
-import { app } from '../state.js';
+import { capture } from '../infra/capture.js';
 import { drawRegion } from './region.js';
 import { drawWebcamOverlay } from './webcam.js';
 import { dissolve } from './dissolve.js';
@@ -66,26 +66,30 @@ export function seekWithin(vid: HTMLVideoElement, t: number, ms = 2500): Promise
 // Live mirror: show the source that is live on the preview canvas. The screen
 // carries the crop box and the webcam bubble; with the screen off the camera is
 // the whole picture, so nothing is drawn over it.
+let mirroring = false;
+let frameId: number | null = null;
+
 export function startMirror(): void {
-  if (app.mirroring) return;             // already showing a live source
-  app.mirroring = true;
+  if (mirroring) return;             // already showing a live source
+  mirroring = true;
   (function loop() {
-    if (!app.mirroring) return;
-    if (app.screenOn && app.stream && el.sv.readyState >= 2) {
+    if (!mirroring) return;
+    if (capture.sources.screen && capture.current() && el.sv.readyState >= 2) {
       drawFrame(el.sv);
       drawRegion();
       // Webcam overlay, inside the recording region (what will be recorded).
-      drawWebcamOverlay(ctx, app.region.x * el.cv.width, app.region.y * el.cv.height,
-                             app.region.w * el.cv.width, app.region.h * el.cv.height);
-    } else if (app.webcamOn && el.wcv.readyState >= 2) {
+      const region = capture.region;
+      drawWebcamOverlay(ctx, region.x * el.cv.width, region.y * el.cv.height,
+                             region.w * el.cv.width, region.h * el.cv.height);
+    } else if (capture.sources.webcam && el.wcv.readyState >= 2) {
       ctx.drawImage(el.wcv, 0, 0, el.cv.width, el.cv.height);
       el.cv.style.cursor = '';
     }
-    app.rafId = requestAnimationFrame(loop);
+    frameId = requestAnimationFrame(loop);
   })();
 }
 
 export function stopMirror(): void {
-  app.mirroring = false;
-  if (app.rafId) { cancelAnimationFrame(app.rafId); app.rafId = null; }
+  mirroring = false;
+  if (frameId) { cancelAnimationFrame(frameId); frameId = null; }
 }

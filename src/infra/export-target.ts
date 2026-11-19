@@ -11,7 +11,9 @@
 // Kept apart from src/offline-export.ts and free of any browser, so the table can
 // be read and tested in node while the module that encodes cannot.
 
-export type ExportTarget = 'webm' | 'mp4';
+import type { ExportTarget } from '../domain/export/ExportTarget.js';
+
+export type { ExportTarget };
 
 /** One video codec Mediabunny knows, and the WebCodecs strings that probe it. */
 export interface VideoCodecChoice {
