@@ -18,7 +18,8 @@
 // recording itself is never re-encoded — playback and the export simply skip the
 // cut stretches — which is what makes one "Undo" enough to put a cut back.
 
-import { app } from '../state.js';
+import { currentPhase } from '../state.js';
+import { session } from '../session.js';
 import type { ClipEvent } from '../domain/clip/Clip.js';
 import { el } from './dom.js';
 import { Span } from '../domain/clip/Span.js';
@@ -46,7 +47,7 @@ function followTheClip(event: ClipEvent): void {
       // has nothing selected yet.
       if (event.index === 0) selection.marks = [];
       else if (event.previousTotal > 0) {
-        const k = event.previousTotal / app.clip.total();
+        const k = event.previousTotal / session.clip.total();
         selection.marks = selection.marks.map(m => m * k);
       }
       break;
@@ -71,7 +72,7 @@ function followTheClip(event: ClipEvent): void {
 }
 
 export function initTimelineMarks(): void {
-  app.clip.onChange(followTheClip);
+  session.clip.onChange(followTheClip);
   el.timeline.addEventListener('click', onTimelineClick);
   el.tlMarks.addEventListener('click', onActionClick);     // the scissors and the undo
   el.cutUndo.addEventListener('click', undoChange);
@@ -85,11 +86,11 @@ export function initTimelineMarks(): void {
 // Paint the marks and the selected section over the timeline, and the actions
 // for the section in the header.
 export function renderMarks(): void {
-  const d = app.clip.total();
+  const d = session.clip.total();
   const host = el.tlMarks;
   const section = selection.section();
 
-  if (app.phase !== 'review' || !(d > 0)) {
+  if (currentPhase() !== 'review' || !(d > 0)) {
     host.replaceChildren();
     el.cutWrap.classList.remove('on');
     return;
@@ -125,7 +126,7 @@ export function renderMarks(): void {
     el.tCut.textContent = `CUT ${stamp(section.s * d)}–${stamp(section.e * d)}`;
     el.cutUndo.style.display = 'none';
     el.cutWrap.classList.add('on');
-  } else if (app.clip.canUndo()) {
+  } else if (session.clip.canUndo()) {
     el.tCut.textContent = undoLabel();
     el.cutUndo.style.display = '';
     el.cutWrap.classList.add('on');
@@ -138,14 +139,14 @@ export function renderMarks(): void {
 
 // What the one undo would take back, in the words of the thing it is.
 function undoLabel(): string {
-  const change = app.clip.pendingUndo();
+  const change = session.clip.pendingUndo();
   if (!change) return '';
   return change.type === 'cut-approved' ? `CUT ${change.removed.toFixed(2)}s` : 'ARROW';
 }
 
 function pctWidth(section: Span): string {
   const kept = Math.max(0.001, keptLengthNow());
-  return (((keptOf(section.e * app.clip.total()) - keptOf(section.s * app.clip.total())) / kept) * 100).toFixed(3) + '%';
+  return (((keptOf(section.e * session.clip.total()) - keptOf(section.s * session.clip.total())) / kept) * 100).toFixed(3) + '%';
 }
 
 // The scissors and the undo are drawn with the section, so they are read here
@@ -167,8 +168,8 @@ function approveCut(): void {
   if (!canEdit()) return;
   const section = selection.section();
   if (!section) return;
-  app.clip.approve(section);                       // it leaves the timeline, and closes up
-  afterEdits(section.s * app.clip.total());        // a time in the recording
+  session.clip.approve(section);                       // it leaves the timeline, and closes up
+  afterEdits(section.s * session.clip.total());        // a time in the recording
 }
 
 // The arrow: the section is the stretch, and the gesture is armed for it — the
@@ -191,7 +192,7 @@ function dismissSelection(): void {
 // Put the last change back — a cut, or an arrow — and follow the playhead. The clip
 // says which it was; nothing here has to remember.
 function undoChange(): void {
-  if (!app.clip.undo()) return;
+  if (!session.clip.undo()) return;
   afterEdits(player.time());
 }
 
@@ -216,7 +217,7 @@ function onTimelineClick(evt: MouseEvent): void {
   // A click on the last couple of pixels means the end of the clip.
   const atEnd = evt.clientX - track().left >= width - 2;
   const f = atEnd ? 1 : fractionAt(evt.clientX);
-  const time = f * app.clip.total();
+  const time = f * session.clip.total();
 
   // Inside the selected section: that is the confirmation — cut it out.
   const section = selection.section();
@@ -241,7 +242,7 @@ function onNudgeKey(evt: KeyboardEvent): void {
   if (evt.key !== 'ArrowLeft' && evt.key !== 'ArrowRight') return;
   if (evt.altKey || evt.ctrlKey || evt.metaKey) return;      // leave the browser's own
   if (typingIn(evt.target)) return;
-  if (app.phase !== 'review') return;
+  if (currentPhase() !== 'review') return;
   evt.preventDefault();
   const step = evt.shiftKey ? 1 : FRAME_S;
   nudgeMark(evt.key === 'ArrowLeft' ? -step : step);
@@ -249,7 +250,7 @@ function onNudgeKey(evt: KeyboardEvent): void {
 
 function nudgeMark(seconds: number): void {
   if (!canEdit()) return;
-  const total = app.clip.total();
+  const total = session.clip.total();
   if (!(total > 0)) return;
   const at = player.time();
 
@@ -339,7 +340,7 @@ class MarkDrag {
     renderMarks();
     // The marker follows the pointer on every move; the frame follows at the
     // throttle's rate, because drawing it means a seek and the marker does not.
-    const t = f * app.clip.total();
+    const t = f * session.clip.total();
     playback.showHead(t);
     const now = Date.now();
     if (now - press.lastSeek >= SEEK_EVERY) { press.lastSeek = now; playback.hold(t); }
@@ -355,7 +356,7 @@ class MarkDrag {
     // The frame is drawn at a throttle while the bar moves, so the last draw may
     // not be where the pointer came to rest. Draw it once more, so the playhead
     // and the bar finish together.
-    if (moved && evt) playback.hold(fractionAt(evt.clientX) * app.clip.total());
+    if (moved && evt) playback.hold(fractionAt(evt.clientX) * session.clip.total());
   }
 
   /** Is the click that follows the drag the drag's own, rather than a new mark? */
@@ -396,7 +397,7 @@ export const drag = new MarkDrag();
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function canEdit(): boolean {
-  return app.phase === 'review' && el.rv.readyState >= 1;   // metadata is enough; a seek in flight must not drop a click
+  return currentPhase() === 'review' && el.rv.readyState >= 1;   // metadata is enough; a seek in flight must not drop a click
 }
 
 // The track is what the marks are laid out against; a click x maps onto it.

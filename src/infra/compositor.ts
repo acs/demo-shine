@@ -1,0 +1,101 @@
+// The compositor: what a take actually records.
+//
+// It draws the crop of the screen and the webcam bubble onto a canvas, and mixes
+// the system audio with the microphone. It owns the canvas, the audio graph and the
+// hidden video elements it draws from, and releases them when the take ends. The
+// bubble's drawing is injected by the composition root; the compositor imports no
+// view module.
+
+import type { CompositorInput, CompositorPort, CompositorSession } from '../application/ports/CompositorPort.js';
+
+const SYSTEM_GAIN = 0.8;
+const MIC_GAIN = 1.0;
+
+export class CompositorAdapter implements CompositorPort {
+  private video: HTMLVideoElement | null = null;
+  private context: CanvasRenderingContext2D | null = null;
+  private frame = 0;
+  private audio: AudioContext | null = null;
+  private stream: MediaStream | null = null;
+
+  open(input: CompositorInput): CompositorSession {
+    this.close();
+    const audioTracks = this.audioTracks(input);
+    const videoTracks = this.videoTracks(input);
+    this.stream = new MediaStream([...videoTracks, ...audioTracks]);
+    return { stream: this.stream, hasAudio: audioTracks.length > 0 };
+  }
+
+  close(): void {
+    if (this.frame) { cancelAnimationFrame(this.frame); this.frame = 0; }
+    if (this.video) { this.video.pause(); this.video.srcObject = null; this.video = null; }
+    if (this.audio) { void this.audio.close(); this.audio = null; }
+    this.context = null;
+    this.stream = null;
+  }
+
+  private videoTracks(input: CompositorInput): MediaStreamTrack[] {
+    const screen = input.screen?.getVideoTracks() ?? [];
+    const webcam = input.webcam?.getVideoTracks() ?? [];
+    if (!screen.length) return webcam;
+    if (input.region === undefined) return screen;
+    const full = input.region.x === 0 && input.region.y === 0 && input.region.w === 1 && input.region.h === 1;
+    if (full && !input.drawBubble) return screen;
+    return this.canvasTracks(input, screen[0]);
+  }
+
+  private canvasTracks(input: CompositorInput, screen: MediaStreamTrack): MediaStreamTrack[] {
+    const canvas = document.createElement('canvas');
+    const video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    video.srcObject = new MediaStream([screen]);
+    void video.play();
+    this.video = video;
+    const context = canvas.getContext('2d');
+    if (!context) return [];
+    this.context = context;
+    const { region } = input;
+    const width = Math.round(region.w * (video.videoWidth || 1280));
+    const height = Math.round(region.h * (video.videoHeight || 720));
+    canvas.width = width;
+    canvas.height = height;
+    const draw = () => {
+      if (!this.context || !this.video) return;
+      const vw = this.video.videoWidth || canvas.width;
+      const vh = this.video.videoHeight || canvas.height;
+      const sx = region.x * vw;
+      const sy = region.y * vh;
+      const sw = region.w * vw;
+      const sh = region.h * vh;
+      this.context.drawImage(this.video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+      input.drawBubble?.(this.context, canvas.width, canvas.height);
+      this.frame = requestAnimationFrame(draw);
+    };
+    draw();
+    return canvas.captureStream().getVideoTracks();
+  }
+
+  private audioTracks(input: CompositorInput): MediaStreamTrack[] {
+    const system = input.screen?.getAudioTracks() ?? [];
+    const mic = input.mic?.getAudioTracks() ?? [];
+    if (!input.audio || (!system.length && !mic.length)) return [];
+    if (!mic.length) return system;
+    const Ctx = window.AudioContext;
+    const context = new Ctx();
+    this.audio = context;
+    const destination = context.createMediaStreamDestination();
+    const systemGain = context.createGain();
+    systemGain.gain.value = SYSTEM_GAIN;
+    const micGain = context.createGain();
+    micGain.gain.value = MIC_GAIN;
+    if (system.length) {
+      context.createMediaStreamSource(new MediaStream(system)).connect(systemGain).connect(destination);
+    }
+    context.createMediaStreamSource(new MediaStream(mic)).connect(micGain).connect(destination);
+    void context.resume();
+    return destination.stream.getAudioTracks();
+  }
+}
+
+export const compositor = new CompositorAdapter();

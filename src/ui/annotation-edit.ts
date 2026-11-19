@@ -11,7 +11,8 @@
 // every change, so this module redraws the preview when it hears one — it does not
 // redraw because it happened to be the caller.
 
-import { app } from '../state.js';
+import { currentPhase } from '../state.js';
+import { session } from '../session.js';
 import { ctx, el, toast } from './dom.js';
 import { Span } from '../domain/clip/Span.js';
 import { Arrow } from '../domain/annotation/Arrow.js';
@@ -64,7 +65,7 @@ class ArrowEdit {
     // sitting exactly on the section's end is outside its half-open span — the
     // second mark leaves it there — and the arrow would vanish the moment it was
     // made, because `annotationsAt` would have nothing to answer with.
-    const total = app.clip.total();
+    const total = session.clip.total();
     if (total > 0 && !span.contains(player.time() / total)) playback.hold(span.s * total);
     announceSelection();
     repaint();
@@ -89,7 +90,7 @@ class ArrowEdit {
   }
 
   down(e: PointerEvent): void {
-    if (app.phase !== 'review') return;
+    if (currentPhase() !== 'review') return;
     const p = fractionAt(e.clientX, e.clientY);
 
     // Armed: this drag draws a new arrow over the armed stretch.
@@ -118,7 +119,7 @@ class ArrowEdit {
   }
 
   move(e: PointerEvent): void {
-    if (app.phase !== 'review') return;
+    if (currentPhase() !== 'review') return;
     const p = fractionAt(e.clientX, e.clientY);
 
     if (this.live) { this.to = p; repaint(); return; }
@@ -126,7 +127,7 @@ class ArrowEdit {
     // Any direction counts: an arrow is aimed as often as it is slid sideways.
     if (Math.hypot(e.clientX - this.fromX, e.clientY - this.fromY) < DRAG_MIN) return;
 
-    const annotation = app.clip.annotations.byId(this.pickId);
+    const annotation = session.clip.annotations.byId(this.pickId);
     if (!annotation) return;
     const dx = p.x - this.last.x, dy = p.y - this.last.y;
     this.last = p;
@@ -134,7 +135,7 @@ class ArrowEdit {
     // How it moves and aims is the annotation's own business — this only asks.
     const next = this.grab === 'move' ? annotation.movedBy(dx, dy) : annotation.withHandle(this.grab, p);
     // The clip announces the change, and the redraw is the listener's — not this.
-    if (next) app.clip.changeAnnotation(annotation.id, next);
+    if (next) session.clip.changeAnnotation(annotation.id, next);
   }
 
   end(): void {
@@ -145,7 +146,7 @@ class ArrowEdit {
       if (span) {
         const annotation = Arrow.create(span, geometry.from, geometry.to);
         if (annotation) {
-          app.clip.addAnnotation(annotation);
+          session.clip.addAnnotation(annotation);
           this.span = null;                // the selection was spent on it
           el.cv.style.cursor = '';
         } else {
@@ -202,9 +203,9 @@ export function initAnnotationEdit(): void {
     }
 
     // Delete is Supr; on a Mac keyboard the same key is Backspace.
-    if ((evt.key === 'Delete' || evt.key === 'Backspace') && edit.selectedId && app.phase === 'review') {
+    if ((evt.key === 'Delete' || evt.key === 'Backspace') && edit.selectedId && currentPhase() === 'review') {
       evt.preventDefault();
-      app.clip.removeAnnotation(edit.selectedId);   // the clip announces it; the view follows
+      session.clip.removeAnnotation(edit.selectedId);   // the clip announces it; the view follows
       return;
     }
 
@@ -214,10 +215,10 @@ export function initAnnotationEdit(): void {
     // picked, so copying selected text still works.
     const key = evt.key.toLowerCase();
     if (!(evt.metaKey || evt.ctrlKey) || (key !== 'c' && key !== 'v')) return;
-    if (app.phase !== 'review') return;
+    if (currentPhase() !== 'review') return;
 
     if (key === 'c' && edit.selectedId) {
-      const picked = app.clip.annotations.byId(edit.selectedId);
+      const picked = session.clip.annotations.byId(edit.selectedId);
       if (!picked) return;
       evt.preventDefault();
       clipboard.copy(picked);
@@ -234,7 +235,7 @@ export function initAnnotationEdit(): void {
   });
 
   // The clip says what changed; this is where the preview follows.
-  app.clip.onChange(event => {
+  session.clip.onChange(event => {
     if (event.type === 'cleared') { edit.cancel(); return; }
     if (event.type === 'annotation-removed') edit.forget(event.annotation.id);
     if (event.type === 'annotation-added' || event.type === 'annotation-changed' || event.type === 'annotation-removed') repaint();
@@ -243,10 +244,10 @@ export function initAnnotationEdit(): void {
 
 /** Redraw the frame under the gesture, the annotations, and the arrow being drawn. */
 export function repaint(): void {
-  if (app.phase !== 'review' || el.rv.readyState < 1) return;
+  if (currentPhase() !== 'review' || el.rv.readyState < 1) return;
   const w = el.cv.width, h = el.cv.height;
   try { drawFrame(el.rv); } catch { return; }        // a frame still decoding
-  drawAnnotations(ctx, w, h, app.clip.annotationsAt(player.time()), edit.selectedId);
+  drawAnnotations(ctx, w, h, session.clip.annotationsAt(player.time()), edit.selectedId);
   const live = edit.preview();
   if (live) arrowRenderer.draw(ctx, live, w, h);
 }
@@ -254,13 +255,13 @@ export function repaint(): void {
 // A new arrow of the copied shape, over the same part of the picture, at the moment
 // the playhead holds — kept inside the clip, and in hand at once so its grips show.
 function pasteAtPlayhead(): Annotation | null {
-  const total = app.clip.total();
+  const total = session.clip.total();
   if (!(total > 0) || !clipboard.has) return null;
   const length = clipboard.length;
   const at = Math.max(0, Math.min(1 - length, player.time() / total));
   const pasted = clipboard.paste(Span.of(at, at + length));
   if (!pasted) return null;
-  app.clip.addAnnotation(pasted);      // the clip announces it; the views follow
+  session.clip.addAnnotation(pasted);      // the clip announces it; the views follow
   edit.pick(pasted.id);
   return pasted;
 }
@@ -278,7 +279,7 @@ function fractionAt(clientX: number, clientY: number): Point {
 // The topmost annotation under a point, at the moment the playhead holds. The hit
 // test is the annotation's own, because how close is close enough is geometry.
 function hitAnnotation(p: Point): Annotation | null {
-  const shown = app.clip.annotationsAt(player.time());
+  const shown = session.clip.annotationsAt(player.time());
   const w = el.cv.width, h = el.cv.height;
   for (let i = shown.length - 1; i >= 0; i--) {
     if (shown[i].hitTest(p.x, p.y, w, h, Math.max(9, w / 55))) return shown[i];

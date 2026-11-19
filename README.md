@@ -62,14 +62,10 @@ democlip/
 ├── index.html            # Entry HTML — links the stylesheet and src/main.ts
 ├── styles.css            # All styling (theme variables, layout, components)
 ├── src/                  # TypeScript source
-│   ├── main.ts           # Composition root — wires the UI to the flows
-│   ├── session.ts        # The session: the clip and the view state, and the one place that lets go of it
-│   ├── state.ts          # Shared mutable state — deliberately small; the model lives in domain/
+│   ├── main.ts           # Composition root — the only module importing all four layers
+│   ├── session.ts        # The single Session: the clip and the audio, and the one place that ends it
+│   ├── state.ts          # The phase: its one owner and its change event
 │   ├── prefs.ts          # User preferences (localStorage)
-│   ├── recorder.ts       # The recording flow (getDisplayMedia + MediaRecorder) — needs a real picker
-│   ├── exporter.ts       # The export and new-session flows: buttons, status line, phase
-│   ├── resume.ts         # Keeping the clip across a page load: write it down, read it back
-│   ├── offline-export.ts # The export's browser half: decode, draw, encode, mux
 │   ├── util.ts           # Tiny shared helpers (clampToClip)
 │   ├── globals.d.ts      # Ambient types (prefixed AudioContext, captureStream)
 │   ├── vite-env.d.ts     # Vite client types
@@ -81,6 +77,11 @@ democlip/
 │   │   ├── SpanSet.ts      # Ranges that cannot overlap — what was cut
 │   │   ├── TimelineMap.ts  # Recording time ↔ kept time, in one place
 │   │   └── ExportPlan.ts   # What the file will hold, and the annotations to draw
+│   ├── domain/capture/   # The capture rules: what a take needs and what it records
+│   │   ├── CropRegion.ts   # The part of the picture a take records, normalised to 0..1
+│   │   └── SourceSet.ts    # The three sources, their toggles and the picture requirement
+│   ├── domain/export/    # The export's own words
+│   │   └── ExportTarget.ts # WebM or MP4 — what the person chose to write
 │   ├── domain/annotation/ # What is drawn over the picture: the family, and the arrow
 │   │   ├── Annotation.ts   # The base class: identity, the stretch, and the geometry
 │   │   ├── Arrow.ts        # The first kind: its two ends, its aiming, its hit test
@@ -91,18 +92,39 @@ democlip/
 │   │   ├── PublishableVideo.ts # the MP4 Bluesky takes, up to 300 MB
 │   │   └── BlueskyPost.ts  # the app.bsky.feed.post record carrying the video embed
 │   ├── application/      # Use cases: the thinking, without a browser
+│   │   ├── session.ts      # The Session: owns the clip and the audio; end() clears the clip
+│   │   ├── record-take.ts  # RecordTake: sources → mix → record → stop → take added
+│   │   ├── export-video.ts # ExportVideo: the plan encoded, or a refusal
+│   │   ├── keep-clip.ts    # KeepClip: the clip written down as it changes
+│   │   ├── restore-clip.ts # RestoreClip: a kept clip loaded without announcing a change
 │   │   ├── export-clip.ts  # planExport(clip, settings) → an ExportPlan
 │   │   ├── publish-to-bluesky.ts # publishToBluesky(clip, settings, deps) → a post
-│   │   └── bluesky-service.ts # the port the publish use case reaches Bluesky through
+│   │   ├── bluesky-service.ts # the port the publish use case reaches Bluesky through
+│   │   └── ports/          # The capabilities a use case may ask for, named without a browser
 │   ├── infra/            # Browser boundary adapters
+│   │   ├── capture.ts      # Screen, webcam and microphone over getDisplayMedia/getUserMedia
+│   │   ├── clock.ts        # performance.now + setTimeout, behind ClockPort
+│   │   ├── compositor.ts   # The crop canvas and the audio mixer, behind CompositorPort
+│   │   ├── take-recorder.ts # MediaRecorder, behind TakeRecorderPort
+│   │   ├── take-probe.ts   # Measuring a take's duration, behind TakeProbePort
+│   │   ├── offline-encoder.ts # Decode, draw, encode, mux — behind EncoderPort
 │   │   ├── takes.ts        # InMemoryTakeRepository — owns the takes' object URLs
-│   │   ├── clip-store.ts   # IndexedDB — where a clip outlives the page
+│   │   ├── clip-store.ts   # IndexedDB — where a clip outlives the page, behind KeptClipPort
 │   │   ├── codecs.ts       # WebM mime / codec selection
 │   │   ├── export-target.ts # which container an export writes (WebM, MP4) and its codecs
 │   │   ├── bluesky.ts      # the OAuth session + XRPC calls; loaded only when publishing
-│   │   └── download.ts     # Blob download trigger
+│   │   └── download.ts     # Blob download trigger, behind DownloadPort
 │   └── ui/               # View layer (DOM) — one module per widget, each exporting the object its state lives on
 │       ├── dom.ts          # Central element registry + status/toast helpers
+│       ├── record-flow.ts  # The source buttons, Record and the preview — a sequence over RecordTake
+│       ├── review-flow.ts  # Opening the review after a take or a restore
+│       ├── export-flow.ts  # The Export button — a sequence over ExportVideo
+│       ├── publish-flow.ts # The Publish button — a sequence over publishToBluesky
+│       ├── resume-flow.ts  # The startup restore — a sequence over RestoreClip
+│       ├── new-session-flow.ts # The New button — end the session and go back for a source
+│       ├── view-lifetime.ts # The view's answer to clip.cleared: every view resets itself
+│       ├── keep.ts         # The KeepClip composition the app uses
+│       ├── frame-renderer.ts # The FrameRendererPort the encoder draws through
 │       ├── preview.ts      # Preview canvas, seeking, live mirror
 │       ├── region.ts       # Crop-region selection + overlay (CropDrag)
 │       ├── timeline-ui.ts  # Time labels, size estimate, the thumbnail strip (Strip)
@@ -144,11 +166,14 @@ democlip/
 ```
 
 The split is a hexagonal one: `domain/` is pure and `application/` holds the
-use cases (both run in node, with tests beside them), `infra/` and `ui/` are the
-adapters that reach the browser and the DOM, and `recorder.ts` / `exporter.ts` /
-`resume.ts` are the flows that `main.ts` composes. Each `ui/` module exports the object its state
-lives on, and `session.ts` is what ends those lifetimes — the vocabulary is in
-[GLOSSARY.md](GLOSSARY.md), and where a rule belongs is in
+use cases and the ports they reach the browser through (both run in node, with
+tests beside them), `infra/` and `ui/` are the adapters that reach the browser and
+the DOM, and the `ui/` flows — `record-flow.ts`, `export-flow.ts`,
+`publish-flow.ts`, `resume-flow.ts`, `new-session-flow.ts` — are the sequences
+`main.ts` composes. Each `ui/` module exports the object its state lives on; the
+session owns the clip and names no view, and `view-lifetime.ts` is the view's
+answer to the clip being cleared. The vocabulary is in [GLOSSARY.md](GLOSSARY.md),
+and where a rule belongs is in
 [`.agents/skills/domain-model`](.agents/skills/domain-model/SKILL.md). It is
 written in TypeScript and served and bundled by [Vite](https://vite.dev/).
 

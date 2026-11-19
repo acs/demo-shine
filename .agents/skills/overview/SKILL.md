@@ -47,14 +47,18 @@ over" — the **New** button, or an exported clip:
 ```
 src/
   domain/       pure rules — no DOM, no browser. Span, SpanSet, TimelineMap, Take,
-                Clip (the aggregate), ExportPlan, the annotation family (Annotation
-                and its kinds, AnnotationSet)
-  infra/        the browser boundary: codecs, download, the takes' object URLs,
-                the export adapter, the clip store
-  ui/           the DOM and the interaction — renders the model, owns no rules
-  application/  the use cases that run in node: plan an export, publish
-  recorder.ts, exporter.ts, publisher.ts  the flows that sequence browser work
-  state.ts      the shared mutable state
+                Clip (the aggregate), ExportPlan, the annotation family,
+                CropRegion and SourceSet
+  application/  the use cases that run in node, and the ports they own:
+                record a take, export a clip, publish, keep and restore a clip
+  infra/        the browser boundary: capture, compositor, recorder, probe, clock,
+                encoder, codecs, download, the takes' object URLs, the clip store,
+                Bluesky
+  ui/           the DOM and the interaction — renders the model, owns no rules;
+                the view flows (record, review, export, publish, resume) sequence
+  state.ts      the phase only
+  session.ts    the composition: the single Session
+  main.ts       the composition root
 ```
 
 A rule about a range goes in the value object, about the clip as a whole in the
