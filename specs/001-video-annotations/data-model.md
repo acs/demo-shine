@@ -136,7 +136,7 @@ a drag of an existing one. `session.reset()` cancels it.
 | From | Event | Effect on annotations |
 |---|---|---|
 | a clip in review, a section selected | the user draws an arrow | `addAnnotation` → `annotation-added`; the section is consumed; one undo is now "the arrow" |
-| a clip with an arrow | the user picks it and drags an end / its span | `changeAnnotation` → `annotation-changed`; one undo puts the previous geometry/span back |
+| a clip with an arrow | the user picks it and drags an end | `changeAnnotation` → `annotation-changed`; one undo puts the previous geometry back |
 | a clip with an arrow | the user deletes it | `removeAnnotation` → `annotation-removed`; one undo puts it back |
 | a clip with an arrow | the user approves a cut | the annotations are unchanged in the model; the `TimelineMap` stops showing the cut part; `lastChange` becomes the cut (the arrow's own undo is no longer the one on offer) |
 | a clip with an arrow | a new take is recorded | `addTake` re-bases every span, so each arrow stays over its moments |
