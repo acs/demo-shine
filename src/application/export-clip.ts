@@ -6,7 +6,7 @@
 // `exportOffline(plan)`, and this half runs in node with a fake collection of takes.
 //
 // Only `ExportPlan` and the clip come in here: the fade length is the app's
-// (src/ui/fade.ts) and is handed over, so the domain stays free of the view.
+// (src/ui/clip/fade.ts) and is handed over, so the domain stays free of the view.
 
 import type { Clip } from '../domain/clip/Clip.js';
 import { ExportPlan, type ExportSettings } from '../domain/clip/ExportPlan.js';

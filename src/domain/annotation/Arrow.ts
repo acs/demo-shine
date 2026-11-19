@@ -6,7 +6,7 @@
 //
 // Everything a drag and a pick need is here, because it is geometry and not drawing:
 // the ends to take hold of, how the arrow moves and aims, and how close a point has
-// to be to be on it. How it *looks* is in `src/ui/annotation-layer.ts`, under the
+// to be to be on it. How it *looks* is in `src/ui/annotating/annotation-layer.ts`, under the
 // same id — the domain may not touch a canvas.
 
 import { Span } from '../clip/Span.js';

@@ -1,30 +1,30 @@
 // Composition root: wires the UI to the use cases and boots the app.
 
 import { el, setStatus, toast } from './ui/dom.js';
-import { initVersion } from './ui/version.js';
+import { initVersion } from './ui/shell/version.js';
 import { onPhaseChange, currentPhase, type Phase } from './state.js';
 import { loadPrefs } from './prefs.js';
-import { applyTheme, toggleTheme } from './ui/theme.js';
-import { toggleHelp, helpBdClick } from './ui/help.js';
-import { drawGrid } from './ui/preview.js';
-import { initTimeline, updateTimeUI, updateSizeUI } from './ui/timeline-ui.js';
-import { initTimelineMarks } from './ui/marks.js';
-import { initAnnotationEdit } from './ui/annotation-edit.js';
-import { initAnnotationLane } from './ui/annotation-lane.js';
-import { initViewLifetime } from './ui/view-lifetime.js';
-import { toggleRecord, toggleScreen, syncSources, onScreenEnded } from './ui/record-flow.js';
-import { doExport } from './ui/export-flow.js';
-import { startNewSession } from './ui/new-session-flow.js';
-import { playback, initPlaybackKeys } from './ui/playback.js';
-import { waveform } from './ui/waveform.js';
-import { initRegion } from './ui/region.js';
-import { initWebcam, toggleWebcam } from './ui/webcam.js';
-import { initMic, toggleMic } from './ui/mic.js';
-import { initSourceButtons, setScreenAvailable } from './ui/source-buttons.js';
-import { exportMenu } from './ui/export-menu.js';
-import { publishDialog } from './ui/publish-dialog.js';
-import { keep } from './ui/keep.js';
-import { resumeClip } from './ui/resume-flow.js';
+import { applyTheme, toggleTheme } from './ui/shell/theme.js';
+import { toggleHelp, helpBdClick } from './ui/shell/help.js';
+import { drawGrid } from './ui/recording/preview.js';
+import { initTimeline, updateTimeUI, updateSizeUI } from './ui/clip/timeline-ui.js';
+import { initTimelineMarks } from './ui/cutting/marks.js';
+import { initAnnotationEdit } from './ui/annotating/annotation-edit.js';
+import { initAnnotationLane } from './ui/annotating/annotation-lane.js';
+import { initViewLifetime } from './ui/lifecycle/view-lifetime.js';
+import { toggleRecord, toggleScreen, syncSources, onScreenEnded } from './ui/recording/record-flow.js';
+import { doExport } from './ui/exporting/export-flow.js';
+import { startNewSession } from './ui/lifecycle/new-session-flow.js';
+import { playback, initPlaybackKeys } from './ui/clip/playback.js';
+import { waveform } from './ui/clip/waveform.js';
+import { initRegion } from './ui/recording/region.js';
+import { initWebcam, toggleWebcam } from './ui/recording/webcam.js';
+import { initMic, toggleMic } from './ui/recording/mic.js';
+import { initSourceButtons, setScreenAvailable } from './ui/recording/source-buttons.js';
+import { exportMenu } from './ui/exporting/export-menu.js';
+import { publishDialog } from './ui/publishing/publish-dialog.js';
+import { keep } from './ui/keeping/keep.js';
+import { resumeClip } from './ui/keeping/resume-flow.js';
 import { capture } from './infra/capture.js';
 
 function init(): void {

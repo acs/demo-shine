@@ -1,0 +1,133 @@
+import { describe, expect, it } from 'vitest';
+
+import { arrowMetrics, drawAnnotations, registerRenderer, rendererOf } from './annotation-layer.js';
+import type { AnnotationRenderer } from './annotation-layer.js';
+import { Annotation, type StoredAnnotation } from '../../domain/annotation/Annotation.js';
+import { Arrow } from '../../domain/annotation/Arrow.js';
+import { Span } from '../../domain/clip/Span.js';
+
+// A 2-D context is not in node, so the layer is proved against a stand-in that counts
+// what a renderer asked of it — the same idea as the fakes behind the ports. Give it
+// a `canvas` to stand for one on screen; without one it is an export's canvas.
+function fakeCtx(opts: { width?: number; clientWidth?: number } = {}) {
+  const calls: string[] = [];
+  const arcs: Array<{ x: number; y: number; r: number }> = [];
+  const noop = (name: string) => () => { calls.push(name); };
+  const base: Record<string, unknown> = {
+    save: noop('save'), restore: noop('restore'), beginPath: noop('beginPath'),
+    moveTo: noop('moveTo'), lineTo: noop('lineTo'), closePath: noop('closePath'),
+    stroke: noop('stroke'), fill: noop('fill'),
+    arc: (x: number, y: number, r: number) => { calls.push('arc'); arcs.push({ x, y, r }); },
+    translate: noop('translate'), rotate: noop('rotate'),
+  };
+  if (opts.width !== undefined) base.canvas = { width: opts.width, clientWidth: opts.clientWidth ?? 0 };
+  return { ctx: base as unknown as CanvasRenderingContext2D, calls, arcs };
+}
+
+const arrow = (id: string): Arrow => {
+  const made = Arrow.create(Span.of(0, 1), { x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }, id);
+  if (!made) throw new Error('the test arrow should be usable');
+  return made;
+};
+
+// A kind with no renderer: the layer must skip it rather than fail.
+class Stub extends Annotation {
+  static readonly id = 'stub';
+  constructor() { super('s1', Span.of(0, 1), Stub.id); }
+  handles() { return []; }
+  withHandle() { return null; }
+  movedBy() { return null; }
+  withSpan() { return new Stub(); }
+  duplicated() { return new Stub(); }
+  hitTest() { return false; }
+  stored(): StoredAnnotation {
+    return { id: this.id, kind: this.kind, s: this.span.s, e: this.span.e, geometry: {} };
+  }
+}
+
+// A second kind with three grips and no renderer at all: the grips are the layer's,
+// drawn from `handles()`, so a new kind gets them without drawing anything.
+class Tripod extends Annotation {
+  static readonly id = 'tripod';
+  constructor() { super('t1', Span.of(0, 1), Tripod.id); }
+  handles() { return [{ x: 0.2, y: 0.2, end: 'a' }, { x: 0.5, y: 0.5, end: 'b' }, { x: 0.8, y: 0.8, end: 'c' }]; }
+  withHandle() { return null; }
+  movedBy() { return null; }
+  withSpan() { return new Tripod(); }
+  duplicated() { return new Tripod(); }
+  hitTest() { return false; }
+  stored(): StoredAnnotation {
+    return { id: this.id, kind: this.kind, s: this.span.s, e: this.span.e, geometry: {} };
+  }
+}
+
+describe('the annotation layer', () => {
+  it('knows the arrow, and null for a kind it does not draw', () => {
+    expect(rendererOf('arrow')?.id).toBe('arrow');
+    expect(rendererOf('hologram')).toBeNull();
+  });
+
+  it('draws the arrow it is handed', () => {
+    const { ctx, calls } = fakeCtx();
+    drawAnnotations(ctx, 320, 180, [arrow('a')]);
+    expect(calls).toContain('stroke');
+    expect(calls).toContain('fill');
+  });
+
+  it('keeps an arrow small enough not to swamp the picture', () => {
+    for (const w of [640, 1280, 1920, 3840]) {
+      expect(arrowMetrics(w).head).toBeLessThan(w * 0.02);
+      expect(arrowMetrics(w).weight).toBeLessThan(w * 0.004);
+    }
+  });
+
+  it('draws grips only for the picked annotation, at its own ends', () => {
+    const { ctx, arcs } = fakeCtx();
+    drawAnnotations(ctx, 320, 180, [arrow('a'), arrow('b')], 'b');
+    expect(arcs.length).toBe(2);
+    expect(arcs[0].x).toBeCloseTo(0.1 * 320);
+    expect(arcs[1].x).toBeCloseTo(0.9 * 320);
+
+    const none = fakeCtx();
+    drawAnnotations(none.ctx, 320, 180, [arrow('a')], null);
+    expect(none.arcs.length).toBe(0);
+  });
+
+  it('gives a new kind the same grips without it drawing any', () => {
+    const { ctx, arcs } = fakeCtx();
+    drawAnnotations(ctx, 320, 180, [new Tripod()], 't1');
+    expect(arcs.length).toBe(3);
+  });
+
+  it('sizes a grip to the screen, not to the picture', () => {
+    const small = fakeCtx({ width: 640, clientWidth: 640 });      // 1 canvas px per screen px
+    drawAnnotations(small.ctx, 640, 360, [arrow('a')], 'a');
+    const big = fakeCtx({ width: 3840, clientWidth: 640 });       // 6 canvas px per screen px
+    drawAnnotations(big.ctx, 3840, 2160, [arrow('a')], 'a');
+    expect(small.arcs[0].r).toBeGreaterThan(0);
+    expect(big.arcs[0].r / small.arcs[0].r).toBeCloseTo(6);
+  });
+
+  it('draws a grip of a sane size when the canvas is not on screen (an export)', () => {
+    const { ctx, arcs } = fakeCtx();
+    drawAnnotations(ctx, 1280, 720, [arrow('a')], 'a');
+    expect(Number.isFinite(arcs[0].r)).toBe(true);
+    expect(arcs[0].r).toBeGreaterThan(0);
+  });
+
+  it('takes a new renderer without changing what the arrow draws', () => {
+    const box: AnnotationRenderer<Annotation> = { id: 'box', draw: () => {} };
+    registerRenderer(box);
+    expect(rendererOf('box')?.id).toBe('box');
+
+    const { ctx, calls } = fakeCtx();
+    drawAnnotations(ctx, 320, 180, [arrow('a')]);
+    expect(calls).toContain('stroke');
+  });
+
+  it('skips a kind it cannot draw, rather than failing', () => {
+    const { ctx, calls } = fakeCtx();
+    drawAnnotations(ctx, 320, 180, [new Stub()]);
+    expect(calls).toEqual([]);
+  });
+});
