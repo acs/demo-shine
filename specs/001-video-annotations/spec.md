@@ -14,7 +14,7 @@
 
 - Q: When the user takes back their most recent change, should a single undo cover both cuts and arrows, or should each kind be undone on its own? → A: One undo covers the most recent change of any kind — a cut or an arrow.
 - Q: Should the timeline show where annotations are in time, or should arrows exist only over the picture? → A: The timeline shows each annotation's stretch, so it can be seen and reached.
-- Q: How should a person pick an existing arrow and change it? → A: Click the arrow on the picture to pick it, drag its ends to move and aim it, and drag its span on the timeline to change the stretch.
+- Q: How should a person pick an existing arrow and change it? → A: Click the arrow on the picture to pick it, and drag its ends to move and aim it. (Amended 2026-11-19: the stretch used to be changed by dragging the arrow's span on the timeline lane. That is gone — a lane mark is a finder, and a stretch is set when the arrow is made, and repeated at another moment with copy and paste.)
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -46,10 +46,9 @@ The person who placed an arrow wants to move it, change where it points, change 
 **Acceptance Scenarios**:
 
 1. **Given** a clip with an arrow, **When** the user clicks it on the picture and drags an end, **Then** the arrow points somewhere else and the change is shown in playback.
-2. **Given** a clip with an arrow, **When** the user drags its span on the timeline, **Then** it is shown only in the new stretch.
-3. **Given** a clip with an arrow, **When** the user deletes it, **Then** it no longer appears, and the deletion can be undone.
-4. **Given** a clip with an arrow, **When** the user looks at the timeline, **Then** the arrow is marked at the start of its stretch there, and reaching it does not mean playing through the clip.
-5. **Given** a clip with an arrow, **When** the user copies it and pastes, **Then** a new arrow of the same shape appears over the same part of the picture at the playhead, in hand, and is moved or deleted on its own without touching the first.
+2. **Given** a clip with an arrow, **When** the user deletes it, **Then** it no longer appears, and the deletion can be undone.
+3. **Given** a clip with an arrow, **When** the user looks at the timeline, **Then** the arrow is marked at the start of its stretch there, and clicking the mark picks the arrow and brings the playhead to it.
+4. **Given** a clip with an arrow, **When** the user copies it and pastes, **Then** a new arrow of the same shape appears over the same part of the picture at the playhead, in hand, and is moved or deleted on its own without touching the first.
 
 ---
 
@@ -79,7 +78,7 @@ A second kind of annotation arrives later — a box, a label, a highlight. Addin
 - The page is reloaded, or the trip to sign in to publish is taken: every arrow comes back in place.
 - A delete is undone after a new take was recorded.
 - A paste at the very end of the clip keeps its whole stretch inside the clip — the copy is pulled back rather than left hanging past the end.
-- A copy is pasted where the playhead holds, so a paste with the playhead inside the copied arrow's own stretch lands on top of it; the copy is in hand, and its mark can be dragged away.
+- A copy is pasted where the playhead holds, so a paste with the playhead inside the copied arrow's own stretch lands on top of it. The copy is in hand — it can be aimed, copied again, or deleted — but an arrow's stretch cannot be moved once it is made, so a paste meant for another moment wants the playhead there first.
 
 ## Requirements *(mandatory)*
 
@@ -91,7 +90,7 @@ A second kind of annotation arrives later — a box, a label, a highlight. Addin
 - **FR-004**: An arrow MUST stay over the same part of the picture as the clip plays — it is anchored to the picture, not to the screen or the window.
 - **FR-005**: Arrows MUST be shown while the clip is played back, at the same moment and place as when placed.
 - **FR-006**: Arrows MUST be included in every output of the clip — a downloaded file and a published post — at the same moment and over the same part of the picture as in the review.
-- **FR-007**: Users MUST be able to pick an existing arrow by clicking it on the picture, move it and change where it points by dragging its ends, and change the stretch it is shown over by dragging its span on the timeline.
+- **FR-007**: Users MUST be able to pick an existing arrow by clicking it on the picture, and move it and change where it points by dragging its ends. When it is shown over is decided when it is made, from the selected stretch, and repeated at another moment with copy and paste (FR-017) — a mark on the timeline is a finder, not a handle.
 - **FR-008**: Users MUST be able to delete an arrow, and to undo that deletion.
 - **FR-009**: Several arrows MUST be able to exist at once, including arrows that overlap in time.
 - **FR-010**: Annotations MUST be kept with the clip: they MUST survive a reload and a return from the publishing sign-in, and MUST be let go when the session ends.
