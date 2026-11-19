@@ -56,7 +56,7 @@ and assert what a person would see:
 | Playback over an arrow's stretch | the layer's `drawImage`/stroke work happens while the playhead is inside the span, and not outside it (FR-005) |
 | The arrow over a moving picture | the drawn geometry is the same fractions at the start and the end of the span (SC-003) |
 | The export | run `exportOffline(planExport(app.clip, …))`; the same renderer is called on the export canvas, so the file carries the arrow (FR-006, SC-002) |
-| The timeline lane | a bar exists per annotation, its width is the **kept** stretch, and clicking it moves the playhead (FR-016, SC-007) |
+| The timeline lane | a mark exists per annotation at the start of its **kept** stretch, and clicking it picks that arrow and moves the playhead (FR-016, SC-007) |
 | Pick and drag | a click on the arrow picks it; dragging an end changes `to`; dragging its span changes `s`/`e` (FR-007) |
 | Delete and undo | the arrow disappears, the header's undo says what it will take back, and one press brings it back (FR-008, FR-015) |
 
