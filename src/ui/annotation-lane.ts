@@ -14,7 +14,8 @@
 // It is a view of the clip and nothing else: the clip saying what changed is the whole
 // of the coupling, and the picture's selection is followed through `onSelectionChange`.
 
-import { app } from '../state.js';
+import { currentPhase } from '../state.js';
+import { session } from '../session.js';
 import { el } from './dom.js';
 import { keptLengthNow, keptOf } from './clip.js';
 import { playback } from './playback.js';
@@ -27,7 +28,7 @@ export function initAnnotationLane(): void {
 
   // The clip says what changed; the lane follows — on every event, `take-added`
   // included: a longer clip moves every mark, because a mark is a fraction of it.
-  app.clip.onChange(() => renderLane());
+  session.clip.onChange(() => renderLane());
   onSelectionChange(renderLane);
   renderLane();
 }
@@ -43,20 +44,20 @@ function onClick(e: MouseEvent): void {
 
 // Picking a mark picks the arrow on the picture and brings the playhead to it.
 function pick(id: string): void {
-  const annotation = app.clip.annotations.byId(id);
+  const annotation = session.clip.annotations.byId(id);
   if (!annotation) return;
   edit.pick(id);
-  playback.hold(annotation.span.s * app.clip.total());
+  playback.hold(annotation.span.s * session.clip.total());
 }
 
 /** Draw a mark per annotation, at the start of its stretch, with the picked one marked. */
 export function renderLane(): void {
   const host = el.tlAnnots;
-  if (app.phase !== 'review' || !(app.clip.total() > 0)) {
+  if (currentPhase() !== 'review' || !(session.clip.total() > 0)) {
     host.replaceChildren();
     return;
   }
-  const total = app.clip.total();
+  const total = session.clip.total();
   const kept = Math.max(0.001, keptLengthNow());
   const width = Math.max(1, host.getBoundingClientRect().width);
   const selected = edit.selectedId;
@@ -69,7 +70,7 @@ export function renderLane(): void {
   let lastX = -Infinity;
   let nudge = 0;
   let html = '';
-  for (const annotation of app.clip.annotations.all) {
+  for (const annotation of session.clip.annotations.all) {
     const s = keptOf(annotation.span.s * total), e = keptOf(annotation.span.e * total);
     if (e - s < 0.001) continue;                 // entirely cut away: nothing to show
     const x = (s / kept) * width;

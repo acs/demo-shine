@@ -6,13 +6,15 @@
 // painted straight onto the preview canvas, so it can never end up in the
 // recording (which reads from the source <video>).
 
-import { app, type Rect } from '../state.js';
+import { currentPhase } from '../state.js';
+import { capture } from '../infra/capture.js';
+import { CropRegion } from '../domain/capture/CropRegion.js';
 import { el, ctx } from './dom.js';
 
-export const FULL: Rect = { x: 0, y: 0, w: 1, h: 1 };
+export const FULL = CropRegion.FULL;
 
-export function isFullRegion(r: Rect): boolean {
-  return r.x <= 0.001 && r.y <= 0.001 && r.w >= 0.999 && r.h >= 0.999;
+export function isFullRegion(r: CropRegion): boolean {
+  return r.isFull;
 }
 
 const MIN_PX = 16;               // below this a pointer gesture counts as a click
@@ -82,7 +84,7 @@ export function initRegion(): void {
 
 // Back to the whole source.
 export function clearRegion(): void {
-  app.region = { ...FULL };
+  capture.setRegion(CropRegion.FULL);
 }
 
 function toCanvas(e: PointerEvent): { x: number; y: number } {
@@ -95,7 +97,7 @@ function toCanvas(e: PointerEvent): { x: number; y: number } {
 
 function onDown(e: PointerEvent): void {
   // A crop is a crop of the screen: with the screen off there is nothing to crop.
-  if (app.phase !== 'live' || !app.screenOn) return;
+  if (currentPhase() !== 'live' || !capture.sources.screen) return;
   const p = toCanvas(e);
   crop.begin(p.x, p.y);
   try { el.cv.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
@@ -115,7 +117,7 @@ function onUp(e: PointerEvent): void {
 
   if (box.w < MIN_PX || box.h < MIN_PX) { clearRegion(); return; }   // a click → full source
 
-  app.region = { x: box.x / el.cv.width, y: box.y / el.cv.height, w: box.w / el.cv.width, h: box.h / el.cv.height };
+  capture.setRegion(CropRegion.from(box.x / el.cv.width, box.y / el.cv.height, box.w / el.cv.width, box.h / el.cv.height));
 }
 
 // A small, consistent on-screen font size, whatever the capture resolution.
@@ -128,17 +130,17 @@ function fontPx(): number {
 
 // Painted by the live mirror loop on the preview canvas.
 export function drawRegion(): void {
-  const visible = app.phase === 'live' || app.phase === 'recording';
-  el.cv.style.cursor = app.phase === 'live' ? 'crosshair' : '';
+  const visible = currentPhase() === 'live' || currentPhase() === 'recording';
+  el.cv.style.cursor = currentPhase() === 'live' ? 'crosshair' : '';
   if (!visible) return;
 
   const W = el.cv.width, H = el.cv.height;
   const fs = fontPx();
 
-  let rect = app.region;
+  let rect = capture.region;
   if (crop.active) {
     const box = crop.box();
-    rect = { x: box.x / W, y: box.y / H, w: box.w / W, h: box.h / H };
+    rect = CropRegion.from(box.x / W, box.y / H, box.w / W, box.h / H);
   }
 
   const x = rect.x * W, y = rect.y * H, w = rect.w * W, h = rect.h * H;
@@ -155,7 +157,7 @@ export function drawRegion(): void {
 
   // Red box, inset a hair so the stroke is never clipped at the edges. While
   // recording it breathes between red and the background with a soft glow.
-  const pulse = app.phase === 'recording' ? 0.5 + 0.5 * Math.sin(performance.now() / 450) : 1;
+  const pulse = currentPhase() === 'recording' ? 0.5 + 0.5 * Math.sin(performance.now() / 450) : 1;
   const alpha = 0.22 + 0.78 * pulse;
 
   const ix = x + lw / 2, iy = y + lw / 2, iw = Math.max(0, w - lw), ih = Math.max(0, h - lw);
@@ -177,11 +179,11 @@ export function drawRegion(): void {
 
   // Size readout — small, tucked outside the top-right corner.
   sizeBadge(
-    `${Math.round(rect.w * app.captureW)} × ${Math.round(rect.h * app.captureH)}`,
+    `${Math.round(rect.w * capture.width)} × ${Math.round(rect.h * capture.height)}`,
     x + w, y, W, fs,
   );
 
-  if (app.phase === 'live') hint(full ? 'Drag to record a region' : 'Click to reset to the full screen', W, H, fs);
+  if (currentPhase() === 'live') hint(full ? 'Drag to record a region' : 'Click to reset to the full screen', W, H, fs);
   ctx.restore();
 }
 

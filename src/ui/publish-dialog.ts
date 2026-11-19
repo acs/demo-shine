@@ -9,7 +9,7 @@ import { el } from './dom.js';
 import {
   blueskyAccount, signInToBluesky, signOutOfBluesky, publishClip,
   type BlueskyAccount, type PublishedPost, type PublishProgress,
-} from '../publisher.js';
+} from './publish-flow.js';
 
 const STAGE: Record<PublishProgress['stage'], string> = {
   encoding: 'Encoding the MP4…',

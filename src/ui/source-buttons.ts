@@ -9,7 +9,8 @@
 // state come from the model rather than from the markup, so the Screen button
 // is out on first access.
 
-import { app, onPhaseChange, type Phase } from '../state.js';
+import { currentPhase, onPhaseChange, type Phase } from '../state.js';
+import { capture } from '../infra/capture.js';
 import { el } from './dom.js';
 
 // What the page knows about the sources: whether a camera or microphone is
@@ -31,10 +32,10 @@ function locked(phase: Phase): boolean {
  * stale state — the opening one included.
  */
 export function refreshSourceButtons(): void {
-  const off = locked(app.phase);
+  const off = locked(currentPhase());
   el.screenBtn.disabled = off || !sources.screen;
-  el.screenBtn.classList.toggle('active', app.screenOn);
-  el.screenBtn.setAttribute('aria-pressed', app.screenOn ? 'true' : 'false');
+  el.screenBtn.classList.toggle('active', capture.sources.screen);
+  el.screenBtn.setAttribute('aria-pressed', capture.sources.screen ? 'true' : 'false');
   el.screenBtn.title = sources.screen
     ? 'Screen'
     : 'Screen capture is not available in this browser — record the webcam instead';

@@ -22,6 +22,7 @@
 
 import type { Clip, ClipSnapshot } from '../domain/clip/Clip.js';
 import type { StoredAnnotation } from '../domain/annotation/Annotation.js';
+import type { KeptClipPort } from '../application/ports/KeptClipPort.js';
 
 const DB_NAME = 'democlip';
 const DB_VERSION = 2;          // 2 splits the one-record store into takes + meta
@@ -132,6 +133,15 @@ export function clearClip(): Promise<void> {
     await txComplete(tx);
   }).catch(() => {});
 }
+
+/** The port the keep and restore use cases see. */
+export const keptClip: KeptClipPort = {
+  saveTake,
+  saveMeta,
+  saveClip,
+  load: loadClip,
+  clear: clearClip,
+};
 
 function metaOf(clip: Clip, audio: boolean): Meta {
   return {

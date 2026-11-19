@@ -12,11 +12,25 @@ src/
   domain/      pure rules: no DOM, no browser API, no import from ui/ or infra/
     clip/      Span, SpanSet, TimelineMap, Take, TakeRepository (a port), Clip (the aggregate)
     annotation/ Annotation (the base class), its kinds (Arrow), AnnotationSet, the register
-  infra/       the browser boundary: codecs, download, takes (the object URLs), the export adapter
+    capture/   CropRegion and SourceSet — the crop and the three source toggles
+    export/    ExportTarget — the container an export writes
+  application/ the use cases that run in node, and the ports they own
+    ports/     CapturePort, WebcamPort, MicrophonePort, TakeRecorderPort,
+               CompositorPort, TakeProbePort, ClockPort, EncoderPort,
+               DownloadPort, FrameRendererPort, KeptClipPort
+    session.ts the Session: the clip and its audio
+  infra/       the browser boundary: capture, compositor, recorder, probe, clock,
+               encoder, codecs, download, takes (the object URLs), the clip store, Bluesky
   ui/          the DOM and the interaction: renders the model, owns no rules
-  recorder.ts, exporter.ts   the flows that sequence browser work
-  state.ts     the shared mutable state, shrinking as each thing finds its owner
+    *-flow.ts  the view flows: record, review, export, publish, resume
+  state.ts     the phase only — one owner and one change event
+  session.ts   the composition: the single Session object
+  main.ts      the composition root: the only module importing all four layers
 ```
+
+A port lives beside the use case that needs it; an adapter lives in `infra/`; a
+view flow lives in `ui/`. A module in `domain/` or `application/` imports neither
+the view nor a browser adapter.
 
 ## Where a rule belongs
 

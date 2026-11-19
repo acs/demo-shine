@@ -1,7 +1,7 @@
 // Light / dark theme.
 
 import { el } from './dom.js';
-import { app } from '../state.js';
+import { currentPhase } from '../state.js';
 import { drawGrid } from './preview.js';
 import { waveform } from './waveform.js';
 import { savePrefs } from '../prefs.js';
@@ -20,6 +20,6 @@ export function applyTheme(t: string): void {
   el.metaTheme.content = t === 'dark' ? '#060710' : '#ECF0FA';
   // light theme shows the moon (click to go dark)
   el.themeIco.innerHTML = t === 'light' ? MOON : SUN;
-  if (app.phase === 'idle') drawGrid();
+  if (currentPhase() === 'idle') drawGrid();
   waveform.draw();
 }

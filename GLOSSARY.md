@@ -93,7 +93,7 @@ timeline, so nothing is drawn there — and putting the cut back brings it back.
 | **export target** | which container an export writes — `webm` for the download, `mp4` for Bluesky — the codecs that follow from it, and **the picture** the encoder is given, which is the crop's own except that H.264 refuses an odd edge and is taken down to even | `ExportTarget`, `specFor()`, `evenPicture()` |
 | **fade** | the sound going down over the last 80 ms of a take and back up as the next begins | `FADE_S` |
 | **dissolve** | the picture blending from the last frame of a take into the first frames of the next, over the same 80 ms | `DISSOLVE_S` |
-| **crop region** | the rectangle of the screen being recorded — the red box — as fractions of the capture | `app.region` |
+| **crop region** | the rectangle of the screen being recorded — the red box — as fractions of the capture. A region stays inside the picture and is never empty | `CropRegion` (`src/domain/capture/CropRegion.ts`) |
 
 ## Publishing to Bluesky
 
@@ -150,6 +150,24 @@ signing in has to outlive a session reset and be there again on the way back fro
 the authorization server. The clip store in `infra/clip-store.ts` — its IndexedDB
 connection, and the writes queued one behind another — lasts the page too, because
 what it holds is the one thing that has to outlive it.
+
+## The architecture
+
+Four layers, and the dependency arrow points inward: `domain/` knows nothing,
+`application/` knows the domain, `infra/` and `ui/` know both, and `main.ts`
+knows all four. A rule lives in `domain/`; a use case lives in `application/`; a
+browser capability sits behind a port; the adapter that implements it lives in
+`infra/`; the view that sequences it lives in `ui/`.
+
+| word | what it is | in the code |
+|---|---|---|
+| **port** | a named browser capability a use case needs, described without the browser. An interface the use case owns | `src/application/ports/` |
+| **adapter** | the implementation of a port in the browser boundary. It owns the browser resource it acquires and releases it | `src/infra/` |
+| **use case** | a sequence that delivers an outcome — record a take, export a clip, publish a clip, keep a clip, restore a clip. It runs in node with fakes behind its ports | `src/application/` |
+| **view flow** | the composition of a use case with the view and the browser: the button, the status line, the phase and the sequencing. It sequences and reports; it holds no rule | `src/ui/*-flow.ts` |
+| **phase** | the session's state — idle, starting, live, recording, review, encoding. The one piece of genuinely shared state: one owner and one change event | `src/state.ts` |
+| **source set** | which of the three record sources are on: screen, webcam, microphone. A take needs a picture: screen or webcam | `SourceSet` (`src/domain/capture/SourceSet.ts`) |
+| **session** | one sitting of the app: the clip and the audio flag. It ends on one event — New, an export, a publish, or a share that went away | `Session` (`src/application/session.ts`) |
 
 ## Words we do not use
 

@@ -10,7 +10,7 @@
 // them, the review builds them again, and the live timeline carries them into a
 // take that is still being recorded.
 
-import { app } from '../state.js';
+import { session } from '../session.js';
 import type { Take } from '../domain/clip/Take.js';
 import { el } from './dom.js';
 import { keptLengthNow, keptOf } from './clip.js';
@@ -41,7 +41,7 @@ export class Waveform {
   }
 
   async build(takes: readonly Take[]): Promise<void> {
-    if (!takes.length || !app.recAudio) { this.clear(); return; }
+    if (!takes.length || !session.audio) { this.clear(); return; }
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) { this.clear(); return; }
 
@@ -98,8 +98,8 @@ export class Waveform {
     // so its bars are left out and the rest closes up over it.
     const kept = keptLengthNow();
     if (!(kept > 0)) return;
-    const gone = app.clip.cuts.scaled(app.clip.total());   // the cuts, in seconds
-    const step = app.clip.total() / peaks.length;
+    const gone = session.clip.cuts.scaled(session.clip.total());   // the cuts, in seconds
+    const step = session.clip.total() / peaks.length;
     const bw = Math.max(0.7, (w / kept) * step);
 
     const mid = h / 2;

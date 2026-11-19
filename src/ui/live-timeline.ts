@@ -18,7 +18,9 @@
 // begins a take and lets go of whatever the last one left behind, and `stop`
 // clears it. That is what lets a session begin again empty, in the same page.
 
-import { app } from '../state.js';
+import { currentPhase } from '../state.js';
+import { session } from '../session.js';
+import { capture } from '../infra/capture.js';
 import { clock, el } from './dom.js';
 import { estimateWebmText } from './size-estimate.js';
 import { drawWebcamOverlay } from './webcam.js';
@@ -45,6 +47,7 @@ export class LiveTimeline {
   private analyser: AnalyserNode | null = null;
   private buf = new Uint8Array(0);                // the analyser's, once it starts
   private lastDraw = 0;
+  private startedAt = 0;
 
   /** A take is starting: the strip is drawn for a clip that is about to grow. */
   start(recStream: MediaStream | null): void {
@@ -64,6 +67,7 @@ export class LiveTimeline {
     el.tCut.textContent = '';
     el.waveform.style.display = 'none';
     this.lastDraw = 0;
+    this.startedAt = Date.now();
     this.tick = window.setInterval(() => this.onTick(), SAMPLE_MS);
     this.onTick();
   }
@@ -83,7 +87,7 @@ export class LiveTimeline {
   // ── the tick ───────────────────────────────────────────────────────────────
 
   private onTick(): void {
-    if (app.phase !== 'recording') { this.stop(); return; }
+    if (currentPhase() !== 'recording') { this.stop(); return; }
 
     this.readAudio();
     const elapsed = this.elapsedSeconds();
@@ -105,7 +109,7 @@ export class LiveTimeline {
   }
 
   private elapsedSeconds(): number {
-    return Math.max(0, (Date.now() - (app.startAt ?? Date.now())) / 1000);
+    return Math.max(0, (Date.now() - this.startedAt) / 1000);
   }
 
   // The picture going into the recording right now: the share, cropped to the
@@ -114,15 +118,15 @@ export class LiveTimeline {
   private grab(): HTMLCanvasElement {
     const c = document.createElement('canvas');
     try {
-      if (app.screenOn && app.stream) {
+      if (capture.sources.screen && capture.current()) {
         if (el.sv.readyState < 2) return c;
-        const r = app.region;
-        const sx = Math.round(r.x * app.captureW), sy = Math.round(r.y * app.captureH);
-        const sw = Math.max(1, Math.round(r.w * app.captureW)), sh = Math.max(1, Math.round(r.h * app.captureH));
+        const r = capture.region;
+        const sx = Math.round(r.x * capture.width), sy = Math.round(r.y * capture.height);
+        const sw = Math.max(1, Math.round(r.w * capture.width)), sh = Math.max(1, Math.round(r.h * capture.height));
         drawThumb(c, el.sv, sx, sy, sw, sh);
         const ctx = c.getContext('2d');
         if (ctx) drawWebcamOverlay(ctx, 0, 0, c.width, c.height);
-      } else if (app.webcamOn && el.wcv.readyState >= 2) {
+      } else if (capture.sources.webcam && el.wcv.readyState >= 2) {
         drawThumb(c, el.wcv, 0, 0, el.wcv.videoWidth, el.wcv.videoHeight);
       }
     } catch { /* a frame that is not ready — the next tick will have it */ }
@@ -172,8 +176,8 @@ export class LiveTimeline {
 
     if (this.echo && this.echo.length) {
       // every bar of the clip so far, over the recording's own time
-      const gone = app.clip.cuts.scaled(app.clip.total());
-      const step = app.clip.total() / this.echo.length;
+      const gone = session.clip.cuts.scaled(session.clip.total());
+      const step = session.clip.total() / this.echo.length;
       const bw = Math.max(0.7, (w / span) * step);
       for (let i = 0; i < this.echo.length; i++) {
         const at = (i + 0.5) * step;

@@ -2,7 +2,7 @@
 
 import { el, setStatus, toast } from './ui/dom.js';
 import { initVersion } from './ui/version.js';
-import { onPhaseChange, app, type Phase } from './state.js';
+import { onPhaseChange, currentPhase, type Phase } from './state.js';
 import { loadPrefs } from './prefs.js';
 import { applyTheme, toggleTheme } from './ui/theme.js';
 import { toggleHelp, helpBdClick } from './ui/help.js';
@@ -11,8 +11,10 @@ import { initTimeline, updateTimeUI, updateSizeUI } from './ui/timeline-ui.js';
 import { initTimelineMarks } from './ui/marks.js';
 import { initAnnotationEdit } from './ui/annotation-edit.js';
 import { initAnnotationLane } from './ui/annotation-lane.js';
-import { toggleRec, toggleScreen, syncSources } from './recorder.js';
-import { doExport, startNewSession } from './exporter.js';
+import { initViewLifetime } from './ui/view-lifetime.js';
+import { toggleRecord, toggleScreen, syncSources, onScreenEnded } from './ui/record-flow.js';
+import { doExport } from './ui/export-flow.js';
+import { startNewSession } from './ui/new-session-flow.js';
 import { playback, initPlaybackKeys } from './ui/playback.js';
 import { waveform } from './ui/waveform.js';
 import { initRegion } from './ui/region.js';
@@ -21,7 +23,9 @@ import { initMic, toggleMic } from './ui/mic.js';
 import { initSourceButtons, setScreenAvailable } from './ui/source-buttons.js';
 import { exportMenu } from './ui/export-menu.js';
 import { publishDialog } from './ui/publish-dialog.js';
-import { watchClip, resumeClip } from './resume.js';
+import { keep } from './ui/keep.js';
+import { resumeClip } from './ui/resume-flow.js';
+import { capture } from './infra/capture.js';
 
 function init(): void {
   // Not every browser can share a screen: Chrome and Firefox on Android do not
@@ -49,7 +53,7 @@ function init(): void {
   el.helpClose.addEventListener('click', toggleHelp);
   el.helpBd.addEventListener('click', helpBdClick);
 
-  el.recBtn.addEventListener('click', toggleRec);
+  el.recBtn.addEventListener('click', toggleRecord);
   el.btnNew.addEventListener('click', startNewSession);
   el.btnExp.addEventListener('click', () => exportMenu.toggle());
   exportMenu.init(choice => {
@@ -67,7 +71,7 @@ function init(): void {
   // instead.
   const showNew = (phase: Phase) => { el.btnNew.style.display = phase === 'live' || phase === 'review' ? '' : 'none'; };
   onPhaseChange(showNew);
-  showNew(app.phase);
+  showNew(currentPhase());
 
   // Click the timeline to play from that point, mark a section and cut it.
   initTimelineMarks();
@@ -77,12 +81,15 @@ function init(): void {
   initAnnotationEdit();
   initAnnotationLane();   // and the timeline shows where the arrows are
 
+  // Every view resets itself when the clip is cleared. The session names no view.
+  initViewLifetime();
+
   // The clip outlives the page. It is kept written down as it changes — a reload
   // or a new version comes back to it, and the trip a Bluesky sign-in takes is
   // only the one that forced it — and a stored clip is opened back into the
   // review on the way in. The session is over at New, or when the clip is
   // exported, and the kept copy goes with it.
-  watchClip();
+  keep.watch();
   void resumeClip();
 
   // PWA install prompt
@@ -104,12 +111,13 @@ function init(): void {
   // (source-buttons.ts).
   setScreenAvailable(canShare);
   initSourceButtons();
-  el.screenBtn.addEventListener('click', toggleScreen);
+  el.screenBtn.addEventListener('click', () => void toggleScreen());
   el.webcamBtn.addEventListener('click', async () => { await toggleWebcam(); syncSources(); });
   initWebcam();
+  capture.onEnded(onScreenEnded);
 
   // Microphone toggle + level meter.
-  el.micBtn.addEventListener('click', toggleMic);
+  el.micBtn.addEventListener('click', () => void toggleMic());
   initMic();
 
   // A Bluesky sign-in only finishes when the authorization server sends us back.
