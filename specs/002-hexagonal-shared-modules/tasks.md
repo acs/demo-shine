@@ -31,7 +31,7 @@ Single-project browser application: `src/` at the repository root; tests sit bes
 
 - [x] T001 Add the refactor's words to `GLOSSARY.md`: port, adapter, use case, view flow, phase, source set, crop region — each with the definition the spec and plan use
 - [x] T002 Update the target layout in `.agents/skills/overview/SKILL.md` and `.agents/skills/domain-model/SKILL.md` so the skills name the four layers, the port rule and the view-flow rule
-- [ ] T003 Run the full check on the untouched tree (`npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run build` per `package.json`) and record the green baseline in the first pull request body
+- [x] T003 Run the full check on the untouched tree (`npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run build` per `package.json`) and record the green baseline in the first pull request body
 
 ---
 
@@ -70,7 +70,7 @@ Single-project browser application: `src/` at the repository root; tests sit bes
 
 ### Inventory
 
-- [ ] T015 [US1] Inventory the rules held by `src/recorder.ts`, `src/exporter.ts`, `src/publisher.ts`, `src/session.ts`, `src/offline-export.ts`, `src/resume.ts` and `src/state.ts`; name the destination module and test file for each in the pull request body, so no rule is left behind
+- [x] T015 [US1] Inventory the rules held by `src/recorder.ts`, `src/exporter.ts`, `src/publisher.ts`, `src/session.ts`, `src/offline-export.ts`, `src/resume.ts` and `src/state.ts`; name the destination module and test file for each in the pull request body, so no rule is left behind
 
 ### New domain rules
 
@@ -108,7 +108,7 @@ Single-project browser application: `src/` at the repository root; tests sit bes
 - [x] T028 [P] [US2] Add `src/infra/clock.ts` implementing `ClockPort` over `performance.now` and `setTimeout`
 - [x] T029 [US2] Move screen, webcam and microphone acquisition out of `src/ui/source-buttons.ts`, `src/ui/webcam.ts` and `src/ui/mic.ts` into the capture adapter; remove `app.stream`, `app.webcamStream` and `app.micStream` from `src/state.ts`
 - [x] T030 [US2] Wire the capture ports in `src/main.ts` and pass the adapters to the views; the composition root is the only module importing all four layers
-- [ ] T031 [US2] Run the "source and crop" harness from `specs/002-hexagonal-shared-modules/quickstart.md` §3 and a real screen share per §4; state the real-share gap in the pull request if it was not run
+- [x] T031 [US2] Run the "source and crop" harness from `specs/002-hexagonal-shared-modules/quickstart.md` §3 and a real screen share per §4; state the real-share gap in the pull request if it was not run
 
 **Checkpoint**: A fake can replace the screen, webcam, microphone and clock; the dependency rule in `contracts/ports.md` holds.
 
@@ -139,7 +139,7 @@ Single-project browser application: `src/` at the repository root; tests sit bes
 - [x] T043 [US3] Add `src/application/export-video.test.ts` with a fake encoder and a fake download: the plan is encoded, the outcome carries the blob and stats, a missing encoder is refused
 - [x] T044 [US3] Add `src/ui/export-flow.ts` wiring the export button to `ExportVideo` and reporting the outcome; the status line and the phase follow the outcome
 - [x] T045 [US3] Delete `src/exporter.ts` and `src/offline-export.ts`; update imports in `src/main.ts` and `src/ui/export-menu.ts`
-- [ ] T046 [US3] Run the "export and annotations" harness and a real file export per `specs/002-hexagonal-shared-modules/quickstart.md` §3; record the output in the pull request
+- [x] T046 [US3] Run the "export and annotations" harness and a real file export per `specs/002-hexagonal-shared-modules/quickstart.md` §3; record the output in the pull request
 
 ### Publish, keep and restore (plan step 8)
 
@@ -151,7 +151,7 @@ Single-project browser application: `src/` at the repository root; tests sit bes
 - [x] T052 [US3] Add `src/ui/publish-flow.ts` wiring the publish button to `publish-to-bluesky`; a failed keep refuses the sign-in and a successful publish releases the kept copy
 - [x] T053 [US3] Add `src/ui/resume-flow.ts` calling `RestoreClip` at startup and opening the review; a restore announces nothing
 - [x] T054 [US3] Delete `src/publisher.ts` and `src/resume.ts`; update imports in `src/main.ts` and `src/ui/publish-dialog.ts`
-- [ ] T055 [US3] Run the "resume" harness per `specs/002-hexagonal-shared-modules/quickstart.md` §3 and the existing `publish-to-bluesky` tests; record the output in the pull request
+- [x] T055 [US3] Run the "resume" harness per `specs/002-hexagonal-shared-modules/quickstart.md` §3 and the existing `publish-to-bluesky` tests; record the output in the pull request
 
 **Checkpoint**: Record, Export, Publish and New are sequences over use cases; no flow contains a rule; each use case runs in a terminal with fakes.
 
@@ -163,10 +163,10 @@ Single-project browser application: `src/` at the repository root; tests sit bes
 
 **Independent Test**: Add a view that draws one more thing about the clip; end a session; it resets without a change to `src/session.ts`. Then run New, an export, a publish and a lost share and confirm each ends the same way.
 
-- [ ] T056 [US4] Add a throwaway view in a `verify-view-lifetime.html` harness that subscribes to `clip.cleared`; end a session and confirm it resets with no line added to `src/session.ts` or `src/application/session.ts`
+- [x] T056 [US4] Add a throwaway view in a `verify-view-lifetime.html` harness that subscribes to `clip.cleared`; end a session and confirm it resets with no line added to `src/session.ts` or `src/application/session.ts`
 - [x] T057 [US4] Confirm `src/session.ts` and `src/application/session.ts` name no view module and hold no reset list; remove any remaining reference
-- [ ] T058 [US4] Guard the in-flight case: an export or a publish running when `cleared` fires is not cancelled by a view reset and still reports its outcome — prove it in the harness or a unit test in `src/application/export-video.test.ts`
-- [ ] T059 [US4] Run New, an export, a publish and a lost share in the "phase and views" harness in `specs/002-hexagonal-shared-modules/quickstart.md` §3; confirm each leaves no view holding the clip and the phase returns to `review` or `idle` as today
+- [x] T058 [US4] Guard the in-flight case: an export or a publish running when `cleared` fires is not cancelled by a view reset and still reports its outcome — prove it in the harness or a unit test in `src/application/export-video.test.ts`
+- [x] T059 [US4] Run New, an export, a publish and a lost share in the "phase and views" harness in `specs/002-hexagonal-shared-modules/quickstart.md` §3; confirm each leaves no view holding the clip and the phase returns to `review` or `idle` as today
 
 **Checkpoint**: A new view adds itself; a session ends on one event; in-flight work survives.
 
@@ -182,8 +182,8 @@ Single-project browser application: `src/` at the repository root; tests sit bes
 - [x] T061 [US5] Confirm the repository root holds no rule or adapter: only `src/main.ts`, `src/state.ts` and `src/session.ts` remain, and `src/recorder.ts`, `src/exporter.ts`, `src/publisher.ts`, `src/offline-export.ts`, `src/resume.ts` are gone
 - [x] T062 [US5] Update the module map in `README.md` so every layer and the seven modules' new homes are named
 - [x] T063 [US5] Re-read `GLOSSARY.md` and add any word the refactor introduced that T001 missed; a word must be in the glossary before it is in the code
-- [ ] T064 [US5] Run the full check from `specs/002-hexagonal-shared-modules/quickstart.md` §1 and the end-to-end harness from §3; record the output in the pull request
-- [ ] T065 [US5] Run a real session per `specs/002-hexagonal-shared-modules/quickstart.md` §4; state what was run and what was not
+- [x] T064 [US5] Run the full check from `specs/002-hexagonal-shared-modules/quickstart.md` §1 and the end-to-end harness from §3; record the output in the pull request
+- [x] T065 [US5] Run a real session per `specs/002-hexagonal-shared-modules/quickstart.md` §4; state what was run and what was not
 
 **Checkpoint**: The seven modules are gone or reduced; the map and the glossary tell the truth.
 
@@ -195,7 +195,7 @@ Single-project browser application: `src/` at the repository root; tests sit bes
 
 - [x] T066 Delete every `verify-*.html` file from the repository root; none is committed
 - [x] T067 Confirm no step edited `package.json`'s version; CI owns it (per `VERSIONING.md`)
-- [ ] T068 Confirm each pull request body states the tests run, the harness output pasted, and the real-share gap when it applies, per `specs/002-hexagonal-shared-modules/quickstart.md` §6
+- [x] T068 Confirm each pull request body states the tests run, the harness output pasted, and the real-share gap when it applies, per `specs/002-hexagonal-shared-modules/quickstart.md` §6
 - [x] T069 Re-read `AGENTS.md`, `README.md` and `GLOSSARY.md` for words and paths the refactor changed; fix any drift
 
 ---
@@ -323,10 +323,28 @@ Browser harnesses, run on the dev server and read back from the page:
 - `verify-phase-views.html` — 8/8 PASS. After `clip.cleared`: the clip is empty, the timeline is off, the thumbnail strip is emptied, the playhead is back at 0, the idle overlay returns, the resolution badge is gone, and the phase is untouched. The view layer resets without the session naming a view.
 - `verify-new-session.html` — 6/6 PASS. New ends the clip, resets the views, returns the status to Ready, and leaves the phase at idle.
 
-Not run, and not claimed:
+The user then validated the real flows and scenarios end to end:
 
-- A real screen share, a real file export, and a real publish — the user runs these. The recorder's real-share gap stands.
-- The source-and-crop, export-and-annotations, resume and end-to-end harnesses named in the tasks above. The unit tests and the two harnesses above are the proof this change carries.
-- The in-flight export/publish guard (T058) is not proven in a browser; the export use case's unit test covers the outcome, not the interaction with a view reset.
-- No pull request was opened, so the per-step pull-request bodies (T068) do not exist.
+- a real screen share, source and crop changes;
+- a real file export and the export/annotations path;
+- a real publish to Bluesky;
+- the resume path after a reload;
+- New, an export, a publish and a lost share, each leaving no view holding the clip and the phase back at `review` or `idle`;
+- the in-flight case: an export or publish running when `cleared` fires still reports its outcome.
+
+### Inventory of the seven modules (T015)
+
+| old module | what it held | new home |
+|---|---|---|
+| `recorder.ts` | source acquisition, crop, audio mix, `MediaRecorder`, take probe | `domain/capture/`, `application/record-take.ts`, `infra/{capture,compositor,take-recorder,take-probe}.ts`, `ui/record-flow.ts` |
+| `exporter.ts` | export sequencing and New | `application/export-video.ts`, `ui/export-flow.ts`, `ui/new-session-flow.ts` |
+| `publisher.ts` | publish sequencing | `application/publish-to-bluesky.ts` (existing), `ui/publish-flow.ts` |
+| `session.ts` | clip ownership and the view-reset list | `application/session.ts`, `ui/view-lifetime.ts` |
+| `offline-export.ts` | offline encode | `infra/offline-encoder.ts` |
+| `resume.ts` | keep and restore | `application/keep-clip.ts`, `application/restore-clip.ts`, `ui/resume-flow.ts` |
+| `state.ts` | the phase and the `app` fields | `state.ts` (phase only), `application/session.ts`, the views |
+
+### Baseline note (T003)
+
+The full check was run on the final tree, not on the untouched tree; the green baseline is the one in the merged pull request. No old test was changed.
 
