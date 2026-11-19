@@ -14,7 +14,8 @@
 // rather than in module variables. The transport belongs to the view module that
 // owns it; what the session does is end its lifetime, by calling `reset`.
 
-import { app } from '../state.js';
+import { currentPhase } from '../state.js';
+import { session } from '../session.js';
 import { ctx, el } from './dom.js';
 import { drawClipFrame } from './preview.js';
 import { drawAnnotations } from './annotation-layer.js';
@@ -33,10 +34,10 @@ const NUDGE_MS  = 600;    // ...and a seek that left the clip paused gets a mome
 // The end of the cut the playhead sits in, in seconds, or null when
 // it is not inside one. The cuts are stored as fractions of the clip.
 function cutEndFor(t: number): number | null {
-  if (!(app.clip.total() > 0)) return null;
+  if (!(session.clip.total() > 0)) return null;
   // Asked in seconds: the map holds the cuts in the recording's own time, so
   // the fraction-of-the-clip the app stores never reaches this question.
-  return app.clip.timeline().endAt(t);
+  return session.clip.timeline().endAt(t);
 }
 
 export class Playback {
@@ -45,21 +46,23 @@ export class Playback {
   private nudgedAt  = 0;       // when playback was last re-asked for after a seek
   private seenAt    = 0;       // watchdog: position of the playhead at the last look
   private seenTime  = 0;       // watchdog: when that look happened
-  private joinFaded = false;   // the sound is down for a join that is coming
+  private joinFaded = false;
+  private playing = false;
+  private playRaf: number | null = null;   // the sound is down for a join that is coming
 
   isPlaying(): boolean {
-    return app.playing;
+    return this.playing;
   }
 
   toggle(): void {
-    if (app.phase !== 'review') return;
-    if (app.playing) this.pause();
+    if (currentPhase() !== 'review') return;
+    if (this.playing) this.pause();
     else             this.start();
   }
 
   start(): void {
-    if (app.phase !== 'review' || el.rv.readyState < 1) return;
-    const end = app.clip.total();
+    if (currentPhase() !== 'review' || el.rv.readyState < 1) return;
+    const end = session.clip.total();
     // (Re)start from the beginning when the playhead sits at the end.
     if (player.time() >= end - 0.02) void player.seek(0);
     this.beginPlayback();
@@ -69,9 +72,9 @@ export class Playback {
   // paused. Placing a mark or moving one is a still frame's business — a clip
   // running under the bar is what makes the exact point hard to find.
   hold(time: number): void {
-    if (app.phase !== 'review' || el.rv.readyState < 1) return;
-    if (app.playing) this.pause();
-    const t = clampToClip(time, 0, app.clip.total());
+    if (currentPhase() !== 'review' || el.rv.readyState < 1) return;
+    if (this.playing) this.pause();
+    const t = clampToClip(time, 0, session.clip.total());
     this.askedSkip = 0;
     this.updatePlayhead(t);
     void player.seekAndDraw(t);
@@ -82,12 +85,12 @@ export class Playback {
   // bar is dragged the marker can follow the pointer on every move and the frame
   // can be drawn at the throttle's rate.
   showHead(time: number): void {
-    if (app.phase !== 'review') return;
-    this.updatePlayhead(clampToClip(time, 0, app.clip.total()));
+    if (currentPhase() !== 'review') return;
+    this.updatePlayhead(clampToClip(time, 0, session.clip.total()));
   }
 
   private beginPlayback(): void {
-    app.playing = true;
+    this.playing = true;
     this.askedSkip = 0;
     this.joinFaded = false;
     fadeReset();               // starting again at full, whatever a pause left behind
@@ -96,13 +99,13 @@ export class Playback {
     this.seenTime = Date.now();
     this.updateTransport();
     el.rv.play().then(() => this.loop()).catch(() => {
-      app.playing = false;
+      this.playing = false;
       this.updateTransport();
     });
   }
 
   pause(): void {
-    app.playing = false;
+    this.playing = false;
     this.askedSkip = 0;
     this.seekSince = 0;
     this.joinFaded = false;
@@ -115,7 +118,7 @@ export class Playback {
   }
 
   reset(): void {
-    app.playing = false;
+    this.playing = false;
     this.askedSkip = 0;
     this.joinFaded = false;
     this.cancelLoop();
@@ -127,11 +130,11 @@ export class Playback {
 
   // Jump the playhead to an absolute time (thumbnail scrub), keeping transport state.
   seek(time: number): void {
-    if (app.phase !== 'review' || el.rv.readyState < 1) return;
-    const t = clampToClip(time, 0, app.clip.total());
+    if (currentPhase() !== 'review' || el.rv.readyState < 1) return;
+    const t = clampToClip(time, 0, session.clip.total());
     this.askedSkip = 0;
     this.updatePlayhead(t);
-    if (app.playing) void player.seek(t);
+    if (this.playing) void player.seek(t);
     else             void player.seekAndDraw(t);
   }
 
@@ -147,7 +150,7 @@ export class Playback {
   }
 
   private loop(): void {
-    if (!app.playing) return;
+    if (!this.playing) return;
     const now = Date.now();
 
     // A seek is not a stall. Jumping over a cut stretch means seeking, and a
@@ -156,7 +159,7 @@ export class Playback {
     if (el.rv.seeking) {
       if (!this.seekSince) this.seekSince = now;
       if (now - this.seekSince > SEEK_MS) { this.pause(); return; }
-      app.playRaf = requestAnimationFrame(() => this.loop());
+      this.playRaf = requestAnimationFrame(() => this.loop());
       return;
     }
     if (this.seekSince) {
@@ -165,7 +168,7 @@ export class Playback {
         // A seek can leave the clip paused; it was playing, so ask it again.
         this.nudgedAt = now;
         void el.rv.play().catch(() => {});
-        app.playRaf = requestAnimationFrame(() => this.loop());
+        this.playRaf = requestAnimationFrame(() => this.loop());
         return;
       }
       this.seenAt = player.time(); this.seenTime = now;      // the stall clock starts fresh
@@ -177,7 +180,7 @@ export class Playback {
     else if (this.seenTime && now - this.seenTime > STALL_MS) { this.pause(); return; }
 
     if (el.rv.paused && !el.rv.ended) {
-      if (now - this.nudgedAt < NUDGE_MS) { app.playRaf = requestAnimationFrame(() => this.loop()); return; }
+      if (now - this.nudgedAt < NUDGE_MS) { this.playRaf = requestAnimationFrame(() => this.loop()); return; }
       this.pause();
       return;
     }
@@ -187,16 +190,16 @@ export class Playback {
     // element comes out of the seek, so the browser is not re-asked every frame.
     const cutEnd = cutEndFor(player.time());
     if (cutEnd !== null) {
-      const to = Math.min(cutEnd, app.clip.total());
+      const to = Math.min(cutEnd, session.clip.total());
       if (!el.rv.seeking && this.askedSkip !== to) { this.askedSkip = to; void player.seek(to); }
       this.updatePlayhead(to);
-      app.playRaf = requestAnimationFrame(() => this.loop());
+      this.playRaf = requestAnimationFrame(() => this.loop());
       return;
     }
     this.askedSkip = 0;
 
-    if (player.time() >= app.clip.total()) {
-      void player.seek(app.clip.total());
+    if (player.time() >= session.clip.total()) {
+      void player.seek(session.clip.total());
       this.pause();
       return;
     }
@@ -214,30 +217,30 @@ export class Playback {
     // joined clip plays as a whole. Its last frame is held, to dissolve away from.
     if (player.ended()) {
       dissolve.holdFrame();
-      void player.next().then(joined => {
-        if (!app.playing) return;
+      void player.next(this.playing).then(joined => {
+        if (!this.playing) return;
         if (!joined) { this.pause(); return; }
         fadeIn(); this.joinFaded = false;      // up from the join's silence
-        app.playRaf = requestAnimationFrame(() => this.loop());
+        this.playRaf = requestAnimationFrame(() => this.loop());
       });
       return;
     }
 
     try { drawClipFrame(el.rv); } catch { /* a frame still decoding — keep the loop alive */ }
     // What is drawn over the picture, at the moment the playhead holds.
-    drawAnnotations(ctx, el.cv.width, el.cv.height, app.clip.annotationsAt(player.time()));
+    drawAnnotations(ctx, el.cv.width, el.cv.height, session.clip.annotationsAt(player.time()));
     this.updatePlayhead();          // video frames on the preview canvas
-    app.playRaf = requestAnimationFrame(() => this.loop());   // audio comes from the (unmuted) element
+    this.playRaf = requestAnimationFrame(() => this.loop());   // audio comes from the (unmuted) element
   }
 
   private cancelLoop(): void {
-    if (app.playRaf !== null) { cancelAnimationFrame(app.playRaf); app.playRaf = null; }
+    if (this.playRaf !== null) { cancelAnimationFrame(this.playRaf); this.playRaf = null; }
   }
 
   private updateTransport(): void {
-    el.playBtn.innerHTML = app.playing ? PAUSE_ICON : PLAY_ICON;
-    el.playBtn.classList.toggle('playing', app.playing);
-    el.playBtn.setAttribute('aria-label', app.playing ? 'Pause' : 'Play');
+    el.playBtn.innerHTML = this.playing ? PAUSE_ICON : PLAY_ICON;
+    el.playBtn.classList.toggle('playing', this.playing);
+    el.playBtn.setAttribute('aria-label', this.playing ? 'Pause' : 'Play');
   }
 }
 
@@ -250,7 +253,7 @@ export function initPlaybackKeys(): void {
   window.addEventListener('keydown', evt => {
     if (evt.key.toLowerCase() !== 'p') return;
     if (evt.altKey || evt.ctrlKey || evt.metaKey) return;     // leave the browser's own
-    if (typingIn(evt.target) || app.phase !== 'review') return;
+    if (typingIn(evt.target) || currentPhase() !== 'review') return;
     evt.preventDefault();
     playback.toggle();
   });

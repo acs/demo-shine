@@ -5,7 +5,8 @@
 // mapping (clip.ts). The recording's own time is what playback and the export use.
 
 import { clock, el } from './dom.js';
-import { app } from '../state.js';
+import { currentPhase } from '../state.js';
+import { session } from '../session.js';
 import { estimateWebmText } from './size-estimate.js';
 import { keptLengthNow, keptOf, player, sourceOf } from './clip.js';
 import { waveform } from './waveform.js';
@@ -17,7 +18,7 @@ const COUNT = 22;         // thumbnail frames across the strip
 // changed is the whole of the coupling: an approved or undone cut re-cuts the
 // strip and the readouts, a new take only moves what is drawn from the model.
 export function initTimeline(): void {
-  app.clip.onChange(event => {
+  session.clip.onChange(event => {
     if (event.type === 'cut-approved' || event.type === 'cut-undone') {
       void rebuildTimeline();     // the clip is a different length now
     }
@@ -34,7 +35,7 @@ export function updateTimeUI(): void {
 }
 
 export function updateSizeUI(): void {
-  if (!app.clip.total() || app.phase === 'idle') { el.tSize.textContent = '—'; return; }
+  if (!session.clip.total() || currentPhase() === 'idle') { el.tSize.textContent = '—'; return; }
   // Cuts are taken out, so they shrink the estimate too.
   el.tSize.textContent = estimateWebmText(keptLengthNow(), el.cv.width, el.cv.height);
 }
