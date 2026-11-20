@@ -142,12 +142,12 @@ Single project (browser SPA), per plan.md: `src/` at the repository root. Domain
 
 ## Phase 6: Polish & Cross-Cutting Concerns (branch `docs/annotation-properties-final`)
 
-- [ ] T030 [P] Update the help modal in `index.html`: a picked annotation's settings control, the colour swatches, and the text entry replacing the prompt.
-- [ ] T031 [P] Update `FEATURES.md`'s annotations entry: colour and words can be changed after placing.
-- [ ] T032 [P] Update the module map in `README.md`: `AnnotationColour.ts`, `properties-inspector.ts`, `text-entry.ts`.
-- [ ] T033 Run the full gate from `package.json`: `npm run lint && npm run typecheck && npx vitest run && npm run build`.
-- [ ] T034 Run `quickstart.md` end to end and paste its output into the pull request, stating which Verification level each part got and what was not verified.
-- [ ] T035 [P] Delete any `verify-*.html` harness left in the repository root and confirm none is committed.
+- [x] T030 [P] Update the help modal in `index.html`: a picked annotation's settings control, the colour swatches, and the text entry replacing the prompt.
+- [x] T031 [P] Update `FEATURES.md`'s annotations entry: colour and words can be changed after placing.
+- [x] T032 [P] Update the module map in `README.md`: `AnnotationColour.ts`, `properties-inspector.ts`, `text-entry.ts`.
+- [x] T033 Run the full gate from `package.json`: `npm run lint && npm run typecheck && npx vitest run && npm run build`.
+- [x] T034 Run `quickstart.md` end to end and paste its output into the pull request, stating which Verification level each part got and what was not verified.
+- [x] T035 [P] Delete any `verify-*.html` harness left in the repository root and confirm none is committed.
 
 ---
 
