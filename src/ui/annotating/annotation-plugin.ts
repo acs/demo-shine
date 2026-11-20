@@ -12,6 +12,10 @@
 // A plugin is registered under the same id as the domain class, so the id is the whole
 // of the coupling — exactly as the renderer registry is. Adding a kind is a class, a
 // line in the register in `domain/annotation/kinds.ts`, and a plugin here.
+//
+// It also says what can be changed about the kind after it is placed — its properties —
+// so one shared inspector can edit them without knowing the kind. A kind with none gets
+// no settings control and no panel.
 
 import type { Annotation, Point } from '../../domain/annotation/Annotation.js';
 import type { Span } from '../../domain/clip/Span.js';
@@ -65,6 +69,27 @@ export interface CreationContext {
   say(message: string): void;
 }
 
+/** Which shared control edits a property. */
+export type PropertyControl = 'colour' | 'text';
+
+/**
+ * Something about an annotation the user can change after it is placed. Its kind
+ * declares it; the shared inspector renders it from the `control` and applies it through
+ * the clip, so the inspector never learns which kinds have which properties.
+ */
+export interface AnnotationProperty {
+  /** 'colour', 'words' — stable, and what the panel keys on. */
+  readonly id: string;
+  /** What the control is called: 'Colour', 'Words'. */
+  readonly label: string;
+  /** Which shared control renders it. */
+  readonly control: PropertyControl;
+  /** The value the control shows for this annotation. */
+  value(annotation: Annotation): string;
+  /** The same annotation with a new value; null when that value is not allowed. */
+  with(annotation: Annotation, value: string): Annotation | null;
+}
+
 /** One kind, as the editing canvas sees it. */
 export interface AnnotationPlugin {
   /** The kind's id — the same one the domain class and the register use. */
@@ -73,6 +98,8 @@ export interface AnnotationPlugin {
   readonly action: AnnotationAction;
   /** How it is drawn, in the picture's own proportions. */
   readonly renderer: AnnotationRenderer<Annotation>;
+  /** What can be changed after it is placed. A kind with none gets no settings control. */
+  readonly properties?: readonly AnnotationProperty[];
   /** Begin making one over the selected stretch. */
   begin(ctx: CreationContext): void;
 }
@@ -92,4 +119,9 @@ export function pluginOf(id: string): AnnotationPlugin | null {
 /** Which kinds the section offers an action for, in the order they were registered. */
 export function plugins(): readonly AnnotationPlugin[] {
   return [...registry.values()];
+}
+
+/** The properties a kind offers for this annotation — none for no annotation or a kind without. */
+export function propertiesOf(annotation: Annotation | null): readonly AnnotationProperty[] {
+  return annotation ? (pluginOf(annotation.kind)?.properties ?? []) : [];
 }

@@ -33,7 +33,7 @@ export function colourOf(value: unknown, fallback: AnnotationColour): Annotation
 
 | Member | Change |
 |---|---|
-| `ArrowGeometry` | gains `colour: AnnotationColour` |
+| `colour` | **new** — the arrow's colour, a field beside its ends rather than in `geometry`, so its shape and the existing assertions are untouched |
 | `Arrow.create(span, from, to, id?, colour?)` | the colour is optional and defaults to the arrow's red |
 | `withColour(colour)` | **new** — the same arrow, ends and stretch, in another colour |
 | `stored()` | includes the colour in `geometry` |
@@ -53,7 +53,7 @@ export function colourOf(value: unknown, fallback: AnnotationColour): Annotation
 
 | Member | Change |
 |---|---|
-| `TextGeometry` | gains `colour: AnnotationColour` |
+| `colour` | **new** — the text's colour, a field beside its box rather than in `geometry` |
 | `TextAnnotation.create(span, geometry, id?)` | normalises the colour through `colourOf`, defaulting to white |
 | `withColour(colour)` | **new** — the same text, box and stretch, in another colour |
 | `withWords(words, measuredWidth)` | **new** — the same text with new words, its box refitted |
@@ -82,14 +82,14 @@ export function colourOf(value: unknown, fallback: AnnotationColour): Annotation
 export type PropertyControl = 'colour' | 'text';
 
 /** Something about an annotation the user can change after it is placed. */
-export interface AnnotationProperty<A extends Annotation = Annotation> {
+export interface AnnotationProperty {
   readonly id: string;                        // 'colour' | 'words'
   readonly label: string;                     // shown in the popover
   readonly control: PropertyControl;          // which control renders it
   /** The value the control shows. */
-  value(annotation: A): string;
+  value(annotation: Annotation): string;
   /** The same annotation with a new value; null when that value is not allowed. */
-  with(annotation: A, value: string): A | null;
+  with(annotation: Annotation, value: string): Annotation | null;
 }
 ```
 

@@ -54,13 +54,13 @@ Single project (browser SPA), per plan.md: `src/` at the repository root. Domain
 
 **⚠️ CRITICAL**: US1 and US2 both build on the descriptor and on a value that lives with the annotation.
 
-- [ ] T003 Create `src/domain/annotation/AnnotationColour.ts` and its test `src/domain/annotation/AnnotationColour.test.ts`: the palette and the reader (`data-model.md AnnotationColour.COLOURS`, `AnnotationColour.colourOf`). The test covers every palette entry, and the fallback for `undefined`, `''`, an unknown colour and a non-string.
-- [ ] T004 [P] Add the colour to the arrow in `src/domain/annotation/Arrow.ts` with a test beside it: `ArrowGeometry.colour` (`data-model.md ArrowGeometry.colour`), `create(..., colour?)` defaulting to the arrow's red, `withColour`, the colour carried by `withHandle`/`movedBy`/`withSpan`/`duplicated`, and `stored`/`restore` tolerant of an older clip with no colour (`data-model.md` "the stored shape").
-- [ ] T005 [P] Add the colour to the text in `src/domain/annotation/TextAnnotation.ts` with a test beside it: `TextGeometry.colour` (`data-model.md TextGeometry.colour`), defaulting to white, `withColour`, the colour carried everywhere, and a tolerant restore.
-- [ ] T006 Make both renderers draw with the value: `src/ui/annotating/arrow-plugin.ts` (shaft and head) and `src/ui/annotating/text-plugin.ts` (the fill), keeping the arrow's dark edge and the text's dark outline.
-- [ ] T007 Add the seam to `src/ui/annotating/annotation-plugin.ts`: `PropertyControl`, `AnnotationProperty` (`data-model.md AnnotationProperty.value`, `AnnotationProperty.with`), `properties?` on `AnnotationPlugin` (`data-model.md AnnotationPlugin.properties`), and one `propertiesOf(annotation)` helper the layer, the canvas and the inspector all ask.
-- [ ] T008 Declare the colour property on `src/ui/annotating/arrow-plugin.ts` and `src/ui/annotating/text-plugin.ts` — the arrow's red and the text's white as their defaults.
-- [ ] T009 [P] Extend `src/ui/annotating/annotation-plugin.test.ts`: each kind's property list, `propertiesOf` for each, and an empty list for the image (`data-model.md` "The properties the kinds declare").
+- [x] T003 Create `src/domain/annotation/AnnotationColour.ts` and its test `src/domain/annotation/AnnotationColour.test.ts`: the palette and the reader (`data-model.md AnnotationColour.COLOURS`, `AnnotationColour.colourOf`). The test covers every palette entry, and the fallback for `undefined`, `''`, an unknown colour and a non-string.
+- [x] T004 [P] Add the colour to the arrow in `src/domain/annotation/Arrow.ts` with a test beside it: `Arrow.colour` (`data-model.md Arrow.colour`), `create(..., colour?)` defaulting to the arrow's red, `withColour`, the colour carried by `withHandle`/`movedBy`/`withSpan`/`duplicated`, and `stored`/`restore` tolerant of an older clip with no colour (`data-model.md` "the stored shape").
+- [x] T005 [P] Add the colour to the text in `src/domain/annotation/TextAnnotation.ts` with a test beside it: `TextAnnotation.colour` (`data-model.md TextAnnotation.colour`), defaulting to white, `withColour`, the colour carried everywhere, and a tolerant restore.
+- [x] T006 Make both renderers draw with the value: `src/ui/annotating/arrow-plugin.ts` (shaft and head) and `src/ui/annotating/text-plugin.ts` (the fill), keeping the arrow's dark edge and the text's dark outline.
+- [x] T007 Add the seam to `src/ui/annotating/annotation-plugin.ts`: `PropertyControl`, `AnnotationProperty` (`data-model.md AnnotationProperty.value`, `AnnotationProperty.with`), `properties?` on `AnnotationPlugin` (`data-model.md AnnotationPlugin.properties`), and one `propertiesOf(annotation)` helper the layer, the canvas and the inspector all ask.
+- [x] T008 Declare the colour property on `src/ui/annotating/arrow-plugin.ts` and `src/ui/annotating/text-plugin.ts` — the arrow's red and the text's white as their defaults.
+- [x] T009 [P] Extend `src/ui/annotating/annotation-plugin.test.ts` — **DOM-free**: the arrow's property list, `propertiesOf` for an arrow and for none, and a stub kind with properties and one without (`data-model.md` "The properties the kinds declare"). The image's and the text's lists are proved in the harness (T028), because their modules touch the DOM at load.
 
 **Checkpoint**: A colour lives with the annotation, a kind declares it, and the renderers honour it. Nothing in the UI can change it yet.
 
@@ -132,7 +132,7 @@ Single project (browser SPA), per plan.md: `src/` at the repository root. Domain
 
 ### Verification for User Story 3
 
-- [ ] T027 [P] [US3] Extend `src/ui/annotating/annotation-plugin.test.ts` with a stub kind declaring a property: `propertiesOf` returns it, and the image still returns an empty list — the inspector's input is the descriptor alone (contract §1, §4).
+- [ ] T027 [P] [US3] Extend `src/ui/annotating/annotation-plugin.test.ts` with a stub kind declaring a property: `propertiesOf` returns it, and a stub with none returns an empty list — the inspector's input is the descriptor alone (contract §1, §4).
 - [ ] T028 [P] [US3] Browser harness `verify-properties.html`: register a stub plugin with a `colour` property in the page and confirm its settings control and its swatch row appear without touching the inspector.
 - [ ] T029 [US3] Record that the `words` property touched only `src/domain/annotation/TextAnnotation.ts` and `src/ui/annotating/text-plugin.ts` (name the files in the pull request) and that the full suite's outcome is unchanged from T018 (`specs/004-annotation-properties/tasks.md`).
 

@@ -15,12 +15,13 @@
 // the image.
 
 import { TextAnnotation, type TextGeometry } from '../../domain/annotation/TextAnnotation.js';
+import { colourOf } from '../../domain/annotation/AnnotationColour.js';
 import type { Annotation } from '../../domain/annotation/Annotation.js';
 import { el } from '../dom.js';
 import { registerRenderer, type AnnotationRenderer } from './annotation-layer.js';
 import {
   registerPlugin,
-  type AnnotationAction, type AnnotationPlugin, type CreationContext,
+  type AnnotationAction, type AnnotationPlugin, type AnnotationProperty, type CreationContext,
 } from './annotation-plugin.js';
 
 // How tall the text is by default, as a fraction of the picture's height.
@@ -30,8 +31,7 @@ const MAX_WIDTH = 0.9;
 
 const FONT_WEIGHT = '600';
 const FONT_FAMILY = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
-const FILL = '#ffffff';
-const OUTLINE = 'rgba(2,3,8,0.72)';
+const OUTLINE = 'rgba(2,3,8,0.72)';   // a dark edge, so any palette colour reads over any picture
 
 const ARMED = 'TEXT — type the text to show';
 const NO_TEXT = 'TEXT — no text entered';
@@ -53,6 +53,18 @@ export class TextPlugin implements AnnotationPlugin, AnnotationRenderer<Annotati
     title: 'Add text over this section',
     icon: ACTION_ICON,
   };
+
+  /** The text's colour — white unless the user chose another. */
+  readonly properties: readonly AnnotationProperty[] = [
+    {
+      id: 'colour',
+      label: 'Colour',
+      control: 'colour',
+      value: annotation => (annotation instanceof TextAnnotation ? annotation.colour : TextAnnotation.DEFAULT_COLOUR),
+      with: (annotation, value) =>
+        annotation instanceof TextAnnotation ? annotation.withColour(colourOf(value, TextAnnotation.DEFAULT_COLOUR)) : null,
+    },
+  ];
 
   /** The text is its own renderer, so a kind is one object with one id. */
   get renderer(): AnnotationRenderer<Annotation> {
@@ -91,7 +103,7 @@ export class TextPlugin implements AnnotationPlugin, AnnotationRenderer<Annotati
     ctx.lineJoin = 'round';
     ctx.lineWidth = Math.max(1, size * 0.12);
     ctx.strokeStyle = OUTLINE;               // a dark edge, so it reads over any picture
-    ctx.fillStyle = FILL;
+    ctx.fillStyle = annotation.colour;
     ctx.strokeText(geometry.text, geometry.x * w, geometry.y * h);
     ctx.fillText(geometry.text, geometry.x * w, geometry.y * h);
     ctx.restore();

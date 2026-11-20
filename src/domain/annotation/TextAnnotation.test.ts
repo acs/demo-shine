@@ -124,3 +124,37 @@ describe('the text annotation', () => {
     expect(TextAnnotation.restore({ id: 'z', kind: 'text', s: 0, e: 0.1, geometry: { text: '' } } as unknown as StoredAnnotation)).toBeNull();
   });
 });
+
+describe('the text colour', () => {
+  it('is white unless another is given', () => {
+    expect(make().colour).toBe('#ffffff');
+    expect(TextAnnotation.create(span, geo(), 'c', '#f6e05e')?.colour).toBe('#f6e05e');
+  });
+
+  it('keeps its colour when it is moved, resized, stretched or copied', () => {
+    const gold = TextAnnotation.create(span, geo(), 'c', '#f6e05e');
+    if (!gold) throw new Error('the test text should be usable');
+    expect(gold.withColour('#111827').colour).toBe('#111827');
+    expect(gold.withHandle('se', { x: 0.5, y: 0.5 })?.colour).toBe('#f6e05e');
+    expect(gold.movedBy(0.05, 0)?.colour).toBe('#f6e05e');
+    expect(gold.withSpan(Span.of(0.1, 0.2)).colour).toBe('#f6e05e');
+    expect(gold.duplicated(Span.of(0.6, 0.8)).colour).toBe('#f6e05e');
+  });
+
+  it('keeps its identity and shape when only the colour changes', () => {
+    const text = make();
+    const recoloured = text.withColour('#3182ce');
+    expect(recoloured.id).toBe(text.id);
+    expect(recoloured.geometry).toEqual(text.geometry);
+    expect(recoloured.span.equals(text.span)).toBe(true);
+  });
+
+  it('writes the colour down and reads it back, defaulting when it is missing or unknown', () => {
+    const gold = TextAnnotation.create(span, geo(), 'c', '#f6e05e');
+    if (!gold) throw new Error('the test text should be usable');
+    const stored = gold.stored();
+    expect(TextAnnotation.restore(stored)?.colour).toBe('#f6e05e');
+    expect(TextAnnotation.restore({ ...stored, geometry: { ...geo() } } as StoredAnnotation)?.colour).toBe('#ffffff');
+    expect(TextAnnotation.restore({ ...stored, geometry: { ...geo(), colour: 'red' } } as StoredAnnotation)?.colour).toBe('#ffffff');
+  });
+});

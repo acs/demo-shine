@@ -24,11 +24,13 @@ rejected, it moves the per-kind edit back into the shared module; putting the pr
 list on the domain class — rejected, a property is an editing affordance, and
 `src/domain/` may not own the view's controls.
 
-## D2 — The value lives with the annotation, in its geometry
+## D2 — The value lives with the annotation, beside its geometry
 
-**Decision**: a property's value is part of the annotation and is carried in the kind's
-geometry — `ArrowGeometry` and `TextGeometry` each gain a colour; the text's words are
-already there. The stored shape gains the field, and `restore` tolerates its absence.
+**Decision**: a property's value is part of the annotation and is carried beside its
+geometry — `Arrow` and `TextAnnotation` each gain a `colour` field, and it is written
+into the stored `geometry`; the text's words are already there. `restore` tolerates the
+field's absence. It is kept out of the runtime `geometry` getter, so a kind's shape and
+the existing assertions are untouched.
 
 **Rationale**: the spec's FR-004 requires the value to be kept with the clip, and every
 other part of an annotation (its span, its shape) already lives in its geometry, is

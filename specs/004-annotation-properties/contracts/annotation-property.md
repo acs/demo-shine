@@ -12,12 +12,12 @@ FR-010).
 ```ts
 export type PropertyControl = 'colour' | 'text';
 
-export interface AnnotationProperty<A extends Annotation = Annotation> {
+export interface AnnotationProperty {
   readonly id: string;                        // 'colour' | 'words'
   readonly label: string;                     // shown beside the control
   readonly control: PropertyControl;          // which shared control edits it
-  value(annotation: A): string;               // what the control shows
-  with(annotation: A, value: string): A | null;  // null when the value is refused
+  value(annotation: Annotation): string;      // what the control shows
+  with(annotation: Annotation, value: string): Annotation | null;  // null when refused
 }
 
 export interface AnnotationPlugin {
@@ -64,8 +64,8 @@ export function colourOf(value: unknown, fallback: AnnotationColour): Annotation
 
 | Kind | Carries | Default | The property |
 |---|---|---|---|
-| Arrow | `ArrowGeometry.colour` | `#e53e3e` | `colour` |
-| Text | `TextGeometry.colour` | `#ffffff` | `colour`, `words` |
+| Arrow | `Arrow.colour` | `#e53e3e` | `colour` |
+| Text | `TextAnnotation.colour` | `#ffffff` | `colour`, `words` |
 | Image | — | — | none |
 
 **Guarantees**
