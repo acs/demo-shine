@@ -34,9 +34,19 @@ const record = new RecordTake({
   setAudio: audio => { session.audio = audio; },
 });
 
+// A take in flight owns the preview and the phase, so nothing else may move them.
 function busy(): boolean {
   const phase = currentPhase();
   return phase === 'starting' || phase === 'recording' || phase === 'encoding';
+}
+
+// ...but a share being *asked for* is not a take in flight. Once the share is in
+// hand, `syncSources` is exactly what settles the phase, so 'starting' must not
+// stop it — only a take already running may. (Guarding it on `busy` left a
+// successful share stuck in 'starting': no preview, and Record did nothing.)
+function takeInFlight(): boolean {
+  const phase = currentPhase();
+  return phase === 'recording' || phase === 'encoding';
 }
 
 export function hasPicture(): boolean {
@@ -45,7 +55,7 @@ export function hasPicture(): boolean {
 
 export function syncSources(): void {
   refreshSourceButtons();
-  if (busy() || currentPhase() === 'review') return;
+  if (takeInFlight() || currentPhase() === 'review') return;
   if (!hasPicture()) {
     stopMirror();
     drawGrid();
@@ -94,6 +104,9 @@ export async function toggleScreen(): Promise<void> {
     setPhase('idle');
     setStatus('ready', '');
     refreshSourceButtons();
+    // The share was not had, but the webcam, if it is on, still is: let the one
+    // place that decides the preview and the phase settle them.
+    syncSources();
     const name = error instanceof Error ? error.name : '';
     if (name !== 'AbortError') toast('The screen could not be shared');
   }
