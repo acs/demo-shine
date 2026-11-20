@@ -125,7 +125,7 @@ function init(): void {
   capture.onEnded(onScreenEnded);
 
   // Microphone toggle + level meter.
-  el.micBtn.addEventListener('click', () => void toggleMic());
+  el.micBtn.addEventListener('click', async () => { await toggleMic(); syncSources(); });
   initMic();
 
   // A Bluesky sign-in only finishes when the authorization server sends us back.

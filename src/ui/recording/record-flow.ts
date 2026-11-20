@@ -56,6 +56,16 @@ export function hasPicture(): boolean {
   return capture.sources.screen || capture.sources.webcam;
 }
 
+/**
+ * Will a take carry sound? The share's own audio, or the microphone — the two the
+ * compositor mixes, and the only two there are. The status line says so, so a silent
+ * take is never a guess: a display track can arrive without an audio track at all,
+ * and Chrome's picker decides that, not the app.
+ */
+export function hasSound(): boolean {
+  return !!(capture.current()?.hasAudio || capture.sources.mic);
+}
+
 export function syncSources(): void {
   refreshSourceButtons();
   if (takeInFlight() || currentPhase() === 'review') return;
@@ -76,7 +86,7 @@ export function syncSources(): void {
   el.recBtn.disabled = false;
   el.recLbl.textContent = 'Record';
   setPhase('live');
-  setStatus('ready', `Live — ${capture.width}×${capture.height}`);
+  setStatus('ready', `Live — ${capture.width}×${capture.height}${hasSound() ? '' : ' · no audio shared'}`);
 }
 
 function sizePreview(): void {
@@ -117,7 +127,10 @@ export async function toggleScreen(): Promise<void> {
   setStatus('ready', 'Select a screen…');
   try {
     const captureSession = await capture.start();
-    if (!captureSession.hasAudio) {
+    // Only silent if the microphone is off too: with it on, the take has the mic and
+    // the status line says nothing. When neither has sound, the toast is the loud
+    // version of the status line's "no audio shared".
+    if (!captureSession.hasAudio && !capture.sources.mic) {
       toast('No audio was shared — the recording will be silent. Press New to share again with audio.', 6000);
     }
     el.sv.srcObject = captureSession.stream;
