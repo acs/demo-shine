@@ -27,12 +27,19 @@ export class CaptureAdapter implements CapturePort {
   }
 
   async start(): Promise<CaptureSession> {
-    // `systemAudio: 'include'` asks for the sound of what is shared as well as the
-    // tab's. It is only a hint — Chrome decides whether the option appears and
-    // whether its box starts ticked, and the user still has to agree — so a share
-    // without audio is possible, and the flow says so.
+    // The request the app has always made. `cursor: 'always'` puts the pointer in
+    // the recording, `frameRate` asks for 30, and `displaySurface: 'monitor'` opens
+    // the picker on the screen pane. `systemAudio: 'include'` asks for the sound of
+    // what is shared as well as the tab's — only a hint, since Chrome decides
+    // whether the option appears and whether its box starts ticked, and the user
+    // still has to agree, so a share without audio is possible and the flow says so.
+    const videoConstraints = {
+      frameRate: { ideal: 30, max: 60 },
+      cursor: 'always',
+      displaySurface: 'monitor',
+    } as MediaTrackConstraints;
     const stream = await navigator.mediaDevices.getDisplayMedia({
-      video: true, audio: true, systemAudio: 'include',
+      video: videoConstraints, audio: true, systemAudio: 'include',
     } as DisplayMediaStreamOptions);
     const hasAudio = stream.getAudioTracks().length > 0;
     this.screenCapture = { stream, hasAudio };
