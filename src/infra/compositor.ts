@@ -40,7 +40,11 @@ export class CompositorAdapter implements CompositorPort {
     if (!screen.length) return webcam;
     if (input.region === undefined) return screen;
     const full = input.region.x === 0 && input.region.y === 0 && input.region.w === 1 && input.region.h === 1;
-    if (full && !input.drawBubble) return screen;
+    // A whole share with nothing drawn over it is recorded raw, at the screen's own
+    // size — there is no crop to take and no bubble to draw, so the canvas would only
+    // be a copy. (The signal is the webcam, not `drawBubble`: the view always hands
+    // one, because the bubble is drawn when there is a camera and not otherwise.)
+    if (full && !webcam.length) return screen;
     return this.canvasTracks(input, screen[0]);
   }
 
@@ -56,8 +60,14 @@ export class CompositorAdapter implements CompositorPort {
     if (!context) return [];
     this.context = context;
     const { region } = input;
-    const width = Math.round(region.w * (video.videoWidth || 1280));
-    const height = Math.round(region.h * (video.videoHeight || 720));
+    // The canvas is the recording's size, so it has to be right before
+    // `captureStream` is taken from it — and the element this draws from has no size
+    // yet, its first frame still coming. So the size comes from the picture the app
+    // is showing, and the element's own is only a fallback.
+    const sourceWidth = input.picture?.width || video.videoWidth || 1280;
+    const sourceHeight = input.picture?.height || video.videoHeight || 720;
+    const width = Math.max(2, Math.round(region.w * sourceWidth));
+    const height = Math.max(2, Math.round(region.h * sourceHeight));
     canvas.width = width;
     canvas.height = height;
     const draw = () => {
