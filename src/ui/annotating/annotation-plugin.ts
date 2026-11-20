@@ -1,0 +1,87 @@
+// The seam a kind is described through in the view: its action, its renderer, and how
+// a new one is made.
+//
+// The class in `domain/annotation/` says what shape a kind is and the rules for that
+// shape — how it is normalised, whether it is worth keeping, how it moves, resizes and
+// is hit. This says what the kind is in *the browser*: which button adds it to a
+// selected stretch, how it is drawn, and what a press-and-drag (or a chosen picture)
+// makes. Everything the spec calls shared — selecting, moving, resizing, copying,
+// deleting, undoing, saving, exporting — belongs to the annotation canvas and the
+// clip, so a kind never describes any of it and gets all of it by existing.
+//
+// A plugin is registered under the same id as the domain class, so the id is the whole
+// of the coupling — exactly as the renderer registry is. Adding a kind is a class, a
+// line in the register in `domain/annotation/kinds.ts`, and a plugin here.
+
+import type { Annotation, Point } from '../../domain/annotation/Annotation.js';
+import type { Span } from '../../domain/clip/Span.js';
+import type { AnnotationRenderer } from './annotation-layer.js';
+
+/** The button a kind adds to the section's actions. */
+export interface AnnotationAction {
+  /** What the button says, and what the kind is called in a message: 'Arrow', 'Image'. */
+  readonly label: string;
+  /** Its tooltip. */
+  readonly title: string;
+  /** Its inline svg, dropped into the section's action row. */
+  readonly icon: string;
+}
+
+/**
+ * What a kind may ask of the canvas while a new one is being made. The canvas owns the
+ * pointer plumbing; the kind owns what the gesture *means*, through the `build` it
+ * hands `drag` — so the arrow's "drag a line" and the image's "choose a picture" both
+ * fit without the canvas learning either.
+ */
+export interface CreationContext {
+  /** The stretch the annotation will be shown over — the selected section. */
+  readonly span: Span;
+  /** The picture being drawn on, in its own pixels. */
+  readonly picture: { readonly w: number; readonly h: number };
+  /**
+   * Ask for a drag across the picture. Resolves with where it started and ended, or
+   * null when there was no drag worth having (a stray click, a cancelled gesture).
+   * `build` is called on every move to show the draft.
+   */
+  drag(
+    build: (from: Point, to: Point) => Annotation | null,
+    minLengthPx?: number,
+  ): Promise<{ from: Point; to: Point } | null>;
+  /** Show this as the draft while it is being made, or clear it with null. */
+  draft(annotation: Annotation | null): void;
+  /** It is made: the clip takes it, and it is put in hand. */
+  commit(annotation: Annotation): void;
+  /** Nothing to make after all — say what to do instead. */
+  abandon(message: string): void;
+  /** Say something under the timeline while the kind is busy. */
+  say(message: string): void;
+}
+
+/** One kind, as the editing canvas sees it. */
+export interface AnnotationPlugin {
+  /** The kind's id — the same one the domain class and the register use. */
+  readonly id: string;
+  /** The button the section offers for this kind. */
+  readonly action: AnnotationAction;
+  /** How it is drawn, in the picture's own proportions. */
+  readonly renderer: AnnotationRenderer<Annotation>;
+  /** Begin making one over the selected stretch. */
+  begin(ctx: CreationContext): void;
+}
+
+const registry = new Map<string, AnnotationPlugin>();
+
+/** Teach the view a kind. The same id again replaces it, which is what a test wants. */
+export function registerPlugin(plugin: AnnotationPlugin): void {
+  registry.set(plugin.id, plugin);
+}
+
+/** The plugin for a kind, or null for one this build does not offer. */
+export function pluginOf(id: string): AnnotationPlugin | null {
+  return registry.get(id) ?? null;
+}
+
+/** Which kinds the section offers an action for, in the order they were registered. */
+export function plugins(): readonly AnnotationPlugin[] {
+  return [...registry.values()];
+}
