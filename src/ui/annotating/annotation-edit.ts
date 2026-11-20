@@ -17,7 +17,7 @@ import { ctx, el, toast } from '../dom.js';
 import { Span } from '../../domain/clip/Span.js';
 import { Arrow } from '../../domain/annotation/Arrow.js';
 import type { Annotation } from '../../domain/annotation/Annotation.js';
-import { arrowRenderer, drawAnnotations, removeControl } from './annotation-layer.js';
+import { arrowRenderer, copyControl, drawAnnotations, removeControl } from './annotation-layer.js';
 import { drawFrame } from '../recording/preview.js';
 import { player } from '../clip/clip.js';
 import { playback } from '../clip/playback.js';
@@ -80,6 +80,22 @@ class ArrowEdit {
     announceSelection();
   }
 
+  /**
+   * The copy control: another arrow like this one, shown over the same stretch, put a
+   * little away from it — where a keyboard's paste puts a copy at the playhead instead,
+   * which is how the same callout is repeated at another moment. The copy is picked, so
+   * it can be dragged where it is wanted straight away.
+   */
+  private duplicate(picked: Annotation): void {
+    const { dx, dy } = copyShift(picked);
+    const copy = picked.duplicated(picked.span);
+    const placed = copy.movedBy(dx, dy) ?? copy.movedBy(-dx, -dy);   // the other way if that leaves the picture
+    if (!placed) return;
+    session.clip.addAnnotation(placed);      // the clip announces it; the views follow
+    this.pick(placed.id);
+    toast('Arrow copied — drag it where you want it');
+  }
+
   /** The session is over, or the selection was dropped. */
   cancel(): void {
     this.span = null;
@@ -110,16 +126,24 @@ class ArrowEdit {
       return;
     }
 
-    // The picked arrow's × comes first: it sits off the arrow, so a press on it is
-    // nowhere near the hit test below — and it must never be a press that aims. It is
-    // looked for among the arrows shown at this moment, because that is what the layer
-    // drew: a × that is not on the picture is not a × a press can land on.
+    // The picked arrow's own controls come first: they sit off the arrow, so a press on
+    // one is nowhere near the hit test below — and it must never be a press that aims.
+    // They are looked for among the arrows shown at this moment, because that is what
+    // the layer drew: a control that is not on the picture is not one a press can land on.
     if (this.pickId) {
       const picked = session.clip.annotationsAt(player.time()).find(a => a.id === this.pickId);
-      const spot = picked ? removeControl(picked, el.cv.width, el.cv.height, scale) : null;
-      if (picked && spot && canvasDistance(spot, p) <= slopPx * scale) {
-        session.clip.removeAnnotation(picked.id);   // the clip announces it; the views follow
-        return;
+      if (picked) {
+        const w = el.cv.width, h = el.cv.height;
+        const remove = removeControl(picked, w, h, scale);
+        if (remove && canvasDistance(remove, p) <= slopPx * scale) {
+          session.clip.removeAnnotation(picked.id);   // the clip announces it; the views follow
+          return;
+        }
+        const copy = copyControl(picked, w, h, scale);
+        if (copy && canvasDistance(copy, p) <= slopPx * scale) {
+          this.duplicate(picked);
+          return;
+        }
       }
     }
 
@@ -305,6 +329,21 @@ function screenScale(): number {
 // The distance between two points of the picture, on the canvas.
 function canvasDistance(a: Point, b: Point): number {
   return Math.hypot((a.x - b.x) * el.cv.width, (a.y - b.y) * el.cv.height);
+}
+
+// Where a copy goes: a fraction of the picture away, so it is as far off on a phone as
+// on a desktop, and toward the middle of the picture — away from whichever edge the
+// original is nearest, so the copy is never the one pushed off it.
+const COPY_SHIFT = 0.08;
+
+function copyShift(annotation: Annotation): { dx: number; dy: number } {
+  const ends = annotation.handles();
+  const a = ends[0], b = ends[ends.length - 1];
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+  return {
+    dx: mx > 0.5 ? -COPY_SHIFT : COPY_SHIFT,
+    dy: my > 0.5 ? -COPY_SHIFT : COPY_SHIFT,
+  };
 }
 
 // The topmost annotation under a point, at the moment the playhead holds. The hit

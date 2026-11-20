@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { arrowMetrics, drawAnnotations, registerRenderer, removeControl, rendererOf } from './annotation-layer.js';
+import { arrowMetrics, copyControl, drawAnnotations, registerRenderer, removeControl, rendererOf } from './annotation-layer.js';
 import type { AnnotationRenderer } from './annotation-layer.js';
 import { Annotation, type StoredAnnotation } from '../../domain/annotation/Annotation.js';
 import { Arrow } from '../../domain/annotation/Arrow.js';
@@ -84,7 +84,7 @@ describe('the annotation layer', () => {
   it('draws grips only for the picked annotation, at its own ends', () => {
     const { ctx, arcs } = fakeCtx();
     drawAnnotations(ctx, 320, 180, [arrow('a'), arrow('b')], 'b');
-    expect(arcs.length).toBe(3);                 // the two ends, and the remove control
+    expect(arcs.length).toBe(4);                 // the two ends, and the two controls
     expect(arcs[0].x).toBeCloseTo(0.1 * 320);
     expect(arcs[1].x).toBeCloseTo(0.9 * 320);
 
@@ -96,7 +96,7 @@ describe('the annotation layer', () => {
   it('gives a new kind the same grips without it drawing any', () => {
     const { ctx, arcs } = fakeCtx();
     drawAnnotations(ctx, 320, 180, [new Tripod()], 't1');
-    expect(arcs.length).toBe(4);                 // three ends, and the remove control
+    expect(arcs.length).toBe(5);                 // three ends, and the two controls
   });
 
   it('puts the remove control off the annotation\'s side, so a press on it cannot aim', () => {
@@ -104,6 +104,14 @@ describe('the annotation layer', () => {
     expect(spot).not.toBeNull();
     expect(spot!.x).toBeCloseTo(0.5);            // beside its middle
     expect(spot!.y).toBeGreaterThan(0.5);        // and off the line, not on it
+  });
+
+  it('puts the copy control on the other side of the middle from the ×', () => {
+    const a = arrow('a');                        // 0.1,0.5 -> 0.9,0.5
+    const remove = removeControl(a, 320, 180, 1)!;
+    const copy = copyControl(a, 320, 180, 1)!;
+    expect(copy.x).toBeCloseTo(remove.x);        // the same distance along the arrow
+    expect(copy.y).toBeLessThan(0.5);            // and the opposite side of the line
   });
 
   it('keeps the remove control inside the picture, at the edge', () => {
@@ -114,6 +122,10 @@ describe('the annotation layer', () => {
 
   it('has no remove control for a kind with no pair of ends', () => {
     expect(removeControl(new Stub(), 320, 180, 1)).toBeNull();
+  });
+
+  it('has no copy control for a kind with no pair of ends either', () => {
+    expect(copyControl(new Stub(), 320, 180, 1)).toBeNull();
   });
 
   it('sizes a grip to the screen, not to the picture', () => {
