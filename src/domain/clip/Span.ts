@@ -44,6 +44,21 @@ export class Span {
     return v >= this.s && v < this.e;
   }
 
+  /**
+   * How much of the range is shown at `v`: it dissolves in over its first `fade` and
+   * out over its last, so 0 at each edge and 1 once `fade` inside — the picture at a
+   * join, applied to whatever is drawn over it. `fade` is in the same units as the
+   * edges; a range thinner than twice it still reaches full, at its middle. A moment
+   * outside the range shows none of it.
+   */
+  fadeAt(v: number, fade: number): number {
+    if (!this.contains(v)) return 0;
+    const f = Math.min(fade, this.length / 2);
+    if (!(f > 0)) return 1;
+    const edge = Math.min(v - this.s, this.e - v);
+    return Math.max(0, Math.min(1, edge / f));
+  }
+
   /** Whether the two share any point at all — touching counts. */
   touches(other: Span): boolean {
     return this.s <= other.e && other.s <= this.e;

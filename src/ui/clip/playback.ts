@@ -22,7 +22,7 @@ import { drawAnnotations } from '../annotating/annotation-layer.js';
 import { clampToClip, typingIn } from '../../util.js';
 import { keptLengthNow, keptOf, player } from './clip.js';
 import { FADE_S, fadeIn, fadeOut, fadeReset } from './fade.js';
-import { dissolve } from './dissolve.js';
+import { DISSOLVE_S, dissolve } from './dissolve.js';
 
 const PLAY_ICON  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
 const PAUSE_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
@@ -227,8 +227,12 @@ export class Playback {
     }
 
     try { drawClipFrame(el.rv); } catch { /* a frame still decoding — keep the loop alive */ }
-    // What is drawn over the picture, at the moment the playhead holds.
-    drawAnnotations(ctx, el.cv.width, el.cv.height, session.clip.annotationsAt(player.time()));
+    // What is drawn over the picture, at the moment the playhead holds. An annotation
+    // comes in and goes out over DISSOLVE_S of its stretch, as a take does at a join.
+    const at = player.time();
+    drawAnnotations(ctx, el.cv.width, el.cv.height, session.clip.annotationsAt(at), null, {
+      at, total: session.clip.total(), seconds: DISSOLVE_S,
+    });
     this.updatePlayhead();          // video frames on the preview canvas
     this.playRaf = requestAnimationFrame(() => this.loop());   // audio comes from the (unmuted) element
   }

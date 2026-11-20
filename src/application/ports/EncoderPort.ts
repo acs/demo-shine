@@ -21,6 +21,8 @@ export interface Frame {
   readonly outputTime: number;
   /** What is drawn over the picture at this moment. */
   readonly annotations: readonly Annotation[];
+  /** The recording's own length, which the annotations' stretches are fractions of. */
+  readonly recordingLength: number;
 }
 
 export interface EncodeOptions {

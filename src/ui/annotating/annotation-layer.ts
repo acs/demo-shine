@@ -20,6 +20,12 @@
 // has is part of its plugin (`annotation-plugin.ts`), registered here under the kind's
 // id — the id is the whole of the coupling between the class, the plugin and the
 // drawing.
+//
+// An annotation is not switched on and off at the edges of its stretch: over the first
+// and last moments of it the layer blends it over the picture, the same 80 ms a take
+// dissolves into the next, so it arrives and leaves softly. The blend is asked for
+// where a moment is *moving* — playback and the export — and left out where it is
+// still, so a hold or a seek shows the annotation settled.
 
 import type { Annotation } from '../../domain/annotation/Annotation.js';
 
@@ -48,6 +54,19 @@ export function rendererOf(id: string): AnyRenderer | null {
   return renderers.get(id) ?? null;
 }
 
+/**
+ * How a drawn moment is dissolved: an annotation comes in over the first `seconds`
+ * of its stretch and goes out over the last, as the picture does at a join between
+ * takes. `at` and `total` are seconds of the recording, which a stretch is a
+ * fraction of; without it an annotation is drawn at full strength, which is what a
+ * still frame — a hold, a seek, an edit — wants.
+ */
+export interface AnnotationDissolve {
+  readonly at: number;
+  readonly total: number;
+  readonly seconds: number;
+}
+
 /** Paint every annotation shown at this moment, in order, and the picked one's grips. */
 export function drawAnnotations(
   ctx: CanvasRenderingContext2D,
@@ -55,9 +74,25 @@ export function drawAnnotations(
   h: number,
   annotations: readonly Annotation[],
   selectedId: string | null = null,
+  dissolve?: AnnotationDissolve,
 ): void {
   for (const annotation of annotations) {
-    renderers.get(annotation.kind)?.draw(ctx, annotation, w, h);
+    const renderer = renderers.get(annotation.kind);
+    if (!renderer) continue;
+    const alpha = dissolve && dissolve.total > 0
+      ? annotation.span.fadeAt(dissolve.at / dissolve.total, dissolve.seconds / dissolve.total)
+      : 1;
+    if (alpha <= 0) continue;                 // not on the picture yet, or already off it
+    if (alpha < 1) {
+      // Blend it over the picture for its first and last moments, so it does not
+      // pop on or off — the same softness as a take's join.
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      renderer.draw(ctx, annotation, w, h);
+      ctx.restore();
+    } else {
+      renderer.draw(ctx, annotation, w, h);
+    }
   }
   const picked = selectedId === null ? null : annotations.find(a => a.id === selectedId);
   if (picked) drawHandles(ctx, picked, w, h);
