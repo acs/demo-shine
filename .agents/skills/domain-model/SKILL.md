@@ -11,8 +11,8 @@ description: How to work in DemoClip's domain — value objects, the Clip aggreg
 src/
   domain/      pure rules: no DOM, no browser API, no import from ui/ or infra/
     clip/      Span, SpanSet, TimelineMap, Take, TakeRepository (a port), Clip (the aggregate)
-    annotation/ Annotation (the base class), its kinds (Arrow, ImageAnnotation),
-                AnnotationSet, the register
+    annotation/ Annotation (the base class), its kinds (Arrow, ImageAnnotation,
+                TextAnnotation), AnnotationSet, AnnotationColour, the register
     capture/   CropRegion and SourceSet — the crop and the three source toggles
     export/    ExportTarget — the container an export writes
     session/   Session — the sitting: the clip and the audio flag
@@ -25,7 +25,8 @@ src/
                images (the picture store and its decoded cache), Bluesky
   ui/          the DOM and the interaction: renders the model, owns no rules
     annotating/ the annotation plugin seam: the plugin registry, the plugin and the
-                canvas every kind is edited through, and one file per kind
+                canvas every kind is edited through, the properties inspector and the
+                text entry, and one file per kind
     *-flow.ts  the view flows: record, review, export, publish, resume
   state.ts     the phase only — one owner and one change event
   session.ts   the composition: the single Session object
