@@ -27,8 +27,11 @@ class ExportMenu {
   private readonly onDocumentClick = (event: MouseEvent): void => {
     const target = event.target as Node;
     // The button toggles, so a click on it is not "outside" — the toggle handler
-    // would fight this one and close what it just opened.
-    if (!el.expMenu.contains(target) && target !== el.btnExp) this.close();
+    // would fight this one and close what it just opened. "On it" means the
+    // button or anything drawn inside it: the icon and the label are the elements
+    // a click actually lands on, and matching only the button itself closed the
+    // menu in the same click that opened it.
+    if (!el.expMenu.contains(target) && !el.btnExp.contains(target)) this.close();
   };
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
