@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { arrowMetrics, drawAnnotations, registerRenderer, rendererOf } from './annotation-layer.js';
+import { arrowMetrics, drawAnnotations, registerRenderer, removeControl, rendererOf } from './annotation-layer.js';
 import type { AnnotationRenderer } from './annotation-layer.js';
 import { Annotation, type StoredAnnotation } from '../../domain/annotation/Annotation.js';
 import { Arrow } from '../../domain/annotation/Arrow.js';
@@ -84,7 +84,7 @@ describe('the annotation layer', () => {
   it('draws grips only for the picked annotation, at its own ends', () => {
     const { ctx, arcs } = fakeCtx();
     drawAnnotations(ctx, 320, 180, [arrow('a'), arrow('b')], 'b');
-    expect(arcs.length).toBe(2);
+    expect(arcs.length).toBe(3);                 // the two ends, and the remove control
     expect(arcs[0].x).toBeCloseTo(0.1 * 320);
     expect(arcs[1].x).toBeCloseTo(0.9 * 320);
 
@@ -96,7 +96,24 @@ describe('the annotation layer', () => {
   it('gives a new kind the same grips without it drawing any', () => {
     const { ctx, arcs } = fakeCtx();
     drawAnnotations(ctx, 320, 180, [new Tripod()], 't1');
-    expect(arcs.length).toBe(3);
+    expect(arcs.length).toBe(4);                 // three ends, and the remove control
+  });
+
+  it('puts the remove control off the annotation\'s side, so a press on it cannot aim', () => {
+    const spot = removeControl(arrow('a'), 320, 180, 1);   // 0.1,0.5 -> 0.9,0.5
+    expect(spot).not.toBeNull();
+    expect(spot!.x).toBeCloseTo(0.5);            // beside its middle
+    expect(spot!.y).toBeGreaterThan(0.5);        // and off the line, not on it
+  });
+
+  it('keeps the remove control inside the picture, at the edge', () => {
+    const edge = Arrow.create(Span.of(0, 1), { x: 0.1, y: 0.99 }, { x: 0.9, y: 0.99 }, 'c');
+    const spot = removeControl(edge!, 320, 180, 1);        // the offset would fall below it
+    expect(spot!.y).toBe(1);
+  });
+
+  it('has no remove control for a kind with no pair of ends', () => {
+    expect(removeControl(new Stub(), 320, 180, 1)).toBeNull();
   });
 
   it('sizes a grip to the screen, not to the picture', () => {

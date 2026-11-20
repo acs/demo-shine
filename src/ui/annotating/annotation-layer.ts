@@ -65,6 +65,11 @@ export function drawAnnotations(
 // Where a picked annotation can be dragged, drawn from the annotation's own
 // `handles()` — so a kind gets the same grip UI without writing any, which is the
 // point of it living here rather than in each renderer.
+//
+// The picked annotation carries one control the grips do not: the × that takes it
+// away. A phone has no Delete key, and a press that removes must not be a press that
+// aims, so it sits off the annotation rather than on it — `removeControl` is the one
+// place that says where, and `annotation-edit.ts` hit-tests the same point.
 
 // Canvas pixels per screen pixel: a grip must be the same size to the hand whatever
 // the picture's resolution. 1 when the canvas is not on screen, which is what an
@@ -72,6 +77,31 @@ export function drawAnnotations(
 function screenScale(ctx: CanvasRenderingContext2D): number {
   const css = (ctx.canvas as HTMLCanvasElement | undefined)?.clientWidth ?? 0;
   return css > 0 ? ctx.canvas.width / css : 1;
+}
+
+const REMOVE_GAP = 22;   // screen px from the annotation's middle to its ×, so the × clears it
+const REMOVE_R   = 10;   // screen px: a little bigger than a grip, and marked
+
+/**
+ * Where the picked annotation's remove control sits, in fractions of the picture — or
+ * null when there is no pair of ends to hang it off. It is off to one side of the
+ * middle, so a press on it can never be a press that aims. `scale` is canvas px per
+ * screen px.
+ */
+export function removeControl(
+  annotation: Annotation, w: number, h: number, scale: number,
+): { x: number; y: number } | null {
+  const ends = annotation.handles();
+  if (ends.length < 2) return null;
+  const a = ends[0], b = ends[ends.length - 1];
+  const dx = (b.x - a.x) * w, dy = (b.y - a.y) * h;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return null;
+  const gap = REMOVE_GAP * scale;
+  const x = ((a.x + b.x) / 2) * w - (dy / len) * gap;
+  const y = ((a.y + b.y) / 2) * h + (dx / len) * gap;
+  const clamp = (v: number, hi: number) => (v < 0 ? 0 : v > hi ? hi : v);
+  return { x: clamp(x, w) / w, y: clamp(y, h) / h };
 }
 
 function drawHandles(ctx: CanvasRenderingContext2D, annotation: Annotation, w: number, h: number): void {
@@ -87,7 +117,31 @@ function drawHandles(ctx: CanvasRenderingContext2D, annotation: Annotation, w: n
     ctx.strokeStyle = '#fff';           // a light ring, so it reads over a dark picture
     ctx.stroke();
   }
+  const remove = removeControl(annotation, w, h, scale);
+  if (remove) drawRemove(ctx, remove.x * w, remove.y * h, REMOVE_R * scale, scale);
   ctx.restore();
+}
+
+// The × on the picked annotation: the grips' own disc and ring, so it reads as one of
+// its controls rather than a new thing, with the × cut into it.
+function drawRemove(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, scale: number): void {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = ACCENT;
+  ctx.fill();
+  ctx.lineWidth = Math.max(1, 1.5 * scale);
+  ctx.strokeStyle = '#fff';
+  ctx.stroke();
+
+  const k = r * 0.42;
+  ctx.beginPath();
+  ctx.moveTo(x - k, y - k);
+  ctx.lineTo(x + k, y + k);
+  ctx.moveTo(x + k, y - k);
+  ctx.lineTo(x - k, y + k);
+  ctx.lineWidth = Math.max(1, 1.8 * scale);
+  ctx.strokeStyle = '#fff';
+  ctx.stroke();
 }
 
 // ── the arrow ─────────────────────────────────────────────────────────────────

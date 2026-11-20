@@ -17,7 +17,7 @@ import { ctx, el, toast } from '../dom.js';
 import { Span } from '../../domain/clip/Span.js';
 import { Arrow } from '../../domain/annotation/Arrow.js';
 import type { Annotation } from '../../domain/annotation/Annotation.js';
-import { arrowRenderer, drawAnnotations } from './annotation-layer.js';
+import { arrowRenderer, drawAnnotations, removeControl } from './annotation-layer.js';
 import { drawFrame } from '../recording/preview.js';
 import { player } from '../clip/clip.js';
 import { playback } from '../clip/playback.js';
@@ -25,7 +25,8 @@ import { clipboard } from './annotation-clipboard.js';
 import { typingIn } from '../../util.js';
 
 const DRAG_MIN = 3;          // px of travel before a press counts as a drag
-const GRIP_PX = 14;          // how near an end a press has to be to take hold of it
+const GRIP_PX = 14;          // a cursor: how near an end a press has to be to take hold
+const TOUCH_SLOP_PX = 24;    // a finger is wider than a cursor: the slop it gets instead
 const PREVIEW_ID = 'preview';
 
 interface Point { x: number; y: number }
@@ -92,6 +93,12 @@ class ArrowEdit {
   down(e: PointerEvent): void {
     if (currentPhase() !== 'review') return;
     const p = fractionAt(e.clientX, e.clientY);
+    // A finger is wider than a cursor, and every control here is drawn small. On
+    // touch a press gets a fixed slop on screen; a mouse keeps the tolerance it had.
+    const touch = e.pointerType === 'touch';
+    const scale = screenScale();
+    const slopPx = touch ? TOUCH_SLOP_PX : GRIP_PX;
+    const tolerance = touch ? TOUCH_SLOP_PX * scale : Math.max(9, el.cv.width / 55);
 
     // Armed: this drag draws a new arrow over the armed stretch.
     if (this.span) {
@@ -103,10 +110,23 @@ class ArrowEdit {
       return;
     }
 
+    // The picked arrow's × comes first: it sits off the arrow, so a press on it is
+    // nowhere near the hit test below — and it must never be a press that aims. It is
+    // looked for among the arrows shown at this moment, because that is what the layer
+    // drew: a × that is not on the picture is not a × a press can land on.
+    if (this.pickId) {
+      const picked = session.clip.annotationsAt(player.time()).find(a => a.id === this.pickId);
+      const spot = picked ? removeControl(picked, el.cv.width, el.cv.height, scale) : null;
+      if (picked && spot && canvasDistance(spot, p) <= slopPx * scale) {
+        session.clip.removeAnnotation(picked.id);   // the clip announces it; the views follow
+        return;
+      }
+    }
+
     // Otherwise a press may pick an arrow that is already there.
-    const hit = hitAnnotation(p);
+    const hit = hitAnnotation(p, tolerance);
     if (!hit) { this.forget(); repaint(); return; }
-    const near = hit.handles().find(h => Math.hypot(h.x - p.x, h.y - p.y) * el.cv.clientWidth <= GRIP_PX);
+    const near = hit.handles().find(h => Math.hypot(h.x - p.x, h.y - p.y) * el.cv.clientWidth <= slopPx);
     this.pickId = hit.id;
     this.grab = near ? near.end : 'move';
     this.last = p;
@@ -276,13 +296,24 @@ function fractionAt(clientX: number, clientY: number): Point {
   };
 }
 
+// Canvas pixels per screen pixel: the same conversion the layer sizes its controls
+// with, so a slop named in screen pixels is measured in the picture's own.
+function screenScale(): number {
+  return el.cv.clientWidth > 0 ? el.cv.width / el.cv.clientWidth : 1;
+}
+
+// The distance between two points of the picture, on the canvas.
+function canvasDistance(a: Point, b: Point): number {
+  return Math.hypot((a.x - b.x) * el.cv.width, (a.y - b.y) * el.cv.height);
+}
+
 // The topmost annotation under a point, at the moment the playhead holds. The hit
 // test is the annotation's own, because how close is close enough is geometry.
-function hitAnnotation(p: Point): Annotation | null {
+function hitAnnotation(p: Point, tolerancePx: number): Annotation | null {
   const shown = session.clip.annotationsAt(player.time());
   const w = el.cv.width, h = el.cv.height;
   for (let i = shown.length - 1; i >= 0; i--) {
-    if (shown[i].hitTest(p.x, p.y, w, h, Math.max(9, w / 55))) return shown[i];
+    if (shown[i].hitTest(p.x, p.y, w, h, tolerancePx)) return shown[i];
   }
   return null;
 }
