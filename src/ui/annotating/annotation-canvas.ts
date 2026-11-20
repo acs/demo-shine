@@ -8,14 +8,14 @@
 // `CreationContext` the canvas provides. The grips and the two controls are the
 // layer's, drawn from `handles()` for every kind.
 //
-// The gesture belongs to the interaction and to nothing else, so it lives on an object
-// with a lifetime — as MarkDrag and CropDrag do — and the session ends that lifetime,
-// because a drag must not outlive the clip it was drawn on.
+// The gesture belongs to the interaction and to nothing else, so it lives on this
+// object with a lifetime — as MarkDrag and CropDrag do — and the session ends that
+// lifetime, because a drag must not outlive the clip it was drawn on.
 //
 // How it goes: the section the user selected arms a kind, a press and drag on the
 // picture is handed to that kind's plugin (which decides what it makes), and a click on
 // an annotation already there picks it so its handles can be dragged. The clip
-// announces every change, so this module redraws the preview when it hears one — it
+// announces every change, so this object redraws the preview when it hears one — it
 // does not redraw because it happened to be the caller.
 
 import { currentPhase } from '../../state.js';
@@ -35,6 +35,9 @@ const DRAG_MIN = 3;          // px of travel before a press counts as a drag
 const GRIP_PX = 14;          // a cursor: how near a handle a press has to be to take hold
 const TOUCH_SLOP_PX = 24;    // a finger is wider than a cursor: the slop it gets instead
 const MIN_DRAG_PX = 3;       // shorter than this and a creation gesture was a stray click
+const COPY_SHIFT = 0.08;     // how far a copy is put from its original, in fractions
+
+const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 // 'move' is the whole thing; anything else is one of the annotation's own handles.
 type Grab = string | null;
@@ -47,7 +50,19 @@ interface PendingDrag {
   reject: (reason?: unknown) => void;
 }
 
-class AnnotationCanvas {
+// Who wants to know when the annotation in hand changes — the timeline lane, so its
+// selected bar follows the picture. The view listens; nothing calls into it.
+const selectionListeners = new Set<() => void>();
+
+export function onSelectionChange(fn: () => void): void {
+  selectionListeners.add(fn);
+}
+
+function announceSelection(): void {
+  for (const fn of [...selectionListeners]) fn();
+}
+
+export class AnnotationCanvas {
   private creating: { plugin: AnnotationPlugin; span: Span } | null = null;
   private pending: PendingDrag | null = null;
   private live = false;                          // a creation drag is in flight
@@ -84,7 +99,7 @@ class AnnotationCanvas {
     const total = session.clip.total();
     if (total > 0 && !span.contains(player.time() / total)) playback.hold(span.s * total);
     announceSelection();
-    repaint();
+    this.repaint();
     plugin.begin(this.creationContext());
   }
 
@@ -93,7 +108,7 @@ class AnnotationCanvas {
     this.pickId = id;
     this.grab = null;
     announceSelection();
-    repaint();
+    this.repaint();
   }
 
   /** The annotation in hand is gone (removed, or the session ended). */
@@ -113,13 +128,74 @@ class AnnotationCanvas {
     pending?.reject(new Error('the creation was let go'));
   }
 
+  /** Wire the pointer, the keys and the clip to this canvas. Called once, at startup. */
+  init(): void {
+    el.cv.addEventListener('pointerdown', e => this.down(e));
+    window.addEventListener('pointermove', e => this.move(e));
+    window.addEventListener('pointerup', e => this.end(e));
+    window.addEventListener('pointercancel', () => this.end());
+
+    // Escape lets go of an armed kind or of the one in hand; Delete takes the picked one
+    // away, because reaching for the × on it is a longer trip than pressing the key that
+    // means "remove this". The one undo brings it back.
+    window.addEventListener('keydown', evt => {
+      if (typingIn(evt.target)) return;             // a field's Delete belongs to the field
+
+      if (evt.key === 'Escape') {
+        if (!this.armed && !this.selectedId) return;
+        if (this.armed) this.cancel();
+        else            this.forget();
+        this.repaint();
+        return;
+      }
+
+      // Delete is Supr; on a Mac keyboard the same key is Backspace.
+      if ((evt.key === 'Delete' || evt.key === 'Backspace') && this.selectedId && currentPhase() === 'review') {
+        evt.preventDefault();
+        session.clip.removeAnnotation(this.selectedId);   // the clip announces it; the view follows
+        return;
+      }
+
+      // Copy the annotation in hand, and paste a new one of the same shape where the
+      // playhead holds — how a callout is repeated at another moment without selecting a
+      // stretch and drawing it again. The browser's own copy is left alone when nothing
+      // is picked, so copying selected text still works.
+      const key = evt.key.toLowerCase();
+      if (!(evt.metaKey || evt.ctrlKey) || (key !== 'c' && key !== 'v')) return;
+      if (currentPhase() !== 'review') return;
+
+      if (key === 'c' && this.selectedId) {
+        const picked = session.clip.annotations.byId(this.selectedId);
+        if (!picked) return;
+        evt.preventDefault();
+        clipboard.copy(picked);
+        toast(`${this.labelOf(picked.kind)} copied`);
+        return;
+      }
+
+      if (key === 'v' && clipboard.has) {
+        const pasted = this.pasteAtPlayhead();
+        if (!pasted) return;
+        evt.preventDefault();
+        toast(`${this.labelOf(pasted.kind)} pasted — drag it where you want it`);
+      }
+    });
+
+    // The clip says what changed; this is where the preview follows.
+    session.clip.onChange(event => {
+      if (event.type === 'cleared') { this.cancel(); return; }
+      if (event.type === 'annotation-removed') this.forget(event.annotation.id);
+      if (event.type === 'annotation-added' || event.type === 'annotation-changed' || event.type === 'annotation-removed') this.repaint();
+    });
+  }
+
   down(e: PointerEvent): void {
     if (currentPhase() !== 'review') return;
-    const p = fractionAt(e.clientX, e.clientY);
+    const p = this.fractionAt(e.clientX, e.clientY);
     // A finger is wider than a cursor, and every control here is drawn small. On
     // touch a press gets a fixed slop on screen; a mouse keeps the tolerance it had.
     const touch = e.pointerType === 'touch';
-    const scale = screenScale();
+    const scale = this.screenScale();
     const slopPx = touch ? TOUCH_SLOP_PX : GRIP_PX;
     const tolerance = touch ? TOUCH_SLOP_PX * scale : Math.max(9, el.cv.width / 55);
 
@@ -147,12 +223,12 @@ class AnnotationCanvas {
       if (picked) {
         const w = el.cv.width, h = el.cv.height;
         const remove = removeControl(picked, w, h, scale);
-        if (remove && canvasDistance(remove, p) <= slopPx * scale) {
+        if (remove && this.canvasDistance(remove, p) <= slopPx * scale) {
           session.clip.removeAnnotation(picked.id);   // the clip announces it; the views follow
           return;
         }
         const copy = copyControl(picked, w, h, scale);
-        if (copy && canvasDistance(copy, p) <= slopPx * scale) {
+        if (copy && this.canvasDistance(copy, p) <= slopPx * scale) {
           this.duplicate(picked);
           return;
         }
@@ -164,7 +240,7 @@ class AnnotationCanvas {
     // so part of a grip is *outside* the shape. A press on one has to take hold even
     // though the point is not on the annotation, or a corner could only be grabbed by
     // aiming at the half of it that happens to lie inside.
-    const grip = gripAt(p, slopPx);
+    const grip = this.gripAt(p, slopPx);
     if (grip) {
       this.pickId = grip.annotation.id;
       this.grab = grip.end;
@@ -173,14 +249,14 @@ class AnnotationCanvas {
       this.fromY = e.clientY;
       playback.pause();
       announceSelection();
-      repaint();
+      this.repaint();
       e.preventDefault();
       return;
     }
 
     // Otherwise a press may pick an annotation that is already there, and move it.
-    const hit = hitAnnotation(p, tolerance);
-    if (!hit) { this.forget(); repaint(); return; }
+    const hit = this.hitAnnotation(p, tolerance);
+    if (!hit) { this.forget(); this.repaint(); return; }
     this.pickId = hit.id;
     this.grab = 'move';
     this.last = p;
@@ -188,19 +264,19 @@ class AnnotationCanvas {
     this.fromY = e.clientY;
     playback.pause();
     announceSelection();
-    repaint();
+    this.repaint();
     e.preventDefault();
   }
 
   move(e: PointerEvent): void {
     if (currentPhase() !== 'review') return;
-    const p = fractionAt(e.clientX, e.clientY);
+    const p = this.fractionAt(e.clientX, e.clientY);
 
     // A creation drag: the kind's own builder says what the draft looks like.
     if (this.live) {
       this.to = p;
       this.draft = this.pending?.build(this.from, this.to) ?? null;
-      repaint();
+      this.repaint();
       return;
     }
     if (!this.pickId || !this.grab) return;
@@ -228,11 +304,11 @@ class AnnotationCanvas {
     const pending = this.pending;
     this.pending = null;
     this.draft = null;
-    if (e) this.to = fractionAt(e.clientX, e.clientY);
+    if (e) this.to = this.fractionAt(e.clientX, e.clientY);
     const travel = e ? Math.hypot(e.clientX - this.fromX, e.clientY - this.fromY) : Infinity;
     const min = pending?.minLengthPx ?? MIN_DRAG_PX;
     const result = travel >= min ? { from: this.from, to: this.to } : null;
-    repaint();
+    this.repaint();
     pending?.resolve(result);
   }
 
@@ -248,13 +324,13 @@ class AnnotationCanvas {
    * picked, so it can be dragged where it is wanted straight away.
    */
   duplicate(picked: Annotation): void {
-    const { dx, dy } = copyShift(picked);
+    const { dx, dy } = this.copyShift(picked);
     const copy = picked.duplicated(picked.span);
     const placed = copy.movedBy(dx, dy) ?? copy.movedBy(-dx, -dy);   // the other way if that leaves the picture
     if (!placed) return;
     session.clip.addAnnotation(placed);      // the clip announces it; the views follow
     this.pick(placed.id);
-    toast(`${labelOf(placed.kind)} copied — drag it where you want it`);
+    toast(`${this.labelOf(placed.kind)} copied — drag it where you want it`);
   }
 
   /** One is made: the clip takes it, and it is put in hand. */
@@ -282,180 +358,106 @@ class AnnotationCanvas {
         this.pending?.reject(new Error('a new creation began'));
         this.pending = { build, minLengthPx, resolve, reject };
       }),
-      draft: annotation => { this.draft = annotation; repaint(); },
+      draft: annotation => { this.draft = annotation; this.repaint(); },
       commit: annotation => this.commit(annotation),
-      abandon: message => { this.draft = null; el.tCut.textContent = message; repaint(); },
+      abandon: message => { this.draft = null; el.tCut.textContent = message; this.repaint(); },
       say: message => { el.tCut.textContent = message; },
     };
+  }
+
+  /** Redraw the frame under the gesture, the annotations, and the draft being made. */
+  private repaint(): void {
+    if (currentPhase() !== 'review' || el.rv.readyState < 1) return;
+    const w = el.cv.width, h = el.cv.height;
+    try { drawFrame(el.rv); } catch { return; }        // a frame still decoding
+    drawAnnotations(ctx, w, h, session.clip.annotationsAt(player.time()), this.selectedId);
+    const draft = this.preview();
+    if (draft) pluginOf(draft.kind)?.renderer.draw(ctx, draft, w, h);
+  }
+
+  // A new annotation of the copied shape, over the same part of the picture, at the
+  // moment the playhead holds — kept inside the clip, and in hand at once so its grips
+  // show.
+  private pasteAtPlayhead(): Annotation | null {
+    const total = session.clip.total();
+    if (!(total > 0) || !clipboard.has) return null;
+    const length = clipboard.length;
+    const at = Math.max(0, Math.min(1 - length, player.time() / total));
+    const pasted = clipboard.paste(Span.of(at, at + length));
+    if (!pasted) return null;
+    session.clip.addAnnotation(pasted);      // the clip announces it; the views follow
+    this.pick(pasted.id);
+    return pasted;
+  }
+
+  /** What a kind is called in a message, or a plain word for one this build cannot name. */
+  private labelOf(kind: string): string {
+    return pluginOf(kind)?.action.label ?? 'Annotation';
+  }
+
+  private fractionAt(clientX: number, clientY: number): Point {
+    const r = el.cv.getBoundingClientRect();
+    return {
+      x: clamp01(r.width > 0 ? (clientX - r.left) / r.width : 0),
+      y: clamp01(r.height > 0 ? (clientY - r.top) / r.height : 0),
+    };
+  }
+
+  // Canvas pixels per screen pixel: the same conversion the layer sizes its controls
+  // with, so a slop named in screen pixels is measured in the picture's own.
+  private screenScale(): number {
+    return el.cv.clientWidth > 0 ? el.cv.width / el.cv.clientWidth : 1;
+  }
+
+  // The distance between two points of the picture, on the canvas.
+  private canvasDistance(a: Point, b: Point): number {
+    return Math.hypot((a.x - b.x) * el.cv.width, (a.y - b.y) * el.cv.height);
+  }
+
+  // Where a copy goes: a fraction of the picture away, so it is as far off on a phone
+  // as on a desktop, and toward the middle of the picture — away from whichever edge
+  // the original is nearest, so the copy is never the one pushed off it.
+  private copyShift(annotation: Annotation): { dx: number; dy: number } {
+    const ends = annotation.handles();
+    const a = ends[0], b = ends[ends.length - 1];
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    return {
+      dx: mx > 0.5 ? -COPY_SHIFT : COPY_SHIFT,
+      dy: my > 0.5 ? -COPY_SHIFT : COPY_SHIFT,
+    };
+  }
+
+  // The topmost annotation whose grip the press is on, and which grip. The grips are
+  // the layer's, drawn from `handles()` for every kind, and they reach a little outside
+  // the shape — so this asks about the grip, not about the shape.
+  private gripAt(p: Point, slopPx: number): { annotation: Annotation; end: string } | null {
+    const shown = session.clip.annotationsAt(player.time());
+    const screenW = el.cv.clientWidth > 0 ? el.cv.clientWidth : el.cv.width;
+    if (!(screenW > 0)) return null;
+    for (let i = shown.length - 1; i >= 0; i--) {
+      for (const handle of shown[i].handles()) {
+        if (Math.hypot(handle.x - p.x, handle.y - p.y) * screenW <= slopPx) {
+          return { annotation: shown[i], end: handle.end };
+        }
+      }
+    }
+    return null;
+  }
+
+  // The topmost annotation under a point, at the moment the playhead holds. The hit
+  // test is the annotation's own, because how close is close enough is geometry.
+  private hitAnnotation(p: Point, tolerancePx: number): Annotation | null {
+    const shown = session.clip.annotationsAt(player.time());
+    const w = el.cv.width, h = el.cv.height;
+    for (let i = shown.length - 1; i >= 0; i--) {
+      if (shown[i].hitTest(p.x, p.y, w, h, tolerancePx)) return shown[i];
+    }
+    return null;
   }
 }
 
 export const canvas = new AnnotationCanvas();
 
-// Who wants to know when the annotation in hand changes — the timeline lane, so its
-// selected bar follows the picture. The view listens; nothing calls into it.
-const selectionListeners = new Set<() => void>();
-
-export function onSelectionChange(fn: () => void): void {
-  selectionListeners.add(fn);
-}
-
-function announceSelection(): void {
-  for (const fn of [...selectionListeners]) fn();
-}
-
 export function initAnnotationCanvas(): void {
-  el.cv.addEventListener('pointerdown', e => canvas.down(e));
-  window.addEventListener('pointermove', e => canvas.move(e));
-  window.addEventListener('pointerup', e => canvas.end(e));
-  window.addEventListener('pointercancel', () => canvas.end());
-
-  // Escape lets go of an armed kind or of the one in hand; Delete takes the picked one
-  // away, because reaching for the × on it is a longer trip than pressing the key that
-  // means "remove this". The one undo brings it back.
-  window.addEventListener('keydown', evt => {
-    if (typingIn(evt.target)) return;             // a field's Delete belongs to the field
-
-    if (evt.key === 'Escape') {
-      if (!canvas.armed && !canvas.selectedId) return;
-      if (canvas.armed) canvas.cancel();
-      else              canvas.forget();
-      repaint();
-      return;
-    }
-
-    // Delete is Supr; on a Mac keyboard the same key is Backspace.
-    if ((evt.key === 'Delete' || evt.key === 'Backspace') && canvas.selectedId && currentPhase() === 'review') {
-      evt.preventDefault();
-      session.clip.removeAnnotation(canvas.selectedId);   // the clip announces it; the view follows
-      return;
-    }
-
-    // Copy the annotation in hand, and paste a new one of the same shape where the
-    // playhead holds — how a callout is repeated at another moment without selecting a
-    // stretch and drawing it again. The browser's own copy is left alone when nothing
-    // is picked, so copying selected text still works.
-    const key = evt.key.toLowerCase();
-    if (!(evt.metaKey || evt.ctrlKey) || (key !== 'c' && key !== 'v')) return;
-    if (currentPhase() !== 'review') return;
-
-    if (key === 'c' && canvas.selectedId) {
-      const picked = session.clip.annotations.byId(canvas.selectedId);
-      if (!picked) return;
-      evt.preventDefault();
-      clipboard.copy(picked);
-      toast(`${labelOf(picked.kind)} copied`);
-      return;
-    }
-
-    if (key === 'v' && clipboard.has) {
-      const pasted = pasteAtPlayhead();
-      if (!pasted) return;
-      evt.preventDefault();
-      toast(`${labelOf(pasted.kind)} pasted — drag it where you want it`);
-    }
-  });
-
-  // The clip says what changed; this is where the preview follows.
-  session.clip.onChange(event => {
-    if (event.type === 'cleared') { canvas.cancel(); return; }
-    if (event.type === 'annotation-removed') canvas.forget(event.annotation.id);
-    if (event.type === 'annotation-added' || event.type === 'annotation-changed' || event.type === 'annotation-removed') repaint();
-  });
-}
-
-/** Redraw the frame under the gesture, the annotations, and the draft being made. */
-export function repaint(): void {
-  if (currentPhase() !== 'review' || el.rv.readyState < 1) return;
-  const w = el.cv.width, h = el.cv.height;
-  try { drawFrame(el.rv); } catch { return; }        // a frame still decoding
-  drawAnnotations(ctx, w, h, session.clip.annotationsAt(player.time()), canvas.selectedId);
-  const draft = canvas.preview();
-  if (draft) pluginOf(draft.kind)?.renderer.draw(ctx, draft, w, h);
-}
-
-// A new annotation of the copied shape, over the same part of the picture, at the
-// moment the playhead holds — kept inside the clip, and in hand at once so its grips
-// show.
-function pasteAtPlayhead(): Annotation | null {
-  const total = session.clip.total();
-  if (!(total > 0) || !clipboard.has) return null;
-  const length = clipboard.length;
-  const at = Math.max(0, Math.min(1 - length, player.time() / total));
-  const pasted = clipboard.paste(Span.of(at, at + length));
-  if (!pasted) return null;
-  session.clip.addAnnotation(pasted);      // the clip announces it; the views follow
-  canvas.pick(pasted.id);
-  return pasted;
-}
-
-// ── helpers ───────────────────────────────────────────────────────────────────
-
-/** What a kind is called in a message, or a plain word for one this build cannot name. */
-function labelOf(kind: string): string {
-  return pluginOf(kind)?.action.label ?? 'Annotation';
-}
-
-function fractionAt(clientX: number, clientY: number): Point {
-  const r = el.cv.getBoundingClientRect();
-  return {
-    x: clamp01(r.width > 0 ? (clientX - r.left) / r.width : 0),
-    y: clamp01(r.height > 0 ? (clientY - r.top) / r.height : 0),
-  };
-}
-
-const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
-
-// Canvas pixels per screen pixel: the same conversion the layer sizes its controls
-// with, so a slop named in screen pixels is measured in the picture's own.
-function screenScale(): number {
-  return el.cv.clientWidth > 0 ? el.cv.width / el.cv.clientWidth : 1;
-}
-
-// The distance between two points of the picture, on the canvas.
-function canvasDistance(a: Point, b: Point): number {
-  return Math.hypot((a.x - b.x) * el.cv.width, (a.y - b.y) * el.cv.height);
-}
-
-// Where a copy goes: a fraction of the picture away, so it is as far off on a phone as
-// on a desktop, and toward the middle of the picture — away from whichever edge the
-// original is nearest, so the copy is never the one pushed off it.
-const COPY_SHIFT = 0.08;
-
-function copyShift(annotation: Annotation): { dx: number; dy: number } {
-  const ends = annotation.handles();
-  const a = ends[0], b = ends[ends.length - 1];
-  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-  return {
-    dx: mx > 0.5 ? -COPY_SHIFT : COPY_SHIFT,
-    dy: my > 0.5 ? -COPY_SHIFT : COPY_SHIFT,
-  };
-}
-
-// The topmost annotation whose grip the press is on, and which grip. The grips are the
-// layer's, drawn from `handles()` for every kind, and they reach a little outside the
-// shape — so this asks about the grip, not about the shape.
-function gripAt(p: Point, slopPx: number): { annotation: Annotation; end: string } | null {
-  const shown = session.clip.annotationsAt(player.time());
-  const screenW = el.cv.clientWidth > 0 ? el.cv.clientWidth : el.cv.width;
-  if (!(screenW > 0)) return null;
-  for (let i = shown.length - 1; i >= 0; i--) {
-    for (const handle of shown[i].handles()) {
-      if (Math.hypot(handle.x - p.x, handle.y - p.y) * screenW <= slopPx) {
-        return { annotation: shown[i], end: handle.end };
-      }
-    }
-  }
-  return null;
-}
-
-// The topmost annotation under a point, at the moment the playhead holds. The hit
-// test is the annotation's own, because how close is close enough is geometry.
-function hitAnnotation(p: Point, tolerancePx: number): Annotation | null {
-  const shown = session.clip.annotationsAt(player.time());
-  const w = el.cv.width, h = el.cv.height;
-  for (let i = shown.length - 1; i >= 0; i--) {
-    if (shown[i].hitTest(p.x, p.y, w, h, tolerancePx)) return shown[i];
-  }
-  return null;
+  canvas.init();
 }

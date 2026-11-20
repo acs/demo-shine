@@ -2,20 +2,24 @@
 //
 // A line with a head, given by where it starts (`from`, the tail) and what it points
 // at (`to`, the head) — both as fractions of the picture. Its shape and the rules for
-// it are the domain class (`src/domain/annotation/Arrow.ts`); this file is the arrow
+// it are the domain class (`src/domain/annotation/Arrow.ts`); this class is the arrow
 // in the view: the button the section offers, how it is drawn, and how a new one is
-// made.
+// made. It is its own renderer — one thing, one id — because what the arrow looks like
+// is the arrow's business.
 //
 // Making one is a drag across the picture. The canvas owns the pointer plumbing and
 // hands it back through `ctx.drag`, whose `build` is the arrow's own shape — so the
-// draft the user sees while dragging is an `Arrow`, drawn by this renderer, and the
-// commit is an `Arrow`. A stray click makes nothing and says so, and stays armed so
-// the next try is a drag away rather than a selection to be made again.
+// draft the user sees while dragging is an `Arrow`, drawn by this class, and the commit
+// is an `Arrow`. A stray click makes nothing and says so, and stays armed so the next
+// try is a drag away rather than a selection to be made again.
 
 import { Arrow } from '../../domain/annotation/Arrow.js';
 import type { Annotation } from '../../domain/annotation/Annotation.js';
 import { registerRenderer, type AnnotationRenderer } from './annotation-layer.js';
-import { registerPlugin, type AnnotationPlugin } from './annotation-plugin.js';
+import {
+  registerPlugin,
+  type AnnotationAction, type AnnotationPlugin, type CreationContext,
+} from './annotation-plugin.js';
 
 const DRAFT_ID = 'draft';
 const ARMED = 'ARROW — drag on the picture';
@@ -46,67 +50,22 @@ export function arrowMetrics(w: number): { head: number; weight: number; edge: n
   };
 }
 
-function line(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, width: number, colour: string): void {
-  ctx.strokeStyle = colour;
-  ctx.lineWidth = width;
-  ctx.beginPath();
-  ctx.moveTo(x0, y0);
-  ctx.lineTo(x1, y1);
-  ctx.stroke();
-}
+/** The arrow kind in the view: its action, its look, and how a new one is made. */
+export class ArrowPlugin implements AnnotationPlugin, AnnotationRenderer<Annotation> {
+  readonly id = Arrow.id;
 
-function head(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, size: number, colour: string): void {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle);
-  ctx.fillStyle = colour;
-  ctx.beginPath();
-  ctx.moveTo(size, 0);
-  ctx.lineTo(-size * 0.55, size * 0.55);
-  ctx.lineTo(-size * 0.55, -size * 0.55);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
-
-export const arrowRenderer: AnnotationRenderer<Arrow> = {
-  id: Arrow.id,
-
-  draw(ctx, arrow, w, h) {
-    const { from, to } = arrow.geometry;
-    const x0 = from.x * w, y0 = from.y * h;
-    const x1 = to.x * w, y1 = to.y * h;
-    const { head: size, weight, edge } = arrowMetrics(w);
-    const angle = Math.atan2(y1 - y0, x1 - x0);
-    const bx = x1 - Math.cos(angle) * size * 0.8;
-    const by = y1 - Math.sin(angle) * size * 0.8;
-
-    ctx.save();
-    ctx.lineCap = 'round';
-    line(ctx, x0, y0, bx, by, weight + edge * 2, OUTLINE);   // the dark edge first
-    line(ctx, x0, y0, bx, by, weight, ACCENT);
-    head(ctx, bx, by, angle, size + edge * 2, OUTLINE);
-    head(ctx, bx, by, angle, size, ACCENT);
-    ctx.restore();
-  },
-};
-
-registerRenderer(arrowRenderer);
-
-// ── the plugin ────────────────────────────────────────────────────────────────
-
-export const arrowPlugin: AnnotationPlugin = {
-  id: Arrow.id,
-
-  action: {
+  readonly action: AnnotationAction = {
     label: 'Arrow',
     title: 'Annotate this section with an arrow',
     icon: ACTION_ICON,
-  },
+  };
 
-  renderer: arrowRenderer as AnnotationRenderer<Annotation>,
+  /** The arrow is its own renderer, so a kind is one object with one id. */
+  get renderer(): AnnotationRenderer<Annotation> {
+    return this;
+  }
 
-  begin(ctx): void {
+  begin(ctx: CreationContext): void {
     ctx.say(ARMED);
     void (async () => {
       try {
@@ -122,7 +81,52 @@ export const arrowPlugin: AnnotationPlugin = {
         // The canvas was disarmed — Escape, a new selection, or the session over.
       }
     })();
-  },
-};
+  }
 
+  draw(ctx: CanvasRenderingContext2D, annotation: Annotation, w: number, h: number): void {
+    if (!(annotation instanceof Arrow)) return;
+    const { from, to } = annotation.geometry;
+    const x0 = from.x * w, y0 = from.y * h;
+    const x1 = to.x * w, y1 = to.y * h;
+    const { head: size, weight, edge } = arrowMetrics(w);
+    const angle = Math.atan2(y1 - y0, x1 - x0);
+    const bx = x1 - Math.cos(angle) * size * 0.8;
+    const by = y1 - Math.sin(angle) * size * 0.8;
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    this.line(ctx, x0, y0, bx, by, weight + edge * 2, OUTLINE);   // the dark edge first
+    this.line(ctx, x0, y0, bx, by, weight, ACCENT);
+    this.head(ctx, bx, by, angle, size + edge * 2, OUTLINE);
+    this.head(ctx, bx, by, angle, size, ACCENT);
+    ctx.restore();
+  }
+
+  private line(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, width: number, colour: string): void {
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.stroke();
+  }
+
+  private head(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, size: number, colour: string): void {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillStyle = colour;
+    ctx.beginPath();
+    ctx.moveTo(size, 0);
+    ctx.lineTo(-size * 0.55, size * 0.55);
+    ctx.lineTo(-size * 0.55, -size * 0.55);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// One arrow kind: the section offers its action, and the layer draws it.
+export const arrowPlugin = new ArrowPlugin();
+registerRenderer(arrowPlugin);
 registerPlugin(arrowPlugin);
