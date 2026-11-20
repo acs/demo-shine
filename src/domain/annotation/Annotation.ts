@@ -27,6 +27,16 @@ export interface AnnotationHandle {
   readonly end: string;
 }
 
+/**
+ * What a resize may be told beyond where the handle went. A kind that ignores it —
+ * the arrow, whose ends are its resize — reads it not at all; a kind that resizes a
+ * shape, as the image does, uses it to tell a free resize from a constrained one.
+ */
+export interface HandleOptions {
+  /** The user is asking for a free resize — a modifier is held. */
+  readonly free?: boolean;
+}
+
 /** One annotation as it is written down: its span and geometry, plain numbers. */
 export interface StoredAnnotation {
   id: string;
@@ -49,7 +59,7 @@ export abstract class Annotation {
   abstract handles(): readonly AnnotationHandle[];
 
   /** The same annotation with one handle at a new point, or null if that is not one. */
-  abstract withHandle(end: string, to: Point): Annotation | null;
+  abstract withHandle(end: string, to: Point, options?: HandleOptions): Annotation | null;
 
   /** The same annotation, shifted — how it is moved whole. */
   abstract movedBy(dx: number, dy: number): Annotation | null;

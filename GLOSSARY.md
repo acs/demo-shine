@@ -64,19 +64,24 @@ time. Passing one where the other was meant is the mistake it exists to prevent.
 
 ## Annotating
 
-Something drawn over the picture, for a stretch of the clip's time. The first kind
-is the **arrow**; the family is built so the next kind is added by describing it,
-not by reworking the arrow. The stretch is chosen with the **selection** — the same
-one a cut is approved from — so there is one way to point at a stretch of the clip,
-whatever is then done with it.
+Something drawn over the picture, for a stretch of the clip's time. A kind is
+described once — its shape in the domain, and a **plugin** in the view naming its
+action, its renderer and how a new one is made — and every kind is edited the same
+way, by the **annotation canvas**. The stretch is chosen with the **selection** — the
+same one a cut is approved from — so there is one way to point at a stretch of the
+clip, whatever is then done with it.
 
 | word | what it is | in the code |
 |---|---|---|
 | **annotation** | something drawn over the picture of a clip, for a stretch of its time. It has a **kind**, the **span** it is shown over, and a geometry its kind shapes | `Annotation`, `Clip.annotations` |
-| **annotation kind** | what makes one annotation different from another — an arrow today. Its rules (how a geometry is normalised, whether it is worth keeping) live in the domain; how it is drawn and picked lives in the view, under the same id | `AnnotationKind`, `kinds.ts`; `AnnotationRenderer`, `ui/annotating/annotation-layer.ts` |
-| **arrow** | the first kind: a line with a head, given by where it starts (`from`) and what it points at (`to`), in fractions of the picture | `arrowKind`, `ArrowGeometry` |
+| **annotation kind** | what makes one annotation different from another — an arrow or an image. Its rules (how a geometry is normalised, whether it is worth keeping, how it resizes) live in the domain; how it is drawn and made lives in the view, under the same id | `AnnotationKind`, `kinds.ts`; the kind's `AnnotationPlugin` |
+| **annotation plugin** | everything a kind is in the view: its action on a selected stretch, its renderer, and how a new one is made (`begin`). Added with the kind, under the kind's id; it never describes selecting, moving, resizing, copying, deleting, saving or exporting, because those are shared | `AnnotationPlugin`, `ui/annotating/annotation-plugin.ts`, `ui/annotating/<kind>-plugin.ts` |
+| **annotation canvas** | the one shared editing surface every kind gets: pick, move, resize, copy, paste, delete and undo. It names no kind — it asks the annotation and the clip | `ui/annotating/annotation-canvas.ts` |
+| **arrow** | the first kind: a line with a head, given by where it starts (`from`) and what it points at (`to`), in fractions of the picture. Its ends are its resize | `Arrow`, `ArrowGeometry`, `ui/annotating/arrow-plugin.ts` |
+| **image annotation** | the second kind: a chosen picture over the picture, a rect in fractions with the picture's own proportions kept on resize | `ImageAnnotation`, `ImageGeometry`, `ui/annotating/image-plugin.ts` |
+| **image store** | where an image annotation's picture is kept, written once apart from the recording, and the decoded copy drawn each frame | `ImageStorePort`, `src/infra/images.ts` |
 | **annotation lane** | the row on the timeline marking each annotation at the start of its stretch, in kept time, so one can be found without playing the clip | `ui/annotating/annotation-lane.ts` |
-| **annotation layer** | the one place an annotation is drawn, used by playback and by the export alike, so the file matches the review | `ui/annotating/annotation-layer.ts` |
+| **annotation layer** | the one place an annotation is drawn, used by playback and by the export alike, so the file matches the review — and the one place a picked annotation's grips are drawn, for every kind | `ui/annotating/annotation-layer.ts` |
 
 An annotation's geometry is held in fractions of the picture, so it lands in the
 same place on the preview, on the export canvas and after a reload. A **cut takes
@@ -138,6 +143,7 @@ can end it:
 | `ExportMenu` | the File/Bluesky menu under the Export button, and the listeners that end it | one opening |
 | `MarkDrag`, `CropDrag` | a gesture in flight | the gesture |
 | `Clipboard` | the annotation a copy put aside, for a paste | the session |
+| the decoded image cache | a picture, decoded once and drawn each frame | the session |
 | `Output`, `Mixer` | the canvas a take is drawn on, and the graph that mixes system audio with the microphone | a take |
 
 `Session` is what ends them: `session.end()` is the whole of "this session is

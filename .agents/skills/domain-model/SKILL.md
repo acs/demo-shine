@@ -11,17 +11,21 @@ description: How to work in DemoClip's domain — value objects, the Clip aggreg
 src/
   domain/      pure rules: no DOM, no browser API, no import from ui/ or infra/
     clip/      Span, SpanSet, TimelineMap, Take, TakeRepository (a port), Clip (the aggregate)
-    annotation/ Annotation (the base class), its kinds (Arrow), AnnotationSet, the register
+    annotation/ Annotation (the base class), its kinds (Arrow, ImageAnnotation),
+                AnnotationSet, the register
     capture/   CropRegion and SourceSet — the crop and the three source toggles
     export/    ExportTarget — the container an export writes
     session/   Session — the sitting: the clip and the audio flag
   application/ the use cases that run in node, and the ports they own
     ports/     CapturePort, WebcamPort, MicrophonePort, TakeRecorderPort,
                CompositorPort, TakeProbePort, ClockPort, EncoderPort,
-               DownloadPort, FrameRendererPort, KeptClipPort
+               DownloadPort, FrameRendererPort, KeptClipPort, ImageStorePort
   infra/       the browser boundary: capture, compositor, recorder, probe, clock,
-               encoder, codecs, download, takes (the object URLs), the clip store, Bluesky
+               encoder, codecs, download, takes (the object URLs), the clip store,
+               images (the picture store and its decoded cache), Bluesky
   ui/          the DOM and the interaction: renders the model, owns no rules
+    annotating/ the annotation plugin seam: the plugin registry, the plugin and the
+                canvas every kind is edited through, and one file per kind
     *-flow.ts  the view flows: record, review, export, publish, resume
   state.ts     the phase only — one owner and one change event
   session.ts   the composition: the single Session object
@@ -40,11 +44,13 @@ something. An **interface is for data with no rules** — `Segment`, `ExportPiec
 `ClipSnapshot`, the geometry a kind is handed. Reaching for an interface because it
 is quicker is how a rule ends up in a free function every caller has to remember.
 
-A kind of thing that is drawn or played is **a class plus a renderer**: its rules in
-`domain/` (how a shape is normalised, whether it is worth keeping, how it is moved and
-hit), and how it looks in `ui/`, under the same id — because `src/domain/` may not
-touch a canvas. The id is the whole of the coupling; adding a kind is a class, a line
-in the register, and a renderer.
+A kind of thing that is drawn or played is **a class plus a plugin**: its rules in
+`domain/` (how a shape is normalised, whether it is worth keeping, how it is moved,
+resized and hit), and an `AnnotationPlugin` in `ui/` under the same id — its action,
+its renderer, and how a new one is made — because `src/domain/` may not touch a canvas.
+The id is the whole of the coupling; adding a kind is a class, a line in the register,
+and a plugin. Picking, moving, resizing, copying, deleting and undoing a kind are the
+**annotation canvas**'s, and a new kind gets them by existing.
 
 A rule also lives in **one place**, and everything asks it. Two copies drift: the
 export once drew annotations in a different order from the review, because it

@@ -28,7 +28,8 @@ import { fractionAtX as fractionAt, keptLengthNow, keptOf, player } from '../cli
 import { playback } from '../clip/playback.js';
 import { typingIn } from '../../util.js';
 import { MIN_SECTION, selection } from './selection.js';
-import { edit } from '../annotating/annotation-edit.js';
+import { canvas } from '../annotating/annotation-canvas.js';
+import { pluginOf, plugins } from '../annotating/annotation-plugin.js';
 
 const DRAG_MIN   = 3;     // px of travel before a press counts as a drag
 const EDGE_GRIP  = 7;     // px near a section's edge that resizes instead of moves
@@ -110,8 +111,11 @@ export function renderMarks(): void {
     html += `<span class="tl-acts" style="left:${Math.max(7, Math.min(93, centre)).toFixed(2)}%">`
           + `<button class="tl-act ok" data-act="cut" title="Cut this section out" aria-label="Cut this section out">`
           + `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88"/><path d="M14.47 14.48L20 20"/><path d="M8.12 8.12L12 12"/></svg></button>`
-          + `<button class="tl-act ann" data-act="annotate" title="Annotate this section with an arrow" aria-label="Annotate this section with an arrow">`
-          + `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19L19 5"/><path d="M12 5h7v7"/></svg></button>`
+          // One button per kind, from the plugin register: adding a kind adds its own
+          // button here, and nothing in this module names a kind.
+          + plugins().map(plugin =>
+              `<button class="tl-act ann" data-act="add" data-kind="${plugin.id}" title="${plugin.action.title}" aria-label="${plugin.action.title}">${plugin.action.icon}</button>`
+            ).join('')
           + `<button class="tl-act no" data-act="keep" title="Undo the selection" aria-label="Undo the selection">`
           + `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-5"/></svg></button>`
           + `</span>`;
@@ -141,7 +145,8 @@ export function renderMarks(): void {
 function undoLabel(): string {
   const change = session.clip.pendingUndo();
   if (!change) return '';
-  return change.type === 'cut-approved' ? `CUT ${change.removed.toFixed(2)}s` : 'ARROW';
+  if (change.type === 'cut-approved') return `CUT ${change.removed.toFixed(2)}s`;
+  return (pluginOf(change.annotation.kind)?.action.label ?? 'ANNOTATION').toUpperCase();
 }
 
 function pctWidth(section: Span): string {
@@ -156,7 +161,7 @@ function onActionClick(evt: MouseEvent): void {
   if (!act) return;
   evt.stopPropagation();
   if (act.dataset.act === 'cut')           approveCut();
-  else if (act.dataset.act === 'annotate') annotateSection();
+  else if (act.dataset.act === 'add')      addAnnotation(act.dataset.kind ?? '');
   else                                     dismissSelection();
 }
 
@@ -172,14 +177,14 @@ function approveCut(): void {
   afterEdits(section.s * session.clip.total());        // a time in the recording
 }
 
-// The arrow: the section is the stretch, and the gesture is armed for it — the
-// user then draws on the picture, and the arrow belongs to that stretch.
-function annotateSection(): void {
+// Annotate: the section is the stretch, and a kind's action arms it — the user then
+// makes one over the picture (draws an arrow, chooses a picture), and it belongs to
+// that stretch. What happens next is the kind's plugin, not this module.
+function addAnnotation(kindId: string): void {
   if (!canEdit()) return;
   const section = selection.section();
   if (!section) return;
-  edit.arm(section);
-  el.tCut.textContent = 'ARROW — drag on the picture';
+  canvas.add(kindId, section);
 }
 
 // The undo: leave the section in and drop the selection.

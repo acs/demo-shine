@@ -25,9 +25,10 @@ import type { StoredAnnotation } from '../domain/annotation/Annotation.js';
 import type { KeptClipPort } from '../application/ports/KeptClipPort.js';
 
 const DB_NAME = 'democlip';
-const DB_VERSION = 2;          // 2 splits the one-record store into takes + meta
+const DB_VERSION = 3;          // 3 adds the pictures an image annotation draws
 const TAKES = 'takes';
 const META = 'meta';
+const IMAGES = 'images';
 const META_KEY = 'current';
 const FORMAT = 1;
 
@@ -127,9 +128,10 @@ export function loadClip(): Promise<StoredClip | null> {
 export function clearClip(): Promise<void> {
   return serial(async () => {
     const db = await openDb();
-    const tx = db.transaction([TAKES, META], 'readwrite');
+    const tx = db.transaction([TAKES, META, IMAGES], 'readwrite');
     tx.objectStore(TAKES).clear();
     tx.objectStore(META).delete(META_KEY);
+    tx.objectStore(IMAGES).clear();
     await txComplete(tx);
   }).catch(() => {});
 }
@@ -157,6 +159,11 @@ function metaOf(clip: Clip, audio: boolean): Meta {
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
+/** The one open database: the takes, the small half, and the pictures. */
+export function openClipDb(): Promise<IDBDatabase> {
+  return openDb();
+}
+
 function openDb(): Promise<IDBDatabase> {
   dbPromise ??= new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') { reject(new Error('this browser has no IndexedDB')); return; }
@@ -167,6 +174,7 @@ function openDb(): Promise<IDBDatabase> {
       if (db.objectStoreNames.contains('clip')) db.deleteObjectStore('clip');
       if (!db.objectStoreNames.contains(TAKES)) db.createObjectStore(TAKES);
       if (!db.objectStoreNames.contains(META)) db.createObjectStore(META);
+      if (!db.objectStoreNames.contains(IMAGES)) db.createObjectStore(IMAGES);
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error ?? new Error('could not open the clip store'));
