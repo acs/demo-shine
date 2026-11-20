@@ -159,12 +159,30 @@ class AnnotationCanvas {
       }
     }
 
-    // Otherwise a press may pick an annotation that is already there.
+    // A grip is a target in its own right. The grips are the layer's, drawn from the
+    // annotation's `handles()` for every kind, and they are drawn at the shape's edge —
+    // so part of a grip is *outside* the shape. A press on one has to take hold even
+    // though the point is not on the annotation, or a corner could only be grabbed by
+    // aiming at the half of it that happens to lie inside.
+    const grip = gripAt(p, slopPx);
+    if (grip) {
+      this.pickId = grip.annotation.id;
+      this.grab = grip.end;
+      this.last = p;
+      this.fromX = e.clientX;
+      this.fromY = e.clientY;
+      playback.pause();
+      announceSelection();
+      repaint();
+      e.preventDefault();
+      return;
+    }
+
+    // Otherwise a press may pick an annotation that is already there, and move it.
     const hit = hitAnnotation(p, tolerance);
     if (!hit) { this.forget(); repaint(); return; }
-    const near = hit.handles().find(h => Math.hypot(h.x - p.x, h.y - p.y) * el.cv.clientWidth <= slopPx);
     this.pickId = hit.id;
-    this.grab = near ? near.end : 'move';
+    this.grab = 'move';
     this.last = p;
     this.fromX = e.clientX;
     this.fromY = e.clientY;
@@ -412,6 +430,23 @@ function copyShift(annotation: Annotation): { dx: number; dy: number } {
     dx: mx > 0.5 ? -COPY_SHIFT : COPY_SHIFT,
     dy: my > 0.5 ? -COPY_SHIFT : COPY_SHIFT,
   };
+}
+
+// The topmost annotation whose grip the press is on, and which grip. The grips are the
+// layer's, drawn from `handles()` for every kind, and they reach a little outside the
+// shape — so this asks about the grip, not about the shape.
+function gripAt(p: Point, slopPx: number): { annotation: Annotation; end: string } | null {
+  const shown = session.clip.annotationsAt(player.time());
+  const screenW = el.cv.clientWidth > 0 ? el.cv.clientWidth : el.cv.width;
+  if (!(screenW > 0)) return null;
+  for (let i = shown.length - 1; i >= 0; i--) {
+    for (const handle of shown[i].handles()) {
+      if (Math.hypot(handle.x - p.x, handle.y - p.y) * screenW <= slopPx) {
+        return { annotation: shown[i], end: handle.end };
+      }
+    }
+  }
+  return null;
 }
 
 // The topmost annotation under a point, at the moment the playhead holds. The hit
