@@ -77,10 +77,28 @@ export function syncSources(): void {
 }
 
 function sizePreview(): void {
+  // The element the capture is drawn from is the truth. A display track's settings
+  // report the *display's* size until the first frame of a tab or window arrives —
+  // the whole screen, for a small tab — so sizing from them alone would stretch the
+  // tab to the screen. `setSize` ignores a size of 0, so with no screen (the webcam
+  // alone) the webcam's own size is kept.
+  capture.setSize(el.sv.videoWidth, el.sv.videoHeight);
   el.cv.width = capture.width || 1280;
   el.cv.height = capture.height || 720;
   el.resBadge.classList.add('on');
   el.resBadge.textContent = `${el.cv.width}×${el.cv.height}`;
+}
+
+/**
+ * Wire the preview to the capture's real size. Called once, at startup: the element
+ * fires `resize` when the first frame lands and whenever a shared window or tab is
+ * resized, and the preview follows both.
+ */
+export function initRecordFlow(): void {
+  el.sv.addEventListener('resize', () => {
+    if (!capture.sources.screen || currentPhase() === 'review') return;
+    sizePreview();
+  });
 }
 
 export async function toggleScreen(): Promise<void> {
