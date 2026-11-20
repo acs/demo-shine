@@ -66,10 +66,12 @@ export function drawAnnotations(
 // `handles()` — so a kind gets the same grip UI without writing any, which is the
 // point of it living here rather than in each renderer.
 //
-// The picked annotation carries one control the grips do not: the × that takes it
-// away. A phone has no Delete key, and a press that removes must not be a press that
-// aims, so it sits off the annotation rather than on it — `removeControl` is the one
-// place that says where, and `annotation-edit.ts` hit-tests the same point.
+// The picked annotation carries two controls the grips do not: the × that takes it
+// away, and the copy that puts another like it beside it. A phone has no Delete key and
+// no ⌘C, and a press on either must not be a press that aims — so both sit off the
+// annotation rather than on it, on opposite sides of its middle. `removeControl` and
+// `copyControl` are the one place each says where, and `annotation-edit.ts` hit-tests
+// the same two points.
 
 // Canvas pixels per screen pixel: a grip must be the same size to the hand whatever
 // the picture's resolution. 1 when the canvas is not on screen, which is what an
@@ -79,8 +81,27 @@ function screenScale(ctx: CanvasRenderingContext2D): number {
   return css > 0 ? ctx.canvas.width / css : 1;
 }
 
-const REMOVE_GAP = 22;   // screen px from the annotation's middle to its ×, so the × clears it
-const REMOVE_R   = 10;   // screen px: a little bigger than a grip, and marked
+const CONTROL_GAP = 22;  // screen px from the annotation's middle to a control, so it clears it
+const CONTROL_R   = 12;  // screen px: bigger than a grip — a button, and a finger's, not a cursor's
+
+type Control = 'remove' | 'copy';
+
+// Which side of the middle a control sits on: the × on one, the copy on the other.
+function controlSpot(
+  annotation: Annotation, w: number, h: number, scale: number, side: 1 | -1,
+): { x: number; y: number } | null {
+  const ends = annotation.handles();
+  if (ends.length < 2) return null;
+  const a = ends[0], b = ends[ends.length - 1];
+  const dx = (b.x - a.x) * w, dy = (b.y - a.y) * h;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return null;
+  const gap = CONTROL_GAP * scale * side;
+  const x = ((a.x + b.x) / 2) * w - (dy / len) * gap;
+  const y = ((a.y + b.y) / 2) * h + (dx / len) * gap;
+  const clamp = (v: number, hi: number) => (v < 0 ? 0 : v > hi ? hi : v);
+  return { x: clamp(x, w) / w, y: clamp(y, h) / h };
+}
 
 /**
  * Where the picked annotation's remove control sits, in fractions of the picture — or
@@ -91,17 +112,14 @@ const REMOVE_R   = 10;   // screen px: a little bigger than a grip, and marked
 export function removeControl(
   annotation: Annotation, w: number, h: number, scale: number,
 ): { x: number; y: number } | null {
-  const ends = annotation.handles();
-  if (ends.length < 2) return null;
-  const a = ends[0], b = ends[ends.length - 1];
-  const dx = (b.x - a.x) * w, dy = (b.y - a.y) * h;
-  const len = Math.hypot(dx, dy);
-  if (len < 1) return null;
-  const gap = REMOVE_GAP * scale;
-  const x = ((a.x + b.x) / 2) * w - (dy / len) * gap;
-  const y = ((a.y + b.y) / 2) * h + (dx / len) * gap;
-  const clamp = (v: number, hi: number) => (v < 0 ? 0 : v > hi ? hi : v);
-  return { x: clamp(x, w) / w, y: clamp(y, h) / h };
+  return controlSpot(annotation, w, h, scale, 1);
+}
+
+/** Where the copy control sits: the same, on the other side of the middle. */
+export function copyControl(
+  annotation: Annotation, w: number, h: number, scale: number,
+): { x: number; y: number } | null {
+  return controlSpot(annotation, w, h, scale, -1);
 }
 
 function drawHandles(ctx: CanvasRenderingContext2D, annotation: Annotation, w: number, h: number): void {
@@ -117,14 +135,19 @@ function drawHandles(ctx: CanvasRenderingContext2D, annotation: Annotation, w: n
     ctx.strokeStyle = '#fff';           // a light ring, so it reads over a dark picture
     ctx.stroke();
   }
-  const remove = removeControl(annotation, w, h, scale);
-  if (remove) drawRemove(ctx, remove.x * w, remove.y * h, REMOVE_R * scale, scale);
+  const controls: Array<[Control, { x: number; y: number } | null]> = [
+    ['remove', removeControl(annotation, w, h, scale)],
+    ['copy', copyControl(annotation, w, h, scale)],
+  ];
+  for (const [control, spot] of controls) {
+    if (spot) drawControl(ctx, control, spot.x * w, spot.y * h, CONTROL_R * scale, scale);
+  }
   ctx.restore();
 }
 
-// The × on the picked annotation: the grips' own disc and ring, so it reads as one of
-// its controls rather than a new thing, with the × cut into it.
-function drawRemove(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, scale: number): void {
+// A control on the picked annotation: the grips' own disc and ring, so it reads as one
+// of its controls rather than a new thing, with its mark cut into it.
+function drawControl(ctx: CanvasRenderingContext2D, control: Control, x: number, y: number, r: number, scale: number): void {
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fillStyle = ACCENT;
@@ -133,14 +156,38 @@ function drawRemove(ctx: CanvasRenderingContext2D, x: number, y: number, r: numb
   ctx.strokeStyle = '#fff';
   ctx.stroke();
 
-  const k = r * 0.42;
-  ctx.beginPath();
-  ctx.moveTo(x - k, y - k);
-  ctx.lineTo(x + k, y + k);
-  ctx.moveTo(x + k, y - k);
-  ctx.lineTo(x - k, y + k);
   ctx.lineWidth = Math.max(1, 1.8 * scale);
   ctx.strokeStyle = '#fff';
+
+  if (control === 'remove') {
+    const k = r * 0.42;
+    ctx.beginPath();
+    ctx.moveTo(x - k, y - k);
+    ctx.lineTo(x + k, y + k);
+    ctx.moveTo(x + k, y - k);
+    ctx.lineTo(x - k, y + k);
+    ctx.stroke();
+    return;
+  }
+
+  // Two sheets: the far one behind, the near one filled in the disc's own colour so it
+  // knocks the overlap out and the two read apart at this size. The pair is centred on
+  // the disc, so the mark does not lean.
+  const k = r * 0.40, off = r * 0.30;
+  const sheet = (cx: number, cy: number) => {
+    ctx.beginPath();
+    ctx.moveTo(cx - k, cy - k);
+    ctx.lineTo(cx + k, cy - k);
+    ctx.lineTo(cx + k, cy + k);
+    ctx.lineTo(cx - k, cy + k);
+    ctx.closePath();
+  };
+  sheet(x + off, y - off);        // the far one, up and to the right, solid
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  sheet(x - off, y + off);        // the near one, over it, cut out of the disc
+  ctx.fillStyle = ACCENT;
+  ctx.fill();
   ctx.stroke();
 }
 
