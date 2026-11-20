@@ -56,8 +56,27 @@ export class CaptureAdapter implements CapturePort {
     this.sources = this.sources.withScreen(false);
   }
 
-  async startWebcam(): Promise<MediaStream> {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+  async startWebcam(deviceId?: string): Promise<MediaStream> {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: deviceId ? { deviceId: { exact: deviceId } } : true,
+      audio: false,
+    });
+    this.webcamStream = stream;
+    this.sources = this.sources.withWebcam(true);
+    const settings = stream.getVideoTracks()[0]?.getSettings();
+    this.width = settings?.width ?? this.width;
+    this.height = settings?.height ?? this.height;
+    return stream;
+  }
+
+  // Open the chosen camera first, then release the old one, so a failure leaves
+  // the current preview running.
+  async switchWebcam(deviceId: string): Promise<MediaStream> {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: deviceId } },
+      audio: false,
+    });
+    this.webcamStream?.getTracks().forEach(track => track.stop());
     this.webcamStream = stream;
     this.sources = this.sources.withWebcam(true);
     const settings = stream.getVideoTracks()[0]?.getSettings();
@@ -103,7 +122,7 @@ export class CaptureAdapter implements CapturePort {
 export const capture = new CaptureAdapter();
 
 export const webcamPort: WebcamPort = {
-  start: () => capture.startWebcam(),
+  start: (deviceId?: string) => capture.startWebcam(deviceId),
   stop: () => capture.stopWebcam(),
   current: () => capture.currentWebcam(),
 };
