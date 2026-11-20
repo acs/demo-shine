@@ -47,14 +47,16 @@ over" — the **New** button, or an exported clip:
 ```
 src/
   domain/       pure rules — no DOM, no browser. Span, SpanSet, TimelineMap, Take,
-                Clip (the aggregate), ExportPlan, the annotation family,
+                Clip (the aggregate), ExportPlan, the annotation family (the base,
+                its kinds, and the register),
                 CropRegion and SourceSet, Session (the clip and the audio flag)
   application/  the use cases that run in node, and the ports they own:
                 record a take, export a clip, publish, keep and restore a clip
   infra/        the browser boundary: capture, compositor, recorder, probe, clock,
                 encoder, codecs, download, the takes' object URLs, the clip store,
-                Bluesky
+                the image store, Bluesky
   ui/           the DOM and the interaction — renders the model, owns no rules;
+                the annotation plugins and the shared canvas under annotating/;
                 the view flows (record, review, export, publish, resume) sequence
   state.ts      the phase only
   session.ts    the composition: the single Session
