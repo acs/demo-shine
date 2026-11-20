@@ -69,6 +69,7 @@ export const el = {
   helpVer:   byId<HTMLElement>('help-ver'),
   screenBtn: byId<HTMLButtonElement>('screen-btn'),
   webcamBtn: byId<HTMLButtonElement>('webcam-btn'),
+  camPick:   byId<HTMLSelectElement>('cam-pick'),
   wcv:       byId<HTMLVideoElement>('wcv'),
   micBtn:    byId<HTMLButtonElement>('mic-btn'),
   vu:        byId<HTMLElement>('vu'),

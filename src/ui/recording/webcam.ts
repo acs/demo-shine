@@ -4,48 +4,97 @@
 // of the capture region; with the screen off it is the whole picture. The stream is
 // acquired and released by the capture adapter; this view attaches it to the video
 // element and draws the bubble.
+//
+// When more than one camera is present, a picker beside the toggle lists them. The
+// picker belongs to the webcam source: it is shown while the webcam is on, hidden
+// otherwise, and disabled while a take owns the sources.
 
 import { capture } from '../../infra/capture.js';
 import { el, toast } from '../dom.js';
+import { cameraOptions, shouldShowPicker } from './camera-list.js';
 import { setCameraPresent } from './source-buttons.js';
 
+let cameras: MediaDeviceInfo[] = [];
+let selectedId: string | null = null;
+
 export function initWebcam(): void {
-  setCameraPresent(false);                      // until we know a camera exists
+  setCameraPresent(false);                      // until we know a camera is there
   if (navigator.mediaDevices) {
-    navigator.mediaDevices.addEventListener('devicechange', () => void detectWebcam());
+    navigator.mediaDevices.addEventListener('devicechange', () => void onDeviceChange());
   }
   void detectWebcam();
 }
 
 export async function detectWebcam(): Promise<void> {
-  let has: boolean;
+  let present = false;
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
-    has = devices.some(device => device.kind === 'videoinput');
+    cameras = devices.filter(device => device.kind === 'videoinput');
+    present = cameras.length > 0;
   } catch {
-    has = false;
+    cameras = [];
   }
-  setCameraPresent(has);
-  if (!has) stopWebcam();
+  setCameraPresent(present);
+  renderCameras();
+  if (!present) {
+    if (capture.sources.webcam) toast('The camera was disconnected', 4000);
+    stopWebcam();
+  }
+}
+
+// A device came or went. The active camera leaving stops the preview; another
+// camera leaving just shrinks the list.
+async function onDeviceChange(): Promise<void> {
+  const wasSelected = selectedId;
+  await detectWebcam();
+  if (wasSelected && !cameras.some(camera => camera.deviceId === wasSelected)) {
+    selectedId = null;
+    if (capture.sources.webcam) {
+      stopWebcam();
+      toast('The camera was disconnected', 4000);
+    } else {
+      renderCameras();
+    }
+  }
 }
 
 // Async, so the caller can sync the preview once the camera is really on.
 export async function toggleWebcam(): Promise<void> {
   if (capture.sources.webcam) stopWebcam();
-  else await startWebcam();
+  else                        await startWebcam();
 }
 
 async function startWebcam(): Promise<void> {
   if (capture.sources.webcam) return;
+  const wanted = rememberedCamera();
   try {
-    const stream = await capture.startWebcam();
+    const stream = await capture.startWebcam(wanted);
     el.wcv.srcObject = stream;
     await el.wcv.play();
+    selectedId = stream.getVideoTracks()[0]?.getSettings().deviceId ?? wanted ?? null;
     el.webcamBtn.classList.add('active');
     el.webcamBtn.setAttribute('aria-pressed', 'true');
+    await detectWebcam();                       // labels are only readable after permission
   } catch (error) {
     const name = (error as { name?: string }).name;
     toast('Could not start the webcam' + (name ? ` (${name})` : ''), 4000);
+  }
+}
+
+// Switch to another camera without ending the session. The new stream is opened
+// first, so a failure leaves the current preview running.
+export async function switchWebcam(deviceId: string): Promise<void> {
+  if (!capture.sources.webcam || deviceId === selectedId) return;
+  try {
+    const stream = await capture.switchWebcam(deviceId);
+    el.wcv.srcObject = stream;
+    await el.wcv.play();
+    selectedId = deviceId;
+    renderCameras();
+  } catch (error) {
+    const name = (error as { name?: string }).name;
+    toast('Could not switch the camera' + (name ? ` (${name})` : ''), 4000);
+    renderCameras();
   }
 }
 
@@ -54,6 +103,33 @@ export function stopWebcam(): void {
   el.wcv.srcObject = null;
   el.webcamBtn.classList.remove('active');
   el.webcamBtn.setAttribute('aria-pressed', 'false');
+  renderCameras();
+}
+
+// The camera chosen last, if it is still present. The first start has none, so
+// the browser's default camera is used.
+function rememberedCamera(): string | undefined {
+  return selectedId && cameras.some(camera => camera.deviceId === selectedId)
+    ? selectedId
+    : undefined;
+}
+
+// The picker's options and visibility. Called whenever the device list or the
+// webcam's own state changes.
+function renderCameras(): void {
+  const options = cameraOptions(cameras);
+  el.camPick.replaceChildren(...options.map(option => {
+    const node = document.createElement('option');
+    node.value = option.value;
+    node.textContent = option.label;
+    return node;
+  }));
+  el.camPick.hidden = !shouldShowPicker(cameras.length, capture.sources.webcam);
+  if (selectedId && options.some(option => option.value === selectedId)) {
+    el.camPick.value = selectedId;
+  } else if (options.length > 0) {
+    el.camPick.value = options[0].value;
+  }
 }
 
 // Paint the webcam, mirrored, into the rectangle the compositor gives it.
