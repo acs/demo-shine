@@ -70,6 +70,7 @@ export const el = {
   webcamBtn: byId<HTMLButtonElement>('webcam-btn'),
   camPickBtn: byId<HTMLButtonElement>('cam-pick-btn'),
   camMenu:   byId<HTMLElement>('cam-menu'),
+  propMenu:  byId<HTMLElement>('prop-menu'),
   wcv:       byId<HTMLVideoElement>('wcv'),
   micBtn:    byId<HTMLButtonElement>('mic-btn'),
   vu:        byId<HTMLElement>('vu'),

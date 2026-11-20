@@ -76,18 +76,18 @@ Single project (browser SPA), per plan.md: `src/` at the repository root. Domain
 
 ### Implementation for User Story 1
 
-- [ ] T010 [P] [US1] Add the popover's element and styling: `index.html` (a body-level `#prop-menu`), `src/ui/dom.ts` (its entry), and `styles.css` (the panel and the swatches), following the camera menu's look.
-- [ ] T011 [P] [US1] Draw the settings control in `src/ui/annotating/annotation-layer.ts` from the same `controlSpot` geometry as the × and the copy, and only when `propertiesOf(picked)` is non-empty.
-- [ ] T012 [US1] Add `src/ui/annotating/properties-inspector.ts`: the class with `open`/`close`/`toggle`, placed in viewport coordinates from the annotation's box and clamped (`ui/recording/camera-menu.ts` is the pattern), with outside-click, Escape and resize closing it, and the clip and the selection watched.
-- [ ] T013 [US1] Render the popover's controls in `src/ui/annotating/properties-inspector.ts` from the descriptors: a label, and for a `colour` property the palette as swatches from `COLOURS` (`data-model.md AnnotationColour.COLOURS`) with the current one marked; apply through `clip.changeAnnotation`.
-- [ ] T014 [US1] Hit-test the settings control in `src/ui/annotating/annotation-canvas.ts` before the grips and before the picture, and have it call `inspector.toggle()`.
-- [ ] T015 [US1] Wire the inspector in `src/main.ts`.
+- [x] T010 [P] [US1] Add the popover's element and styling: `index.html` (a body-level `#prop-menu`), `src/ui/dom.ts` (its entry), and `styles.css` (the panel and the swatches), following the camera menu's look.
+- [x] T011 [P] [US1] Draw the settings control in `src/ui/annotating/annotation-layer.ts` from the same `controlSpot` geometry as the × and the copy, and only when `propertiesOf(picked)` is non-empty.
+- [x] T012 [US1] Add `src/ui/annotating/properties-inspector.ts`: the class with `open`/`close`/`toggle`, placed in viewport coordinates from the annotation's box and clamped (`ui/recording/camera-menu.ts` is the pattern), with outside-click, Escape and resize closing it, and the clip and the selection watched.
+- [x] T013 [US1] Render the popover's controls in `src/ui/annotating/properties-inspector.ts` from the descriptors: a label, and for a `colour` property the palette as swatches from `COLOURS` (`data-model.md AnnotationColour.COLOURS`) with the current one marked; apply through `clip.changeAnnotation`.
+- [x] T014 [US1] Hit-test the settings control in `src/ui/annotating/annotation-canvas.ts` before the grips and before the picture, and have it call `inspector.toggle()`.
+- [x] T015 [US1] Wire the inspector in `src/main.ts`.
 
 ### Verification for User Story 1
 
-- [ ] T016 [P] [US1] Browser harness `verify-properties.html` (deleted before commit): the settings control appears on a picked arrow and **not** on a picked image; pressing it opens the popover; pressing it again, Escape, an outside click and a resize close it.
-- [ ] T017 [US1] Browser harness `verify-properties.html`: a swatch recolours the arrow at once and the popover stays open; the new colour is drawn in playback and on `exportOffline`'s canvas; one undo puts the previous colour back.
-- [ ] T018 [US1] Record the regression proof: `npx vitest run` over `src/domain/annotation/` and `src/domain/clip/` is green with the existing `Arrow`, `ImageAnnotation`, `TextAnnotation`, `AnnotationSet`, `Clip` and `ExportPlan` tests **unmodified**; if one had to change, name it and say why.
+- [x] T016 [P] [US1] Browser harness `verify-properties.html` (deleted before commit): the settings control appears on a picked arrow and **not** on a picked image; pressing it opens the popover; pressing it again, Escape, an outside click and a resize close it.
+- [x] T017 [US1] Browser harness `verify-properties.html`: a swatch recolours the arrow at once and the popover stays open; the new colour is drawn in playback and on `exportOffline`'s canvas; one undo puts the previous colour back.
+- [x] T018 [US1] Record the regression proof: `npx vitest run` over `src/domain/annotation/` and `src/domain/clip/` is green with the existing `Arrow`, `ImageAnnotation`, `TextAnnotation`, `AnnotationSet`, `Clip` and `ExportPlan` tests **unmodified**; if one had to change, name it and say why.
 
 **Checkpoint**: US1 is shippable — a placed annotation can be re-specified in colour.
 
