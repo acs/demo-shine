@@ -158,3 +158,37 @@ describe('the text colour', () => {
     expect(TextAnnotation.restore({ ...stored, geometry: { ...geo(), colour: 'red' } } as StoredAnnotation)?.colour).toBe('#ffffff');
   });
 });
+
+describe('re-wording a text', () => {
+  it('keeps the size and the anchor, and widens the box to the new words', () => {
+    const text = make({ x: 0.2, y: 0.2, width: 0.2, height: 0.1 });
+    const next = text.withWords('Much longer words', 0.4);
+    expect(next?.geometry).toMatchObject({ x: 0.2, y: 0.2, width: 0.4, height: 0.1 });
+    expect(next?.id).toBe(text.id);
+    expect(next?.geometry.text).toBe('Much longer words');
+  });
+
+  it('shrinks both when the words would run past the picture, the anchor held', () => {
+    const text = make({ x: 0.5, y: 0.2, width: 0.2, height: 0.1 });   // 0.5 of the width is left
+    const next = text.withWords('Words too long to fit', 1);
+    expect(next?.geometry.x).toBeCloseTo(0.5);
+    expect(next?.geometry.width).toBeCloseTo(0.5);
+    expect(next?.geometry.height).toBeCloseTo(0.05);   // 0.1 * (0.5 / 1)
+    expect(next!.geometry.width / next!.geometry.height).toBeCloseTo(1 / 0.1);   // the new words' own shape
+  });
+
+  it('keeps its colour, its stretch and its identity', () => {
+    const text = TextAnnotation.create(span, geo(), 'c', '#3182ce');
+    if (!text) throw new Error('the test text should be usable');
+    const next = text.withWords('New', 0.1);
+    expect(next?.colour).toBe('#3182ce');
+    expect(next?.id).toBe('c');
+    expect(next?.span.equals(span)).toBe(true);
+  });
+
+  it('refuses no words, and trims what it is given', () => {
+    expect(make().withWords('', 0.2)).toBeNull();
+    expect(make().withWords('   ', 0.2)).toBeNull();
+    expect(make().withWords('  Hello  ', 0.2)?.geometry.text).toBe('Hello');
+  });
+});

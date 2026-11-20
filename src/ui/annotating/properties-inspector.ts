@@ -16,6 +16,7 @@ import { el, toast } from '../dom.js';
 import { COLOURS } from '../../domain/annotation/AnnotationColour.js';
 import type { Annotation } from '../../domain/annotation/Annotation.js';
 import { propertiesOf, type AnnotationProperty } from './annotation-plugin.js';
+import { textEntry } from './text-entry.js';
 
 const GAP = 8;      // between the annotation's box and the panel
 const EDGE = 8;     // the least the panel may sit from a viewport edge
@@ -145,11 +146,28 @@ class PropertiesInspector {
     return host;
   }
 
-  /** A `text` property: a row to be filled in with the words control. */
+  /** A `text` property: the words it holds, and the action that changes them. */
   private words(property: AnnotationProperty, annotation: Annotation): HTMLElement {
     const host = document.createElement('div');
     host.className = 'prop-words';
-    host.textContent = property.value(annotation);
+    const value = property.value(annotation);
+    const current = document.createElement('span');
+    current.className = 'prop-words-text';
+    current.textContent = value || '—';
+    current.title = value;
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'prop-edit';
+    edit.textContent = 'Edit';
+    edit.addEventListener('click', () => {
+      // The same entry the kind is created with. A cancelled entry changes nothing; an
+      // empty one is refused by the kind and reported by `apply`.
+      void textEntry.ask(value).then(next => {
+        if (next === null) return;
+        this.apply(property, annotation, next);
+      });
+    });
+    host.append(current, edit);
     return host;
   }
 
@@ -157,7 +175,7 @@ class PropertiesInspector {
    *  panel re-renders from the event rather than from here. */
   private apply(property: AnnotationProperty, annotation: Annotation, value: string): void {
     const next = property.with(annotation, value);
-    if (!next) { toast(`That ${property.label.toLowerCase()} cannot be used`); return; }
+    if (!next) { toast(`${property.label} not changed — that value is not allowed`); return; }
     session.clip.changeAnnotation(annotation.id, next);
   }
 }

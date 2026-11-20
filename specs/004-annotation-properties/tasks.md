@@ -103,20 +103,20 @@ Single project (browser SPA), per plan.md: `src/` at the repository root. Domain
 
 ### Tests for User Story 2
 
-- [ ] T019 [US2] Add the tests for `withWords` in `src/domain/annotation/TextAnnotation.test.ts`: the size and the anchor kept when the words fit; one factor shrinks both when they would run past the picture and the anchor does not move; colour, span and id kept; empty words refused. The width is handed in, never measured (`data-model.md TextAnnotation.withWords`).
+- [x] T019 [US2] Add the tests for `withWords` in `src/domain/annotation/TextAnnotation.test.ts`: the size and the anchor kept when the words fit; one factor shrinks both when they would run past the picture and the anchor does not move; colour, span and id kept; empty words refused. The width is handed in, never measured (`data-model.md TextAnnotation.withWords`).
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Add `withWords(words, measuredWidth)` to `src/domain/annotation/TextAnnotation.ts` (`data-model.md TextAnnotation.withWords`).
-- [ ] T021 [US2] Add the `words` descriptor to `src/ui/annotating/text-plugin.ts` — it measures the new words at the annotation's current height with the same font the renderer draws, hands the width to `withWords`, and refuses empty words.
-- [ ] T022 [US2] Add `src/ui/annotating/text-entry.ts`: the one in-app entry, `ask(initial): Promise<string | null>`, an input with Cancel and Add, Enter to confirm, Escape to cancel, the input focused.
-- [ ] T023 [P] [US2] Add the entry's element and styling: `index.html`, `src/ui/dom.ts` and `styles.css`, in the app's dialog style.
-- [ ] T024 [US2] Make the text kind's creation use the entry in `src/ui/annotating/text-plugin.ts`, and remove `window.prompt` (spec FR-013).
-- [ ] T025 [US2] Render the `text` control in `src/ui/annotating/properties-inspector.ts`: a row with the current words and an action that opens the entry; apply on confirm, leave the annotation unchanged on cancel, and tell the user why an empty entry is refused.
+- [x] T020 [US2] Add `withWords(words, measuredWidth)` to `src/domain/annotation/TextAnnotation.ts` (`data-model.md TextAnnotation.withWords`).
+- [x] T021 [US2] Add the `words` descriptor to `src/ui/annotating/text-plugin.ts` — it measures the new words at the annotation's current height with the same font the renderer draws, hands the width to `withWords`, and refuses empty words.
+- [x] T022 [US2] Add `src/ui/annotating/text-entry.ts`: the one in-app entry, `ask(initial): Promise<string | null>`, an input with Cancel and Add, Enter to confirm, Escape to cancel, the input focused.
+- [x] T023 [P] [US2] Add the entry's element and styling: `index.html`, `src/ui/dom.ts` and `styles.css`, in the app's dialog style.
+- [x] T024 [US2] Make the text kind's creation use the entry in `src/ui/annotating/text-plugin.ts`, and remove `window.prompt` (spec FR-013).
+- [x] T025 [US2] Render the `text` control in `src/ui/annotating/properties-inspector.ts`: a row with the current words and an action that opens the entry; apply on confirm, leave the annotation unchanged on cancel, and tell the user why an empty entry is refused.
 
 ### Verification for User Story 2
 
-- [ ] T026 [US2] Browser harness `verify-properties.html`: creating a text opens the in-app entry and never the prompt; the inspector edits the words; the box follows; words too long shrink the font without moving the top-left; an empty entry is refused; a cancelled entry changes nothing; one undo reverts the whole edit.
+- [x] T026 [US2] Browser harness `verify-properties.html`: creating a text opens the in-app entry and never the prompt; the inspector edits the words; the box follows; words too long shrink the font without moving the top-left; an empty entry is refused; a cancelled entry changes nothing; one undo reverts the whole edit.
 
 **Checkpoint**: Both P1 and P2 work; the prompt is gone.
 
@@ -132,9 +132,9 @@ Single project (browser SPA), per plan.md: `src/` at the repository root. Domain
 
 ### Verification for User Story 3
 
-- [ ] T027 [P] [US3] Extend `src/ui/annotating/annotation-plugin.test.ts` with a stub kind declaring a property: `propertiesOf` returns it, and a stub with none returns an empty list — the inspector's input is the descriptor alone (contract §1, §4).
-- [ ] T028 [P] [US3] Browser harness `verify-properties.html`: register a stub plugin with a `colour` property in the page and confirm its settings control and its swatch row appear without touching the inspector.
-- [ ] T029 [US3] Record that the `words` property touched only `src/domain/annotation/TextAnnotation.ts` and `src/ui/annotating/text-plugin.ts` (name the files in the pull request) and that the full suite's outcome is unchanged from T018 (`specs/004-annotation-properties/tasks.md`).
+- [x] T027 [P] [US3] Extend `src/ui/annotating/annotation-plugin.test.ts` with a stub kind declaring a property: `propertiesOf` returns it, and a stub with none returns an empty list — the inspector's input is the descriptor alone (contract §1, §4).
+- [x] T028 [P] [US3] Browser harness `verify-properties.html`: register a stub plugin with a `colour` property in the page and confirm its settings control and its swatch row appear without touching the inspector.
+- [x] T029 [US3] Record that the `words` property touched only `src/domain/annotation/TextAnnotation.ts` and `src/ui/annotating/text-plugin.ts` (name the files in the pull request) and that the full suite's outcome is unchanged from T018 (`specs/004-annotation-properties/tasks.md`).
 
 **Checkpoint**: The promise holds — a property is a descriptor on its kind, and the inspector asks.
 

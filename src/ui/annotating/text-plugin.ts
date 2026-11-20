@@ -1,12 +1,16 @@
 // The text: the third kind, and the test of the seam.
 //
-// The section arms this kind, the user types a line, and it is placed centred over the
-// picture, in hand so the shared canvas can move and resize it at once. The box's height
-// is the font size and its width is what the line measured at that size — both in
-// fractions of the picture — so the same text lands the same place and size on the
-// preview, on the export canvas and after a reload. A corner drag scales the box, and
-// the text grows and shrinks with it; there is no free resize, because text is not a
-// picture to stretch.
+// The section arms this kind, the user types a line in the app's own entry, and it is
+// placed centred over the picture, in hand so the shared canvas can move and resize it at
+// once. The box's height is the font size and its width is what the line measured at that
+// size — both in fractions of the picture — so the same text lands the same place and
+// size on the preview, on the export canvas and after a reload. A corner drag scales the
+// box, and the text grows and shrinks with it; there is no free resize, because text is
+// not a picture to stretch.
+//
+// It also says what can be changed after it is placed: its colour, and its words. The
+// words are edited through the same entry the kind is created with, and the new words are
+// measured here — with the renderer's font — and handed to `TextAnnotation.withWords`.
 //
 // Everything else — picking it, moving it, copying, deleting, undoing, saving,
 // exporting — is the shared canvas's and the clip's. This file writes none of it.
@@ -23,6 +27,7 @@ import {
   registerPlugin,
   type AnnotationAction, type AnnotationPlugin, type AnnotationProperty, type CreationContext,
 } from './annotation-plugin.js';
+import { textEntry } from './text-entry.js';
 
 // How tall the text is by default, as a fraction of the picture's height.
 const DEFAULT_HEIGHT = 0.08;
@@ -44,7 +49,7 @@ function fontFor(pixels: number): string {
   return `${FONT_WEIGHT} ${pixels}px ${FONT_FAMILY}`;
 }
 
-/** The text kind in the view: its action, its look, and how a new one is made. */
+/** The text kind in the view: its action, its look, and how a new one is made and changed. */
 export class TextPlugin implements AnnotationPlugin, AnnotationRenderer<Annotation> {
   readonly id = TextAnnotation.id;
 
@@ -54,7 +59,7 @@ export class TextPlugin implements AnnotationPlugin, AnnotationRenderer<Annotati
     icon: ACTION_ICON,
   };
 
-  /** The text's colour — white unless the user chose another. */
+  /** What can be changed after it is placed: the colour, and the words. */
   readonly properties: readonly AnnotationProperty[] = [
     {
       id: 'colour',
@@ -63,6 +68,13 @@ export class TextPlugin implements AnnotationPlugin, AnnotationRenderer<Annotati
       value: annotation => (annotation instanceof TextAnnotation ? annotation.colour : TextAnnotation.DEFAULT_COLOUR),
       with: (annotation, value) =>
         annotation instanceof TextAnnotation ? annotation.withColour(colourOf(value, TextAnnotation.DEFAULT_COLOUR)) : null,
+    },
+    {
+      id: 'words',
+      label: 'Words',
+      control: 'text',
+      value: annotation => (annotation instanceof TextAnnotation ? annotation.geometry.text : ''),
+      with: (annotation, value) => this.refit(annotation, value),
     },
   ];
 
@@ -73,23 +85,7 @@ export class TextPlugin implements AnnotationPlugin, AnnotationRenderer<Annotati
 
   begin(ctx: CreationContext): void {
     ctx.say(ARMED);
-    const typed = window.prompt('Text to show', '');
-    if (typed === null) { ctx.cancel(NO_TEXT); return; }
-    const text = typed.trim();
-    if (!text) { ctx.cancel(NO_TEXT); return; }
-
-    const size = this.measure(text, ctx.picture);
-    if (!size) { ctx.cancel(NO_FIT); return; }
-
-    const annotation = TextAnnotation.create(ctx.span, {
-      text,
-      x: (1 - size.width) / 2,
-      y: (1 - size.height) / 2,
-      width: size.width,
-      height: size.height,
-    });
-    if (!annotation) { ctx.cancel(NO_FIT); return; }
-    ctx.commit(annotation);
+    void this.create(ctx);
   }
 
   draw(ctx: CanvasRenderingContext2D, annotation: Annotation, w: number, h: number): void {
@@ -109,23 +105,46 @@ export class TextPlugin implements AnnotationPlugin, AnnotationRenderer<Annotati
     ctx.restore();
   }
 
+  /** A new text: the one entry the app has for typing a line, then measure and place. */
+  private async create(ctx: CreationContext): Promise<void> {
+    const typed = await textEntry.ask('');
+    if (typed === null) { ctx.cancel(NO_TEXT); return; }
+    const text = typed.trim();
+    if (!text) { ctx.cancel(NO_TEXT); return; }
+
+    const size = this.measure(text, ctx.picture);
+    if (!size) { ctx.cancel(NO_FIT); return; }
+
+    const annotation = TextAnnotation.create(ctx.span, {
+      text,
+      x: (1 - size.width) / 2,
+      y: (1 - size.height) / 2,
+      width: size.width,
+      height: size.height,
+    });
+    if (!annotation) { ctx.cancel(NO_FIT); return; }
+    ctx.commit(annotation);
+  }
+
+  /** The words property: measure the new line at the text's size, then refit its box. */
+  private refit(annotation: Annotation, value: string): Annotation | null {
+    if (!(annotation instanceof TextAnnotation)) return null;
+    const words = value.trim();
+    if (!words) return null;                  // nothing to say is not a value text can take
+    const width = this.measureAt(words, annotation.geometry.height, { w: el.cv.width, h: el.cv.height });
+    return annotation.withWords(words, width);
+  }
+
   /**
    * The box a line needs at the default size, in fractions of the picture: its width
-   * comes from measuring the text with the same font the renderer draws with, and its
-   * height is the font size. A line too wide to fit is shrunk, keeping the two in step.
+   * comes from measuring with the renderer's font, and its height is the font size. A
+   * line too wide to fit is shrunk, keeping the two in step.
    */
   private measure(text: string, picture: { w: number; h: number }): { width: number; height: number } | null {
-    if (!(picture.w > 0) || !(picture.h > 0)) return null;
-    const context = el.cv.getContext('2d');
-    if (!context) return null;
-
-    const previous = context.font;
-    context.font = fontFor(DEFAULT_HEIGHT * picture.h);
-    const measured = context.measureText(text).width;
-    context.font = previous;
+    const measured = this.measureAt(text, DEFAULT_HEIGHT, picture);
     if (!(measured > 0)) return null;
 
-    let width = measured / picture.w;
+    let width = measured;
     let height = DEFAULT_HEIGHT;
     if (width > MAX_WIDTH) {
       const k = MAX_WIDTH / width;
@@ -133,6 +152,18 @@ export class TextPlugin implements AnnotationPlugin, AnnotationRenderer<Annotati
       height *= k;
     }
     return { width, height };
+  }
+
+  /** The width a line measures at a given font-size fraction, as a fraction of the picture. */
+  private measureAt(text: string, height: number, picture: { w: number; h: number }): number {
+    if (!(picture.w > 0) || !(picture.h > 0)) return 0;
+    const context = el.cv.getContext('2d');
+    if (!context) return 0;
+    const previous = context.font;
+    context.font = fontFor(height * picture.h);
+    const measured = context.measureText(text).width;
+    context.font = previous;
+    return measured / picture.w;
   }
 }
 
