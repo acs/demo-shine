@@ -72,15 +72,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .ver-new.on{display:inline-flex;}
 .ver-new:hover{border-color:rgba(245,158,11,.6);}
 
-/* Hidden until the app has something to warn about. It is shown with `.on`, not
-   by clearing an inline `display` — the stylesheet's `display:none` is what that
-   would fall back to, so the warning would never appear. */
-#compat-warn{display:none;font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;color:var(--amber);padding:4px 10px;border:1px solid rgba(245,158,11,.25);border-radius:6px;background:rgba(245,158,11,.06);}
-#compat-warn.on{display:inline-block;}
 .hdr-actions{display:flex;align-items:center;gap:7px;margin-left:auto;}
-/* The capture's size, shown once there is one. Shown with `.on` for the same
-   reason as the warning above: clearing an inline `display` falls back to this
-   `display:none`, so it never appeared. */
+/* The capture's size, shown once there is one. Shown with `.on` rather than an
+   inline `display`, so the stylesheet's `display:none` is not the fallback. */
 .res-badge{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--text-mid);padding:4px 10px;border:1px solid var(--glass-b);border-radius:100px;background:var(--glass);display:none;}
 .res-badge.on{display:inline-block;}
 

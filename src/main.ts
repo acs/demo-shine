@@ -31,12 +31,11 @@ import { capture } from './infra/capture.js';
 function init(): void {
   // Not every browser can share a screen: Chrome and Firefox on Android do not
   // implement getDisplayMedia (nor did Safari on iOS before 27). That is not
-  // "not supported" — the webcam and the mic still work — so the header says
-  // what is missing and the Screen button is out (source-buttons.ts). A browser
-  // with no mediaDevices at all is a different thing, and is said plainly.
+  // "not supported" — the webcam and the mic still work — so the Screen button is
+  // out instead (source-buttons.ts), and a browser with no mediaDevices at all is
+  // said plainly in the status.
   const hasMedia = !!navigator.mediaDevices;
   const canShare = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
-  if (hasMedia && !canShare) el.compatWarn.classList.add('on');
   setStatus(hasMedia ? 'ready' : '', hasMedia ? 'Ready' : 'Not supported');
 
   // Apply persisted preferences.
