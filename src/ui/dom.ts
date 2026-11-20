@@ -63,7 +63,6 @@ export const el = {
   helpBd:    byId<HTMLElement>('help-bd'),
   helpBtn:   byId<HTMLButtonElement>('help-btn'),
   helpClose: byId<HTMLButtonElement>('help-close'),
-  compatWarn: byId<HTMLElement>('compat-warn'),
   ver:       byId<HTMLElement>('ver'),
   verNew:    byId<HTMLButtonElement>('ver-new'),
   helpVer:   byId<HTMLElement>('help-ver'),
