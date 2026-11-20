@@ -12,6 +12,7 @@
 import { capture } from '../../infra/capture.js';
 import { el, toast } from '../dom.js';
 import { cameraOptions, shouldShowPicker } from './camera-list.js';
+import { cameraMenu } from './camera-menu.js';
 import { setCameraPresent } from './source-buttons.js';
 
 let cameras: MediaDeviceInfo[] = [];
@@ -81,8 +82,9 @@ async function startWebcam(): Promise<void> {
   }
 }
 
-// Switch to another camera without ending the session. The new stream is opened
-// first, so a failure leaves the current preview running.
+// Switch to another camera without ending the session. The adapter stops the old
+// stream first (a phone's hardware can only be open once) and restores the
+// previous camera if the new one cannot be read, so the preview stays alive.
 export async function switchWebcam(deviceId: string): Promise<void> {
   if (!capture.sources.webcam || deviceId === selectedId) return;
   try {
@@ -94,6 +96,13 @@ export async function switchWebcam(deviceId: string): Promise<void> {
   } catch (error) {
     const name = (error as { name?: string }).name;
     toast('Could not switch the camera' + (name ? ` (${name})` : ''), 4000);
+    const current = capture.currentWebcam();
+    if (current) {
+      el.wcv.srcObject = current;
+      await el.wcv.play().catch(() => {});
+    } else {
+      stopWebcam();
+    }
     renderCameras();
   }
 }
@@ -115,21 +124,14 @@ function rememberedCamera(): string | undefined {
 }
 
 // The picker's options and visibility. Called whenever the device list or the
-// webcam's own state changes.
+// webcam's own state changes. The trigger only appears while the webcam is on
+// and there is more than one camera; the menu is rebuilt from the same list.
 function renderCameras(): void {
   const options = cameraOptions(cameras);
-  el.camPick.replaceChildren(...options.map(option => {
-    const node = document.createElement('option');
-    node.value = option.value;
-    node.textContent = option.label;
-    return node;
-  }));
-  el.camPick.hidden = !shouldShowPicker(cameras.length, capture.sources.webcam);
-  if (selectedId && options.some(option => option.value === selectedId)) {
-    el.camPick.value = selectedId;
-  } else if (options.length > 0) {
-    el.camPick.value = options[0].value;
-  }
+  const show = shouldShowPicker(cameras.length, capture.sources.webcam);
+  el.camPickBtn.hidden = !show;
+  if (!show) cameraMenu.close();
+  cameraMenu.setItems(options, selectedId);
 }
 
 // Paint the webcam, mirrored, into the rectangle the compositor gives it.

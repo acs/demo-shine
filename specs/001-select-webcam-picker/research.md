@@ -35,12 +35,12 @@
 
 ### 4. Switching cameras
 
-**Decision**: Open the chosen camera first, then stop the old stream and replace `el.wcv.srcObject`; the caller then calls `syncSources()`.
+**Decision**: Stop the old stream first, then open the chosen camera and replace `el.wcv.srcObject`; if the new camera cannot be read, reopen the previous one so the preview is not left dead. The caller then calls `syncSources()`.
 
-**Rationale**: A failed switch leaves the current preview running, so the user never loses the picture for a camera that cannot be opened. `syncSources()` already decides what the preview shows after a source change.
+**Rationale**: A phone's camera hardware can only be open once, so opening the chosen camera while the old one is still held fails with `NotReadableError`. Stopping first is what the hardware requires; reopening the previous camera keeps the "never lose the picture" promise when the new one cannot be read.
 
 **Alternatives considered**:
-- Stop the old stream first — rejected: a failed switch would leave a dead preview.
+- Open the chosen camera first — rejected: on a phone this fails with `NotReadableError` because the old camera is still held.
 - Keep both streams and swap tracks — rejected: more state to own for no benefit.
 
 ### 5. Labels and duplicates
@@ -91,14 +91,15 @@
 - `localStorage` — rejected: the spec explicitly excludes persistence.
 - IndexedDB — rejected: overkill for one string.
 
-### 10. Accessibility
+### 10. Accessibility and the control's shape
 
-**Decision**: Use a native `<select>` with `aria-label="Camera"` and a visible text label in the controls; keep the native keyboard and mobile OS picker.
+**Decision**: Use a small caret button beside the webcam toggle that opens a custom popover menu, styled and placed like the app's `ExportMenu`. The caret carries `aria-haspopup="menu"` and `aria-expanded`; the menu is `role="menu"` with `role="menuitemradio"` items and `aria-checked`.
 
-**Rationale**: Native semantics give keyboard, screen-reader and mobile behaviour for free. The app's `ExportMenu` is a custom menu, but a select is the right control for a short list of named choices.
+**Rationale**: An inline `<select>` was the first design, but in the control row it crowded the record button and the microphone on a phone. A popover keeps the row compact and reads as part of the same control family as Export. The menu is short and flat, so the custom role structure is simple to get right.
 
 **Alternatives considered**:
-- Custom popup menu — rejected: more code, more accessibility risk, no benefit for a flat list.
+- Native `<select>` — rejected: it widened the source row enough to sit behind the record button's rings on a phone, and the user asked for it to look like the Export picker.
+- A plain list without roles — rejected: loses the menu semantics and the checked state.
 
 ## Open questions
 

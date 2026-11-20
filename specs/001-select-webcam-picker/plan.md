@@ -8,7 +8,7 @@
 
 ## Summary
 
-Add a camera picker to the webcam controls. When the webcam is on and more than one video input device is present, a styled native `<select>` beside the webcam toggle lists the cameras. The device's default camera is active first; choosing another stops the current stream and starts the chosen device. The picker is hidden for zero or one camera and disabled while a take is starting or recording. The selection lives in memory for the page; it is not persisted. No new dependencies.
+Add a camera picker to the webcam controls. When the webcam is on and more than one video input device is present, a small caret beside the webcam toggle opens a popover menu — styled and placed like the Export menu — listing the cameras. The device's default camera is active first; choosing another switches the live stream. The caret is hidden for zero or one camera and disabled while a take is starting or recording. The selection lives in memory for the page; it is not persisted. No new dependencies.
 
 ## Technical Context
 
@@ -64,18 +64,19 @@ specs/001-select-webcam-picker/
 ```text
 src/
 ├── ui/
-│   ├── webcam.ts          # owns the webcam source: enumerate, start, switch, devicechange
-│   ├── camera-list.ts     # pure helpers: labels, duplicates, should-show
-│   ├── camera-list.test.ts# unit test for the helpers
-│   ├── dom.ts             # registers #cam-pick
-│   └── source-buttons.ts  # disables the picker while a take owns the sources
-├── main.ts                # wires the picker's change event
-├── recorder.ts            # syncSources() after a switch (unchanged API)
-├── state.ts               # app.webcamStream / app.webcamOn (unchanged)
-└── ...
+│   └── recording/
+│       ├── webcam.ts          # owns the webcam source: enumerate, start, switch, devicechange
+│       ├── camera-list.ts     # pure helpers: labels, duplicates, should-show
+│       ├── camera-list.test.ts# unit test for the helpers
+│       ├── camera-menu.ts     # the popover: open, place, close, pick
+│       └── source-buttons.ts  # disables the caret while a take owns the sources
+├── ui/dom.ts                  # registers #cam-pick-btn and #cam-menu
+├── infra/capture.ts           # startWebcam(deviceId), switchWebcam(deviceId)
+├── application/ports/WebcamPort.ts  # the port gains an optional deviceId
+└── main.ts                    # wires the caret and the menu
 
-index.html                 # the <select id="cam-pick"> beside #webcam-btn
-styles.css                 # .cam-pick styling
+index.html                     # the caret beside #webcam-btn and the menu at the body
+styles.css                     # .cam-pick-btn, .cam-menu, .cam-item
 ```
 
 **Structure Decision**: Single Vite app, no new directories. The picker belongs to the webcam source, so it lives in `ui/webcam.ts`; its element is registered in `ui/dom.ts`; its change event is wired in `main.ts` like the webcam button; its pure list rules live in `ui/camera-list.ts` with a node test. The CSS goes in `styles.css` beside the source-button rules.

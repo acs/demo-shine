@@ -19,6 +19,7 @@ import { playback, initPlaybackKeys } from './ui/clip/playback.js';
 import { waveform } from './ui/clip/waveform.js';
 import { initRegion } from './ui/recording/region.js';
 import { initWebcam, toggleWebcam, switchWebcam } from './ui/recording/webcam.js';
+import { cameraMenu } from './ui/recording/camera-menu.js';
 import { initMic, toggleMic } from './ui/recording/mic.js';
 import { initSourceButtons, setScreenAvailable } from './ui/recording/source-buttons.js';
 import { exportMenu } from './ui/exporting/export-menu.js';
@@ -113,7 +114,8 @@ function init(): void {
   initSourceButtons();
   el.screenBtn.addEventListener('click', () => void toggleScreen());
   el.webcamBtn.addEventListener('click', async () => { await toggleWebcam(); syncSources(); });
-  el.camPick.addEventListener('change', async () => { await switchWebcam(el.camPick.value); syncSources(); });
+  el.camPickBtn.addEventListener('click', () => cameraMenu.toggle());
+  cameraMenu.init(async deviceId => { await switchWebcam(deviceId); syncSources(); });
   initWebcam();
   capture.onEnded(onScreenEnded);
 

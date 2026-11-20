@@ -124,7 +124,9 @@
         <span class="src-lbl">Webcam</span>
         <span class="src-pin"></span>
       </button>
-      <select class="cam-pick" id="cam-pick" aria-label="Camera" title="Camera" hidden></select>
+      <button class="cam-pick-btn" id="cam-pick-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Camera" title="Camera" hidden>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
       <button class="src-btn" id="mic-btn" type="button" aria-pressed="false" title="Microphone" disabled>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
@@ -241,6 +243,9 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- CAMERA MENU — at the body, for the same reason as the Export menu -->
+<div class="cam-menu" id="cam-menu" role="menu" aria-label="Camera"></div>
 
 <!-- EXPORT MENU — at the body, because the header clips what overflows it -->
 <div class="export-menu" id="exp-menu" role="menu" aria-label="Export">
