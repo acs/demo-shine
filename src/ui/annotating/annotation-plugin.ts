@@ -51,8 +51,16 @@ export interface CreationContext {
   draft(annotation: Annotation | null): void;
   /** It is made: the clip takes it, and it is put in hand. */
   commit(annotation: Annotation): void;
-  /** Nothing to make after all — say what to do instead. */
+  /**
+   * Nothing to make this time, but stay armed — the arrow's stray click, where the next
+   * try is another drag on the same section.
+   */
   abandon(message: string): void;
+  /**
+   * Nothing to make, and the creation is over: let the canvas go, so the next press is
+   * a press that edits the picture rather than one nothing answers.
+   */
+  cancel(message: string): void;
   /** Say something under the timeline while the kind is busy. */
   say(message: string): void;
 }

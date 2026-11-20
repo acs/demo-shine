@@ -349,6 +349,13 @@ export class AnnotationCanvas {
     el.cv.style.cursor = '';
   }
 
+  /** A kind decided not to make anything: let the canvas go and say why. */
+  private cancelCreation(message: string): void {
+    this.disarm();
+    el.tCut.textContent = message;
+    this.repaint();
+  }
+
   /** What a kind is handed to make a new one. */
   private creationContext(): CreationContext {
     return {
@@ -361,6 +368,7 @@ export class AnnotationCanvas {
       draft: annotation => { this.draft = annotation; this.repaint(); },
       commit: annotation => this.commit(annotation),
       abandon: message => { this.draft = null; el.tCut.textContent = message; this.repaint(); },
+      cancel: message => this.cancelCreation(message),
       say: message => { el.tCut.textContent = message; },
     };
   }

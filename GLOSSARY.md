@@ -79,6 +79,7 @@ clip, whatever is then done with it.
 | **annotation canvas** | the one shared editing surface every kind gets: pick, move, resize, copy, paste, delete and undo. It names no kind — it asks the annotation and the clip | `ui/annotating/annotation-canvas.ts` |
 | **arrow** | the first kind: a line with a head, given by where it starts (`from`) and what it points at (`to`), in fractions of the picture. Its ends are its resize | `Arrow`, `ArrowGeometry`, `ui/annotating/arrow-plugin.ts` |
 | **image annotation** | the second kind: a chosen picture over the picture, a rect in fractions with the picture's own proportions kept on resize | `ImageAnnotation`, `ImageGeometry`, `ui/annotating/image-plugin.ts` |
+| **text annotation** | the third kind: a line of text over the picture, a box in fractions that scales with its font, so the text grows and shrinks with the box | `TextAnnotation`, `TextGeometry`, `ui/annotating/text-plugin.ts` |
 | **image store** | where an image annotation's picture is kept, written once apart from the recording, and the decoded copy drawn each frame | `ImageStorePort`, `src/infra/images.ts` |
 | **annotation lane** | the row on the timeline marking each annotation at the start of its stretch, in kept time, so one can be found without playing the clip | `ui/annotating/annotation-lane.ts` |
 | **annotation layer** | the one place an annotation is drawn, used by playback and by the export alike, so the file matches the review — and the one place a picked annotation's grips are drawn, for every kind | `ui/annotating/annotation-layer.ts` |

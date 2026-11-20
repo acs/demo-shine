@@ -112,8 +112,10 @@ export interface CreationContext {
   draft(annotation: Annotation | null): void;
   /** It is made: the clip takes it and it is put in hand. */
   commit(annotation: Annotation): void;
-  /** Nothing to make; say what to do instead. */
+  /** Nothing to make this time; stay armed — the arrow's stray click. */
   abandon(message: string): void;
+  /** Nothing to make, and the creation is over: let the canvas go. */
+  cancel(message: string): void;
   /** Say something under the timeline while the kind is busy. */
   say(message: string): void;
 }

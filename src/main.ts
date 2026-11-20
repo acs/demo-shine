@@ -10,8 +10,7 @@ import { drawGrid } from './ui/recording/preview.js';
 import { initTimeline, updateTimeUI, updateSizeUI } from './ui/clip/timeline-ui.js';
 import { initTimelineMarks } from './ui/cutting/marks.js';
 import { initAnnotationCanvas } from './ui/annotating/annotation-canvas.js';
-import './ui/annotating/arrow-plugin.js';   // registers the arrow kind in the view
-import './ui/annotating/image-plugin.js';   // registers the image kind in the view
+import './ui/annotating/plugins.js';        // registers every kind in the view
 import { initAnnotationLane } from './ui/annotating/annotation-lane.js';
 import { initViewLifetime } from './ui/lifecycle/view-lifetime.js';
 import { toggleRecord, toggleScreen, syncSources, onScreenEnded } from './ui/recording/record-flow.js';
