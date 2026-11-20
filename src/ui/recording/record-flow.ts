@@ -114,6 +114,9 @@ export async function toggleScreen(): Promise<void> {
   setStatus('ready', 'Select a screen…');
   try {
     const captureSession = await capture.start();
+    if (!captureSession.hasAudio) {
+      toast('No audio was shared — the recording will be silent. Press New to share again with audio.', 6000);
+    }
     el.sv.srcObject = captureSession.stream;
     await el.sv.play();
     refreshSourceButtons();
