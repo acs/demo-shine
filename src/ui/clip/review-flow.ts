@@ -12,8 +12,14 @@ import { strip } from './timeline-ui.js';
 import { renderMarks } from '../cutting/marks.js';
 import { renderLane } from '../annotating/annotation-lane.js';
 import { updateSizeUI, updateTimeUI } from './timeline-ui.js';
+import { stopMirror } from '../recording/preview.js';
 
 export async function openReview(loadIndex: number, park: number): Promise<void> {
+  // The preview belongs to the clip from here, so the live source has to let go of
+  // it: the mirror runs on its own animation frame, and while it is going it paints
+  // the screen or the webcam over every frame the review draws — the recording stops
+  // and the picture carries on showing what the camera sees.
+  stopMirror();
   playback.reset();
   await player.load(loadIndex);
   if (el.rv.videoWidth && el.rv.videoHeight) {
