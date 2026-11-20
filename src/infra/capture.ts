@@ -26,6 +26,19 @@ export class CaptureAdapter implements CapturePort {
     this.region = region;
   }
 
+  /**
+   * The picture's own size, once a frame has landed. A display track's settings
+   * report the **display's** size until the first frame of a tab or window arrives
+   * — the whole screen, for a small tab — so the settings alone would size the
+   * preview to the screen. The element the capture is drawn from knows the truth,
+   * and it also follows a shared window or tab that is resized.
+   */
+  setSize(width: number, height: number): void {
+    if (!(width > 0) || !(height > 0)) return;
+    this.width = width;
+    this.height = height;
+  }
+
   async start(): Promise<CaptureSession> {
     const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
     const hasAudio = stream.getAudioTracks().length > 0;

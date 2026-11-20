@@ -13,7 +13,7 @@ import { initAnnotationCanvas } from './ui/annotating/annotation-canvas.js';
 import './ui/annotating/plugins.js';        // registers every kind in the view
 import { initAnnotationLane } from './ui/annotating/annotation-lane.js';
 import { initViewLifetime } from './ui/lifecycle/view-lifetime.js';
-import { toggleRecord, toggleScreen, syncSources, onScreenEnded } from './ui/recording/record-flow.js';
+import { toggleRecord, toggleScreen, syncSources, onScreenEnded, initRecordFlow } from './ui/recording/record-flow.js';
 import { doExport } from './ui/exporting/export-flow.js';
 import { startNewSession } from './ui/lifecycle/new-session-flow.js';
 import { playback, initPlaybackKeys } from './ui/clip/playback.js';
@@ -105,6 +105,10 @@ function init(): void {
 
   // Drag on the preview to crop the recording to a region.
   initRegion();
+
+  // The preview follows the capture's real size — which is not what a display
+  // track's settings say until a tab's or window's first frame lands.
+  initRecordFlow();
 
   // The record sources, independent of one another. Turning the screen off lets
   // the share go; the webcam is the whole picture while the screen is off, so
