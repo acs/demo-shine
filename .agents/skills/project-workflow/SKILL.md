@@ -1,6 +1,6 @@
 ---
 name: Project workflow
-description: How changes are made in DemoClip — one change per pull request, branch and commit conventions, what a pull request body contains, and that CI owns the version. Use when starting work, committing or opening a pull request.
+description: How changes are made in DemoClip — one change per pull request, branch and commit conventions, what a pull request body contains (the post-mortem a regression fix carries among it), and that CI owns the version. Use when starting work, committing or opening a pull request, or fixing a regression.
 ---
 
 # Project workflow
@@ -29,11 +29,35 @@ stacked, merged without checking, put two branches' work in the wrong place and 
 1. **What and why** — the problem, in the words of whoever reported it, if anyone did.
 2. **How it was verified** — the harness output pasted in, the unit tests, and the
    number that mattered (10.8× real time; a duration of 5.36 s).
-3. **What was deliberately not done**, and why.
-4. **Caveats** — what could not be verified, what is a guess, what is a trade.
-5. A file table when the change is wider than a couple of files.
+3. **A post-mortem, when the change fixes a regression** — see below.
+4. **What was deliberately not done**, and why.
+5. **Caveats** — what could not be verified, what is a guess, what is a trade.
+6. A file table when the change is wider than a couple of files.
 
 The user merges. The agent opens the pull request, reports, and waits.
+
+## A regression carries a post-mortem
+
+A **regression** is something that used to work and does not any more, and the pull
+request that fixes it says how it came in — not only what is fixed. Add a
+**Post-mortem** section, after *How it was verified*:
+
+- **What introduced it** — the commit of ours, and the pull request or release it
+  came in with; or, when it is not ours, the dependency or browser change that moved
+  the ground under us (a redesign of Chrome's screen picker), and the assumption of
+  ours it landed on.
+- **What it did** — the behaviour before and after, and the wrong assumption between
+  them, said as the mistake it was: a phase a guard no longer matched, a size read
+  before the picture had one, a value assumed set that a rename left unset.
+- **Why it was not caught** — the test, harness or review that should have caught it
+  and did not: a flow no harness can drive, a rule with no test beside it, a
+  behaviour only a real share shows. Plainly — it is what the next change reads.
+- **What stops it coming back** — the test, harness or check this change adds, or
+  that none does, and why.
+
+It is not blame. A regression is a failure of the process that let it through, and
+the next reader needs to know which part failed. When one change introduced several,
+each pull request that undoes one names it, so the trail is legible from any of them.
 
 ## CI owns the version
 

@@ -22,6 +22,16 @@ The recorder's row is not a gap to be closed later: `getDisplayMedia` needs a us
 gesture and a browser picker, so **no harness here can start a share**. Keep changes
 to that flow small, and ask the user to run it.
 
+## A regression fix is proved by the check that fails before it
+
+When the change fixes something that used to work, run the check against the old code
+and the new: the same test, harness or assertion must **fail before and pass after**,
+and both results go in the pull request. A suite that is green after the fix says
+nothing about the bug it fixed.
+
+The pull request also carries a **post-mortem** — what introduced the regression, and
+why it was not caught — which the project workflow skill lays out.
+
 ## Unit tests
 
 - Every rule in `domain/` has one. A rule without a test is a rule that will drift.
