@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { arrowMetrics, copyControl, drawAnnotations, registerRenderer, removeControl, rendererOf } from './annotation-layer.js';
+import { copyControl, drawAnnotations, registerRenderer, removeControl, rendererOf } from './annotation-layer.js';
 import type { AnnotationRenderer } from './annotation-layer.js';
+// The arrow's renderer and its metrics are part of the arrow's plugin now; importing it
+// is also what registers `arrow` in the renderer registry the layer holds.
+import { arrowMetrics } from './arrow-plugin.js';
 import { Annotation, type StoredAnnotation } from '../../domain/annotation/Annotation.js';
 import { Arrow } from '../../domain/annotation/Arrow.js';
 import { Span } from '../../domain/clip/Span.js';

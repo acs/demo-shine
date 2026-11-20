@@ -40,8 +40,8 @@ Single project (browser SPA), per plan.md: `src/` at the repository root. Domain
 
 **Purpose**: The words come first (constitution V, plan step 1). No code in this phase.
 
-- [ ] T001 Add the four words to the Annotating section of `GLOSSARY.md` — **annotation plugin** (a kind's action, renderer and creation, in the view under the kind's id), **annotation canvas** (the one shared editing surface), **image annotation** (the new kind), **image store** (where a picture is kept, apart from the recording) — with their code pointers.
-- [ ] T002 [P] Update the module maps in `.agents/skills/overview/SKILL.md` and `.agents/skills/domain-model/SKILL.md` to name the plugin seam and the image kind, so the skills and the glossary agree before any code moves.
+- [x] T001 Add the four words to the Annotating section of `GLOSSARY.md` — **annotation plugin** (a kind's action, renderer and creation, in the view under the kind's id), **annotation canvas** (the one shared editing surface), **image annotation** (the new kind), **image store** (where a picture is kept, apart from the recording) — with their code pointers.
+- [x] T002 [P] Update the module maps in `.agents/skills/overview/SKILL.md` and `.agents/skills/domain-model/SKILL.md` to name the plugin seam and the image kind, so the skills and the glossary agree before any code moves.
 
 **Checkpoint**: The glossary and the skills name the feature; nothing in `src/` has changed.
 
@@ -53,8 +53,8 @@ Single project (browser SPA), per plan.md: `src/` at the repository root. Domain
 
 **⚠️ CRITICAL**: Both US1 and US2 depend on these two types.
 
-- [ ] T003 [P] Widen `Annotation.withHandle` in `src/domain/annotation/Annotation.ts` with the optional `options` argument and add the `HandleOptions` type (`data-model.md HandleOptions.free`). The argument MUST be optional so `src/domain/annotation/Arrow.ts` and every existing call site compile and behave unchanged (`contracts/annotation-plugin.md` §1, spec SC-003).
-- [ ] T004 [P] Add the seam's types and registry in `src/ui/annotating/annotation-plugin.ts`: `AnnotationRenderer` (moved from `annotation-layer.ts`), `AnnotationPlugin`, `AnnotationAction`, `CreationContext`, and `registerPlugin` / `pluginOf` / `plugins` (`data-model.md AnnotationPlugin.*`, `CreationContext.*`, `AnnotationAction.*`; `contracts/annotation-plugin.md` §2). The registry is keyed by the kind's id.
+- [x] T003 [P] Widen `Annotation.withHandle` in `src/domain/annotation/Annotation.ts` with the optional `options` argument and add the `HandleOptions` type (`data-model.md HandleOptions.free`). The argument MUST be optional so `src/domain/annotation/Arrow.ts` and every existing call site compile and behave unchanged (`contracts/annotation-plugin.md` §1, spec SC-003).
+- [x] T004 [P] Add the seam's types and registry in `src/ui/annotating/annotation-plugin.ts`: `AnnotationRenderer` (moved from `annotation-layer.ts`), `AnnotationPlugin`, `AnnotationAction`, `CreationContext`, and `registerPlugin` / `pluginOf` / `plugins` (`data-model.md AnnotationPlugin.*`, `CreationContext.*`, `AnnotationAction.*`; `contracts/annotation-plugin.md` §2). The registry is keyed by the kind's id.
 
 **Checkpoint**: The base class and the registry exist; the arrow is not yet registered, so nothing behaves differently.
 
@@ -70,26 +70,26 @@ Single project (browser SPA), per plan.md: `src/` at the repository root. Domain
 
 ### Tests for User Story 1
 
-- [ ] T005 [P] [US1] Add `src/ui/annotating/annotation-plugin.test.ts`: registering a plugin, `pluginOf` by id, `plugins()` order, and that an unregistered id answers null.
-- [ ] T006 [P] [US1] Update `src/ui/annotating/annotation-layer.test.ts` so its imports of the arrow's renderer and `arrowMetrics` point at `arrow-plugin.ts`; its assertions MUST stay exactly as they are. This is the stated SC-003 departure — name it in the pull request (plan Complexity Tracking).
+- [x] T005 [P] [US1] Add `src/ui/annotating/annotation-plugin.test.ts`: registering a plugin, `pluginOf` by id, `plugins()` order, and that an unregistered id answers null.
+- [x] T006 [P] [US1] Update `src/ui/annotating/annotation-layer.test.ts` so its imports of the arrow's renderer and `arrowMetrics` point at `arrow-plugin.ts`; its assertions MUST stay exactly as they are. This is the stated SC-003 departure — name it in the pull request (plan Complexity Tracking).
 
 ### Implementation for User Story 1
 
-- [ ] T007 [P] [US1] Create `src/ui/annotating/arrow-plugin.ts`: move `arrowRenderer` and `arrowMetrics` out of `annotation-layer.ts` (unchanged), and export `arrowPlugin` with its `action` (label `Arrow`, its title and its inline svg), its `renderer`, and its `begin`.
-- [ ] T008 [US1] Reduce `src/ui/annotating/annotation-layer.ts` to the drawing every kind shares — `drawAnnotations`, the grips from `handles()`, `removeControl` / `copyControl` and `drawControl` — and remove the arrow's own drawing and metrics.
-- [ ] T009 [US1] Rename `src/ui/annotating/annotation-edit.ts` to `src/ui/annotating/annotation-canvas.ts` and make it kind-agnostic: it MUST import no kind class, and every operation MUST go through `annotation.hitTest`, `movedBy`, `withHandle`, `duplicated`, and the clip's own add/change/remove/undo (`contracts/annotation-plugin.md` §3, `data-model.md` "the shared canvas").
-- [ ] T010 [US1] Implement `add(kindId, span)` on the canvas and the `CreationContext` it hands the plugin — `span`, `picture`, `drag(build, minLength?)`, `draft`, `commit`, `abandon`, `say` (`data-model.md CreationContext.*`). The canvas's pointer plumbing routes a creation drag to the armed plugin's `drag` and draws its `draft` through its `renderer`.
-- [ ] T011 [US1] Move the arrow's creation into `arrowPlugin.begin` in `src/ui/annotating/arrow-plugin.ts`: await `drag`, `Arrow.create` from what it returns, `commit`, and `abandon` a stray drag with the message under the timeline (the current `'ARROW — drag across the picture'`).
-- [ ] T012 [US1] Pass the free-resize modifier through the canvas: read `Shift` on the pointer move and call `withHandle(end, to, { free })` (`data-model.md HandleOptions.free`; D4 in `research.md`). What it means stays the kind's rule.
-- [ ] T013 [P] [US1] Make the canvas's copy and paste toasts name the kind's `action.label` rather than the literal word "Arrow", so a second kind reads correctly (`src/ui/annotating/annotation-canvas.ts`).
-- [ ] T014 [US1] Build the section's action row from `plugins()` in `src/ui/cutting/marks.ts`, one button per registered plugin (today just **Arrow**), and route its press to `canvas.add(plugin.id, section)`; keep the "click inside the section to cut" shortcut and the `MIN_SECTION` check.
-- [ ] T015 [US1] Update the composition root `src/main.ts`: register the arrow plugin and call `initAnnotationCanvas()` in place of `initAnnotationEdit()`.
+- [x] T007 [P] [US1] Create `src/ui/annotating/arrow-plugin.ts`: move `arrowRenderer` and `arrowMetrics` out of `annotation-layer.ts` (unchanged), and export `arrowPlugin` with its `action` (label `Arrow`, its title and its inline svg), its `renderer`, and its `begin`.
+- [x] T008 [US1] Reduce `src/ui/annotating/annotation-layer.ts` to the drawing every kind shares — `drawAnnotations`, the grips from `handles()`, `removeControl` / `copyControl` and `drawControl` — and remove the arrow's own drawing and metrics.
+- [x] T009 [US1] Rename `src/ui/annotating/annotation-edit.ts` to `src/ui/annotating/annotation-canvas.ts` and make it kind-agnostic: it MUST import no kind class, and every operation MUST go through `annotation.hitTest`, `movedBy`, `withHandle`, `duplicated`, and the clip's own add/change/remove/undo (`contracts/annotation-plugin.md` §3, `data-model.md` "the shared canvas").
+- [x] T010 [US1] Implement `add(kindId, span)` on the canvas and the `CreationContext` it hands the plugin — `span`, `picture`, `drag(build, minLength?)`, `draft`, `commit`, `abandon`, `say` (`data-model.md CreationContext.*`). The canvas's pointer plumbing routes a creation drag to the armed plugin's `drag` and draws its `draft` through its `renderer`.
+- [x] T011 [US1] Move the arrow's creation into `arrowPlugin.begin` in `src/ui/annotating/arrow-plugin.ts`: await `drag`, `Arrow.create` from what it returns, `commit`, and `abandon` a stray drag with the message under the timeline (the current `'ARROW — drag across the picture'`).
+- [x] T012 [US1] Pass the free-resize modifier through the canvas: read `Shift` on the pointer move and call `withHandle(end, to, { free })` (`data-model.md HandleOptions.free`; D4 in `research.md`). What it means stays the kind's rule.
+- [x] T013 [P] [US1] Make the canvas's copy and paste toasts name the kind's `action.label` rather than the literal word "Arrow", so a second kind reads correctly (`src/ui/annotating/annotation-canvas.ts`).
+- [x] T014 [US1] Build the section's action row from `plugins()` in `src/ui/cutting/marks.ts`, one button per registered plugin (today just **Arrow**), and route its press to `canvas.add(plugin.id, section)`; keep the "click inside the section to cut" shortcut and the `MIN_SECTION` check.
+- [x] T015 [US1] Update the composition root `src/main.ts`: register the arrow plugin and call `initAnnotationCanvas()` in place of `initAnnotationEdit()`.
 
 ### Verification for User Story 1
 
-- [ ] T016 [US1] Browser harness `verify-annotations.html` (deleted before commit): the arrow draws over its stretch in playback and not outside it; a press picks it; dragging its body moves it; dragging an end aims it; the grips and the two controls (copy, remove) are drawn on the picked one; ⌘/Ctrl+C then ⌘/Ctrl+V makes a new arrow at the playhead; Delete and the × remove it; the one undo brings it back; the section's **Arrow** action arms and draws; a stray click is refused with the message.
-- [ ] T017 [P] [US1] Browser harness `verify-annotations.html`: with a stub plugin registered in the page, the canvas draws the stub's grips and controls and its action appears in the section's row — the proof the shared operations are not arrow-shaped.
-- [ ] T018 [US1] Confirm the regression proof: `npx vitest run src/domain/annotation src/domain/clip` passes with the `Arrow`, `AnnotationSet`, `Clip` and `ExportPlan` tests **unmodified** (only `annotation-layer.test.ts`'s imports changed — T006). Record the outcome for the pull request.
+- [x] T016 [US1] Browser harness `verify-annotations.html` (deleted before commit): the arrow draws over its stretch in playback and not outside it; a press picks it; dragging its body moves it; dragging an end aims it; the grips and the two controls (copy, remove) are drawn on the picked one; ⌘/Ctrl+C then ⌘/Ctrl+V makes a new arrow at the playhead; Delete and the × remove it; the one undo brings it back; the section's **Arrow** action arms and draws; a stray click is refused with the message.
+- [x] T017 [P] [US1] Browser harness `verify-annotations.html`: with a stub plugin registered in the page, the canvas draws the stub's grips and controls and its action appears in the section's row — the proof the shared operations are not arrow-shaped.
+- [x] T018 [US1] Confirm the regression proof: `npx vitest run src/domain/annotation src/domain/clip` passes with the `Arrow`, `AnnotationSet`, `Clip` and `ExportPlan` tests **unmodified** (only `annotation-layer.test.ts`'s imports changed — T006). Record the outcome for the pull request.
 
 **Checkpoint**: The shared canvas is real and the arrow is its first plugin. US1 is a shippable MVP with the arrow alone; spec scenario 1 completes in Phase 4.
 

@@ -19,7 +19,7 @@ import { session } from '../../session.js';
 import { el } from '../dom.js';
 import { keptLengthNow, keptOf } from '../clip/clip.js';
 import { playback } from '../clip/playback.js';
-import { edit, onSelectionChange } from './annotation-edit.js';
+import { canvas, onSelectionChange } from './annotation-canvas.js';
 
 const ARROW_ICON = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5"/><path d="M12 5h7v7"/></svg>';
 
@@ -46,7 +46,7 @@ function onClick(e: MouseEvent): void {
 function pick(id: string): void {
   const annotation = session.clip.annotations.byId(id);
   if (!annotation) return;
-  edit.pick(id);
+  canvas.pick(id);
   playback.hold(annotation.span.s * session.clip.total());
 }
 
@@ -60,7 +60,7 @@ export function renderLane(): void {
   const total = session.clip.total();
   const kept = Math.max(0.001, keptLengthNow());
   const width = Math.max(1, host.getBoundingClientRect().width);
-  const selected = edit.selectedId;
+  const selected = canvas.selectedId;
 
   // A mark sits at the **start** of its stretch, as the kind's symbol rather than the
   // whole stretch: several arrows over one section share a start, and bars for them

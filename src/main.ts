@@ -9,7 +9,8 @@ import { toggleHelp, helpBdClick } from './ui/shell/help.js';
 import { drawGrid } from './ui/recording/preview.js';
 import { initTimeline, updateTimeUI, updateSizeUI } from './ui/clip/timeline-ui.js';
 import { initTimelineMarks } from './ui/cutting/marks.js';
-import { initAnnotationEdit } from './ui/annotating/annotation-edit.js';
+import { initAnnotationCanvas } from './ui/annotating/annotation-canvas.js';
+import './ui/annotating/arrow-plugin.js';   // registers the arrow kind in the view
 import { initAnnotationLane } from './ui/annotating/annotation-lane.js';
 import { initViewLifetime } from './ui/lifecycle/view-lifetime.js';
 import { toggleRecord, toggleScreen, syncSources, onScreenEnded } from './ui/recording/record-flow.js';
@@ -78,9 +79,10 @@ function init(): void {
   initTimelineMarks();
   initTimeline();   // the timeline listens to the clip
 
-  // Draw an arrow over the picture: the section arms the gesture, the drag draws it.
-  initAnnotationEdit();
-  initAnnotationLane();   // and the timeline shows where the arrows are
+  // Annotate the picture: the section's action arms a kind, and the shared canvas
+  // edits whatever is placed — the arrow today, an image beside it.
+  initAnnotationCanvas();
+  initAnnotationLane();   // and the timeline shows where the annotations are
 
   // Every view resets itself when the clip is cleared. The session names no view.
   initViewLifetime();

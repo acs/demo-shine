@@ -15,7 +15,7 @@ import { liveTimeline } from '../recording/live-timeline.js';
 import { player } from '../clip/clip.js';
 import { drag } from '../cutting/marks.js';
 import { crop } from '../recording/region.js';
-import { edit } from '../annotating/annotation-edit.js';
+import { canvas } from '../annotating/annotation-canvas.js';
 import { clipboard } from '../annotating/annotation-clipboard.js';
 import { selection } from '../cutting/selection.js';
 import { exportMenu } from '../exporting/export-menu.js';
@@ -29,7 +29,7 @@ export function initViewLifetime(): void {
     strip.cancel();
     drag.cancel();
     crop.cancel();
-    edit.cancel();
+    canvas.cancel();
     clipboard.clear();
     selection.clear();
     exportMenu.close();

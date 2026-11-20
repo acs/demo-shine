@@ -1,24 +1,27 @@
-// Drawing the annotations over the picture, and the renderers that know how.
+// Drawing the annotations over the picture: the one place a kind is painted, and the
+// grips every kind is edited by.
 //
 // One layer serves the preview and the export: `drawAnnotations` is called by the
 // playback loop and by the offline export, each on its own canvas, in fractions of
-// whichever canvas is handed in — so an arrow lands in the same place in the file as
-// on the screen, whatever the two sizes are.
+// whichever canvas is handed in — so an annotation lands in the same place in the file
+// as on the screen, whatever the two sizes are.
 //
 // Two things are drawn, and they are kept apart on purpose:
 //
-//   * the annotation itself, by its renderer, in the picture's own proportions — what
-//     it looks like is part of the picture and must export the same;
+//   * the annotation itself, by the renderer a kind registers under its own id, in the
+//     picture's own proportions — what it looks like is part of the picture and must
+//     export the same;
 //   * the **grips** a picked annotation is dragged by, here, once, for every kind —
 //     they are an editing affordance, never exported, and sized in screen pixels so a
 //     grip is the same size to the hand whatever the canvas resolution.
 //
-// A renderer is registered under the same id as the annotation's own kind — the class
-// `Arrow` — and a renderer draws and nothing else: how an annotation is picked, moved
-// and aimed is geometry, and lives on the class (`src/domain/annotation/Arrow.ts`).
+// A renderer draws and nothing else: how an annotation is picked, moved and resized is
+// geometry, and lives on the class (`src/domain/annotation/`). Which renderer a kind
+// has is part of its plugin (`annotation-plugin.ts`), registered here under the kind's
+// id — the id is the whole of the coupling between the class, the plugin and the
+// drawing.
 
 import type { Annotation } from '../../domain/annotation/Annotation.js';
-import { Arrow } from '../../domain/annotation/Arrow.js';
 
 export interface AnnotationRenderer<A extends Annotation> {
   readonly id: string;
@@ -70,7 +73,7 @@ export function drawAnnotations(
 // away, and the copy that puts another like it beside it. A phone has no Delete key and
 // no ⌘C, and a press on either must not be a press that aims — so both sit off the
 // annotation rather than on it, on opposite sides of its middle. `removeControl` and
-// `copyControl` are the one place each says where, and `annotation-edit.ts` hit-tests
+// `copyControl` are the one place each says where, and `annotation-canvas.ts` hit-tests
 // the same two points.
 
 // Canvas pixels per screen pixel: a grip must be the same size to the hand whatever
@@ -121,6 +124,8 @@ export function copyControl(
 ): { x: number; y: number } | null {
   return controlSpot(annotation, w, h, scale, -1);
 }
+
+const ACCENT = '#e53e3e';
 
 function drawHandles(ctx: CanvasRenderingContext2D, annotation: Annotation, w: number, h: number): void {
   const scale = screenScale(ctx);
@@ -190,73 +195,3 @@ function drawControl(ctx: CanvasRenderingContext2D, control: Control, x: number,
   ctx.fill();
   ctx.stroke();
 }
-
-// ── the arrow ─────────────────────────────────────────────────────────────────
-//
-// One style, defined once: a shaft with a solid head, in the app's action colour,
-// with a thin dark edge so it reads over both light and dark pictures. The exact
-// colour is a one-line change; a per-arrow style editor is not in this change.
-
-const ACCENT = '#e53e3e';
-const OUTLINE = 'rgba(2,3,8,0.72)';
-
-/**
- * How big an arrow is drawn, in the picture's own pixels. It is a rule rather than a
- * magic number so that it can be tested: a mark must not swamp the picture it is
- * drawn over — the head is under 2% of the width and the shaft under 0.4%, at every
- * size the app records at.
- */
-export function arrowMetrics(w: number): { head: number; weight: number; edge: number } {
-  return {
-    head: Math.max(6, w * 0.015),
-    weight: Math.max(1.5, w * 0.0028),
-    edge: Math.max(1, w * 0.0012),
-  };
-}
-
-function line(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, width: number, colour: string): void {
-  ctx.strokeStyle = colour;
-  ctx.lineWidth = width;
-  ctx.beginPath();
-  ctx.moveTo(x0, y0);
-  ctx.lineTo(x1, y1);
-  ctx.stroke();
-}
-
-function head(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, size: number, colour: string): void {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle);
-  ctx.fillStyle = colour;
-  ctx.beginPath();
-  ctx.moveTo(size, 0);
-  ctx.lineTo(-size * 0.55, size * 0.55);
-  ctx.lineTo(-size * 0.55, -size * 0.55);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
-
-export const arrowRenderer: AnnotationRenderer<Arrow> = {
-  id: Arrow.id,
-
-  draw(ctx, arrow, w, h) {
-    const { from, to } = arrow.geometry;
-    const x0 = from.x * w, y0 = from.y * h;
-    const x1 = to.x * w, y1 = to.y * h;
-    const { head: size, weight, edge } = arrowMetrics(w);
-    const angle = Math.atan2(y1 - y0, x1 - x0);
-    const bx = x1 - Math.cos(angle) * size * 0.8;
-    const by = y1 - Math.sin(angle) * size * 0.8;
-
-    ctx.save();
-    ctx.lineCap = 'round';
-    line(ctx, x0, y0, bx, by, weight + edge * 2, OUTLINE);   // the dark edge first
-    line(ctx, x0, y0, bx, by, weight, ACCENT);
-    head(ctx, bx, by, angle, size + edge * 2, OUTLINE);
-    head(ctx, bx, by, angle, size, ACCENT);
-    ctx.restore();
-  },
-};
-
-registerRenderer(arrowRenderer);
