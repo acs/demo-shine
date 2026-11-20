@@ -30,6 +30,9 @@ const record = new RecordTake({
   clock,
   sources: () => capture.sources,
   region: () => capture.region,
+  // The picture's own size, from the element the capture is drawn from — the one
+  // place that knows it, since a display track's settings lie until its first frame.
+  picture: () => ({ width: el.sv.videoWidth, height: el.sv.videoHeight }),
   drawBubble: context => drawWebcamOverlay(context, 0, 0, context.canvas.width, context.canvas.height),
   setAudio: audio => { session.audio = audio; },
 });

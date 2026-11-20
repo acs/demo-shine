@@ -12,6 +12,12 @@ export interface CompositorInput {
   readonly mic: MediaStream | null;
   readonly region: CropRegion;
   readonly audio: boolean;
+  /**
+   * The picture's own size in pixels. The recorded canvas is sized from it, because
+   * the element the compositor draws from has no size until its first frame, which
+   * is after the take has already opened.
+   */
+  readonly picture?: { readonly width: number; readonly height: number };
   /** Draw the webcam bubble, if the view has one. */
   readonly drawBubble?: (ctx: CanvasRenderingContext2D, width: number, height: number) => void;
 }

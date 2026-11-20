@@ -31,6 +31,8 @@ export interface RecordDeps {
   readonly clock: ClockPort;
   readonly sources: () => SourceSet;
   readonly region: () => CropRegion;
+  /** The picture's own size, for a take that has to be drawn on a canvas. */
+  readonly picture?: () => { readonly width: number; readonly height: number };
   readonly drawBubble?: (context: CanvasRenderingContext2D) => void;
   readonly setAudio?: (hasAudio: boolean) => void;
 }
@@ -54,6 +56,7 @@ export class RecordTake {
       mic,
       region: this.deps.region(),
       audio: true,
+      picture: this.deps.picture?.(),
       drawBubble: this.deps.drawBubble,
     });
     this.deps.recorder.start(composed.stream);
