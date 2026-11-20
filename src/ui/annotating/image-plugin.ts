@@ -62,7 +62,7 @@ export class ImagePlugin implements AnnotationPlugin, AnnotationRenderer<Annotat
 
   begin(ctx: CreationContext): void {
     ctx.say(ARMED);
-    void this.make(ctx).catch(error => ctx.abandon(`IMAGE — ${error instanceof Error ? error.message : 'that picture could not be added'}`));
+    void this.make(ctx).catch(error => ctx.cancel(`IMAGE — ${error instanceof Error ? error.message : 'that picture could not be added'}`));
   }
 
   draw(ctx: CanvasRenderingContext2D, annotation: Annotation, w: number, h: number): void {
@@ -75,22 +75,22 @@ export class ImagePlugin implements AnnotationPlugin, AnnotationRenderer<Annotat
 
   private async make(ctx: CreationContext): Promise<void> {
     const file = await this.choosePicture();
-    if (!file) { ctx.abandon(NO_PICTURE); return; }
+    if (!file) { ctx.cancel(NO_PICTURE); return; }
 
     const prepared = await this.prepare(file, ctx.picture);
-    if (!prepared) { ctx.abandon(UNREADABLE); return; }
+    if (!prepared) { ctx.cancel(UNREADABLE); return; }
 
     const imageId = newAnnotationId();
     try {
       await images.put(imageId, prepared.blob);
     } catch {
-      ctx.abandon(UNREADABLE);
+      ctx.cancel(UNREADABLE);
       return;
     }
 
     const geometry = this.place(ctx, imageId, prepared.imageAspect);
     const annotation = ImageAnnotation.create(ctx.span, geometry);
-    if (!annotation) { ctx.abandon(NO_FIT); return; }
+    if (!annotation) { ctx.cancel(NO_FIT); return; }
     ctx.commit(annotation);
   }
 

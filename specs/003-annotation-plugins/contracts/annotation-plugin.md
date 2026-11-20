@@ -75,7 +75,10 @@ export interface CreationContext {
   ): Promise<{ from: Point; to: Point } | null>;
   draft(annotation: Annotation | null): void;
   commit(annotation: Annotation): void;
+  /** Nothing to make this time; stay armed — the arrow's stray click. */
   abandon(message: string): void;
+  /** Nothing to make, and the creation is over: let the canvas go. */
+  cancel(message: string): void;
   say(message: string): void;
 }
 
@@ -90,9 +93,13 @@ export function plugins(): readonly AnnotationPlugin[];
   is made. It never describes pick, move, resize, copy, delete, undo, saving or
   exporting — those are the canvas's and the clip's;
 - `begin` is where a kind's creation lives, and it may be asynchronous (the arrow
-  awaits a drag; the image awaits a chosen picture). A plugin may attach its own
-  listeners — the image's paste and drop — and that is the spec's "some interactivity
-  if needed" (FR-013);
+  awaits a drag; the image awaits a chosen picture; the text awaits a typed line). A
+  plugin may attach its own listeners — the image's paste and drop — and that is the
+  spec's "some interactivity if needed" (FR-013);
+- a kind that makes nothing says so with `abandon` when it may still be waiting (the
+  arrow's stray click, where the next try is another drag) and with `cancel` when the
+  creation is over (a cancelled picker or prompt), so the canvas is not left armed with
+  no way to answer a press;
 - the id is the whole of the coupling between the class, the register in
   `domain/annotation/kinds.ts`, the plugin here, and the stored data — the same rule the
   renderer already follows;
@@ -185,7 +192,13 @@ button.
 2. Add it to the register in `src/domain/annotation/kinds.ts`.
 3. Write `src/ui/annotating/<kind>-plugin.ts`: an `AnnotationPlugin` with its `action`,
    its `renderer`, and its `begin` — and register it.
-4. Nothing else. The section offers its button, the canvas edits it, the lane finds it,
+4. Add its line to `src/ui/annotating/plugins.ts`, the one place the view loads the
+   plugins.
+5. Nothing else. The section offers its button, the canvas edits it, the lane finds it,
    the store keeps it and the export draws it.
+
+The text kind was added this way: two new files (`TextAnnotation.ts` and its test, and
+`text-plugin.ts`), one line in each register, and no edit to the arrow, the image, the
+canvas, the layer or the store.
 
 No existing kind, and no cut, is edited by any of these four steps.
