@@ -11,6 +11,7 @@
 
 import type { Annotation, StoredAnnotation } from './Annotation.js';
 import { Arrow } from './Arrow.js';
+import { ImageAnnotation } from './ImageAnnotation.js';
 
 /** A kind is the class itself: its id, and how to rebuild one. */
 export interface AnnotationKind {
@@ -37,3 +38,6 @@ export function registeredKinds(): readonly string[] {
 
 // The arrow is the first kind, and registering it here is what makes it the first.
 registerKind(Arrow);
+
+// The image is the second kind, added by describing it alone.
+registerKind(ImageAnnotation);

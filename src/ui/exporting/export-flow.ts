@@ -9,6 +9,7 @@ import { ExportVideo } from '../../application/export-video.js';
 import { encoder } from '../../infra/offline-encoder.js';
 import { downloadPort } from '../../infra/download.js';
 import { clock } from '../../infra/clock.js';
+import { images } from '../../infra/images.js';
 import { frameRenderer } from './frame-renderer.js';
 import { el, setStatus, toast } from '../dom.js';
 import { beginEncoding, endEncoding, encodingAt } from '../clip/timeline-ui.js';
@@ -37,6 +38,9 @@ export async function doExport(target: ExportTarget = 'webm'): Promise<void> {
   el.playBtn.disabled = true;
   setStatus('proc', 'Encoding…');
   const wasCut = beginEncoding();
+  // The export draws frames in a tight loop, so it waits once, here, for every picture
+  // an image annotation needs to be decoded. A picture not decoded draws nothing.
+  await images.ready();
   const outcome = await exportVideo.run(target, source => encodingAt(source, session.clip.total()));
   if (outcome.kind === 'exported') {
     keep.forget();

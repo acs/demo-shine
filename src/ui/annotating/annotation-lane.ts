@@ -20,8 +20,9 @@ import { el } from '../dom.js';
 import { keptLengthNow, keptOf } from '../clip/clip.js';
 import { playback } from '../clip/playback.js';
 import { canvas, onSelectionChange } from './annotation-canvas.js';
+import { pluginOf } from './annotation-plugin.js';
 
-const ARROW_ICON = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5"/><path d="M12 5h7v7"/></svg>';
+const DEFAULT_ICON = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/></svg>';
 
 export function initAnnotationLane(): void {
   el.tlAnnots.addEventListener('click', onClick);
@@ -77,9 +78,14 @@ export function renderLane(): void {
     nudge = x - lastX < STEP_PX ? nudge + STEP_PX : 0;
     lastX = x;
     const on = annotation.id === selected;
+    // The kind's own symbol and name, from its plugin, so a new kind is found on the
+    // lane without editing this module.
+    const plugin = pluginOf(annotation.kind);
+    const icon = plugin?.action.icon ?? DEFAULT_ICON;
+    const label = plugin?.action.label ?? 'Annotation';
     html += `<div class="tl-annot${on ? ' on' : ''}" data-id="${annotation.id}"`
           + ` style="left:${((x / width) * 100).toFixed(3)}%;margin-left:${nudge}px"`
-          + ` title="Arrow at ${s.toFixed(2)}s — click to go to it">${ARROW_ICON}`
+          + ` title="${label} at ${s.toFixed(2)}s — click to go to it">${icon}`
           + `</div>`;
   }
   host.innerHTML = html;

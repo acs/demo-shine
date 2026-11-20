@@ -17,6 +17,7 @@ import { drag } from '../cutting/marks.js';
 import { crop } from '../recording/region.js';
 import { canvas } from '../annotating/annotation-canvas.js';
 import { clipboard } from '../annotating/annotation-clipboard.js';
+import { images } from '../../infra/images.js';
 import { selection } from '../cutting/selection.js';
 import { exportMenu } from '../exporting/export-menu.js';
 import { drawGrid } from '../recording/preview.js';
@@ -31,6 +32,7 @@ export function initViewLifetime(): void {
     crop.cancel();
     canvas.cancel();
     clipboard.clear();
+    void images.clear();      // the pictures and their decoded copies go with the clip
     selection.clear();
     exportMenu.close();
     // The element was holding a take that no longer exists.
