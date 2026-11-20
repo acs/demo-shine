@@ -160,12 +160,12 @@ Single project (browser SPA), per plan.md: `src/` at the repository root. Domain
 
 **Purpose**: The docs and the final verification (plan step 7).
 
-- [ ] T042 [P] Update the help modal text in `index.html` to describe the image and the shared editing (the arrow's paragraph already there gains the image beside it).
-- [ ] T043 [P] Update `FEATURES.md`'s annotations entry with the image kind and the shared gestures.
-- [ ] T044 [P] Update the module map in `README.md` for `ui/annotating/` (the plugin, the canvas, the two plugin files) and `infra/images.ts`.
-- [ ] T045 Run the full gate from `package.json`: `npm run lint && npm run typecheck && npx vitest run && npm run build`.
+- [x] T042 [P] Update the help modal text in `index.html` to describe the image and the shared editing (the arrow's paragraph already there gains the image beside it).
+- [x] T043 [P] Update `FEATURES.md`'s annotations entry with the image kind and the shared gestures.
+- [x] T044 [P] Update the module map in `README.md` for `ui/annotating/` (the plugin, the canvas, the two plugin files) and `infra/images.ts`.
+- [x] T045 Run the full gate from `package.json`: `npm run lint && npm run typecheck && npx vitest run && npm run build`.
 - [ ] T046 Run `quickstart.md` end to end and paste its output into the pull request, stating which Verification level each part got and what was not verified.
-- [ ] T047 [P] Delete any `verify-*.html` harness left in the repository root and confirm none is committed.
+- [x] T047 [P] Delete any `verify-*.html` harness left in the repository root and confirm none is committed.
 
 **Checkpoint**: The change is documented and proved at all three Verification levels.
 
