@@ -44,7 +44,7 @@ export function refreshSourceButtons(): void {
     ? 'Screen'
     : 'Screen capture is not available in this browser — record the webcam instead';
   el.webcamBtn.disabled = off || !sources.camera;
-  el.camPick.disabled = off;
+  el.camPickBtn.disabled = off;
   el.micBtn.disabled = off || !sources.mic;
 }
 

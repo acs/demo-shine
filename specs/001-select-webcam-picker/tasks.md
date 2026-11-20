@@ -25,9 +25,9 @@
 
 **Purpose**: The element, its registry entry, and its styles.
 
-- [x] T001 Add `<select id="cam-pick" hidden aria-label="Camera"></select>` immediately after `#webcam-btn` in `index.html`
-- [x] T002 Register `camPick: byId<HTMLSelectElement>('cam-pick')` in `src/ui/dom.ts`
-- [x] T003 [P] Add `.cam-pick` styles beside the source-button rules in `styles.css`, including a `[hidden]` rule that keeps the picker out of the layout
+- [x] T001 Add `<button id="cam-pick-btn" hidden aria-label="Camera" aria-haspopup="menu">` with a chevron immediately after `#webcam-btn`, and `<div id="cam-menu" role="menu">` at the body, in `index.html`
+- [x] T002 Register `camPickBtn: byId<HTMLButtonElement>('cam-pick-btn')` and `camMenu: byId<HTMLElement>('cam-menu')` in `src/ui/dom.ts`
+- [x] T003 [P] Add `.cam-pick-btn`, `.cam-menu` and `.cam-item` styles beside the source-button rules in `styles.css`, including a `[hidden]` rule that keeps the caret out of the layout
 
 **Checkpoint**: The element exists and is hidden; the app still builds.
 
@@ -56,11 +56,11 @@
 
 ### Implementation for User Story 1
 
-- [x] T007 [US1] Add the camera list and selection state to `src/ui/webcam.ts`, using `Camera selection.deviceId` from `data-model.md` (nullable until the webcam starts)
-- [x] T008 [US1] Implement the camera list in `src/ui/webcam.ts`: `detectWebcam()` enumerates `videoinput` devices (filter on `Camera.kind` from `data-model.md`) and `renderCameras()` builds the options with `cameraOptions` (shape `Picker view state.options` from `data-model.md`), sets `hidden` via `shouldShowPicker`, and keeps the selected option
-- [x] T009 [US1] Update `startWebcam()` in `src/ui/webcam.ts` to read the active track's `deviceId` and mark the selected option
-- [x] T010 [US1] Implement `switchWebcam(deviceId)` in `src/ui/webcam.ts`: open the chosen camera first, then stop the old stream and swap `app.webcamStream` / `el.wcv.srcObject`, update the selection and the preview
-- [x] T011 [US1] Wire the `#cam-pick` change event in `src/main.ts` to call `switchWebcam` and then `syncSources()`
+- [x] T007 [US1] Add the camera list and selection state to `src/ui/recording/webcam.ts`, using `Camera selection.deviceId` from `data-model.md` (nullable until the webcam starts)
+- [x] T008 [US1] Implement the camera list in `src/ui/recording/webcam.ts`: `detectWebcam()` enumerates `videoinput` devices (filter on `Camera.kind` from `data-model.md`) and `renderCameras()` builds the options with `cameraOptions` (shape `Picker view state.options` from `data-model.md`), sets the caret's `hidden` via `shouldShowPicker`, and feeds the popover
+- [x] T009 [US1] Update `startWebcam()` in `src/ui/recording/webcam.ts` to read the active track's `deviceId` and mark the selection
+- [x] T010 [US1] Implement `switchWebcam(deviceId)` in `src/ui/recording/webcam.ts`: stop the old stream first, open the chosen camera, reopen the previous one if it fails, and swap `el.wcv.srcObject` and the selection
+- [x] T011 [US1] Wire the `#cam-pick-btn` click and the `cameraMenu` choice in `src/main.ts` to call `switchWebcam` and then `syncSources()`
 - [x] T012 [US1] Refresh the list on `devicechange` in `src/ui/webcam.ts` and stop the stream with a toast when the active camera disappears
 
 **Checkpoint**: US1 works on its own; the picker appears and switches.
@@ -90,9 +90,9 @@
 
 ### Implementation for User Story 3
 
-- [x] T015 [US3] Keep the selected device ID in module state across refreshes and phase changes in `src/ui/webcam.ts`, so the picker stays on the chosen camera
-- [x] T016 [US3] Re-run `renderCameras()` after a switch so the selected option matches the live stream in `src/ui/webcam.ts`
-- [x] T017 [US3] Disable `#cam-pick` while a take is `starting` or `recording` in `src/ui/source-buttons.ts` (using `Picker view state.enabled` from `data-model.md`) and re-enable it on the next phase
+- [x] T015 [US3] Keep the selected device ID in module state across refreshes and phase changes in `src/ui/recording/webcam.ts`, so the menu stays on the chosen camera
+- [x] T016 [US3] Re-run `renderCameras()` after a switch so the checked item matches the live stream in `src/ui/recording/webcam.ts`
+- [x] T017 [US3] Disable `#cam-pick-btn` while a take is `starting` or `recording` in `src/ui/recording/source-buttons.ts` (using `Picker view state.enabled` from `data-model.md`) and re-enable it on the next phase
 
 **Checkpoint**: US3 works on its own; re-selection works and the picker locks during a take.
 

@@ -48,7 +48,11 @@ The `deviceId` of the camera the webcam is using, or the one the user last chose
 |-------|------|-------|
 | `visible` | boolean | `webcamOn && cameras.length > 1` |
 | `enabled` | boolean | `phase !== 'starting' && phase !== 'recording'` |
-| `options` | `{ value: string; text: string }[]` | One per camera; `value` is the deviceId. |
+| `options` | `{ value: string; label: string }[]` | One per camera; `value` is the deviceId. |
+
+The caret and its popover are the view over this state: the caret's `hidden` follows
+`visible`, the caret's `disabled` follows `enabled`, and the menu's items are
+`options` with the selection marked.
 
 ## State transitions
 

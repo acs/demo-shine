@@ -2,57 +2,81 @@
 
 **Feature**: `001-select-webcam-picker` | **Type**: browser UI contract
 
-## Element
+## Elements
 
 ```html
-<select id="cam-pick" aria-label="Camera" title="Camera"></select>
+<button id="cam-pick-btn" type="button" aria-haspopup="menu" aria-expanded="false"
+        aria-label="Camera" title="Camera" hidden>
+  <svg><!-- chevron --></svg>
+</button>
+
+<div id="cam-menu" role="menu" aria-label="Camera"></div>
 ```
 
-Placed in `.srcs` immediately after `#webcam-btn`, inside the `Record sources` group.
+The caret sits in `.srcs` immediately after `#webcam-btn`, inside the `Record
+sources` group. The menu is a body-level element, like the Export menu, so the
+control row cannot clip it; `src/ui/recording/camera-menu.ts` places it each time
+it opens.
 
 ## Visibility
 
-| Condition | Picker |
-|-----------|--------|
+| Condition | Caret |
+|-----------|-------|
 | `webcamOn` is false | hidden |
 | `webcamOn` is true and `cameras.length <= 1` | hidden |
 | `webcamOn` is true and `cameras.length > 1` | shown |
 
-The element uses the `hidden` attribute; CSS must not override `[hidden]`.
+The caret uses the `hidden` attribute; CSS must not override `[hidden]`. When the
+caret hides, the menu closes.
 
 ## Options
 
-- One `<option>` per camera, in enumeration order.
-- `value` = `deviceId`.
-- `text` = the display label (device label, or `Camera N`; duplicates get ` (N)`).
-- The selected option is the active camera's `deviceId` when known; otherwise the first option.
+The menu is rebuilt from the camera list each time it opens:
+
+- One `role="menuitemradio"` button per camera, in enumeration order.
+- The button's text is the display label (device label, or `Camera N`; duplicates
+  get ` (N)`).
+- `aria-checked="true"` marks the active camera's `deviceId`; the others are false.
+- A check mark is drawn on the selected item.
+
+## Placement
+
+The menu is `position: fixed`, opens upward when there is no room below the caret
+(`roomBelow >= height + edge`), and stays inside the viewport. It closes on a click
+outside, Escape, a choice, or a window resize.
 
 ## Enabled
 
-| Phase | Picker |
-|-------|--------|
+| Phase | Caret |
+|-------|-------|
 | `idle`, `live`, `review`, `encoding` | enabled |
 | `starting`, `recording` | disabled |
 
-This matches `locked()` in `ui/source-buttons.ts`.
+This matches `locked()` in `ui/recording/source-buttons.ts`.
 
 ## Events
 
 | Event | Source | Behaviour |
 |-------|--------|-----------|
-| `change` | the select | Switch the webcam to `value`; then `syncSources()`. |
+| `click` | the caret | Toggle the menu. |
+| `click` | a menu item | Switch the webcam to that `deviceId`; close; then `syncSources()`. |
 | `devicechange` | `navigator.mediaDevices` | Refresh the list; stop and toast if the active camera is gone. |
 
 ## Errors
 
-- `getUserMedia` rejection: keep the current stream if there is one; show a toast with the error name. The picker stays on the previous option.
-- The active camera disappears: stop the stream, clear the selection, show a toast, hide the picker if fewer than two cameras remain.
+- `getUserMedia` rejection on a switch: the adapter stops the old stream first and
+  reopens the previous camera if the new one cannot be read, so the preview stays
+  alive; a toast carries the error name. The selection stays on the previous
+  camera.
+- The active camera disappears: stop the stream, clear the selection, show a toast,
+  hide the caret if fewer than two cameras remain.
 
 ## Accessibility
 
-- `aria-label="Camera"` names the control.
-- Native keyboard navigation and the mobile OS picker are kept.
-- The control is not a toggle: it does not carry `aria-pressed`.
+- `aria-label="Camera"` names the caret; `aria-haspopup="menu"` and
+  `aria-expanded` describe the popover.
+- The menu is `role="menu"`; items are `role="menuitemradio"` with `aria-checked`.
+- The caret is not a toggle: it does not carry `aria-pressed`.
 
 ## Out of scope
 

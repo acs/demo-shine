@@ -230,13 +230,24 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .src-pin{width:6px;height:6px;border-radius:50%;background:var(--text-dim);flex-shrink:0;transition:background .2s,box-shadow .2s;}
 .src-btn.active .src-pin{background:var(--green);box-shadow:0 0 6px var(--green);}
 
-/* The camera picker, beside the Webcam button. It borrows the source button's
-   look so it reads as part of the same row; the native arrow is replaced by a
-   small chevron drawn in the background. */
-.cam-pick{appearance:none;-webkit-appearance:none;max-width:168px;padding:7px 26px 7px 10px;border-radius:9px;border:1px solid var(--glass-b);background-color:var(--glass);color:var(--text-mid);cursor:pointer;font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;transition:all .2s;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;background-image:linear-gradient(45deg,transparent 50%,var(--text-dim) 50%),linear-gradient(135deg,var(--text-dim) 50%,transparent 50%);background-position:calc(100% - 14px) 50%,calc(100% - 9px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;}
-.cam-pick:hover:not(:disabled){background-color:var(--glass-b);color:var(--text);border-color:var(--glass-b2);}
-.cam-pick:disabled{opacity:.35;cursor:not-allowed;}
-.cam-pick[hidden]{display:none;}
+/* The camera picker: a small caret beside the Webcam button that opens a menu.
+   It borrows the source button's look but stays compact, so it never crowds the
+   row or the record button's rings. */
+.cam-pick-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:30px;padding:0;border-radius:9px;border:1px solid var(--glass-b);background:var(--glass);color:var(--text-mid);cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent;flex-shrink:0;}
+.cam-pick-btn:hover:not(:disabled){background:var(--glass-b);color:var(--text);border-color:var(--glass-b2);}
+.cam-pick-btn:active:not(:disabled){transform:scale(.97);}
+.cam-pick-btn:disabled{opacity:.35;cursor:not-allowed;}
+.cam-pick-btn[aria-expanded="true"]{background:var(--glass-b);color:var(--text);border-color:var(--glass-b2);}
+.cam-pick-btn[hidden]{display:none;}
+
+/* The camera menu — a small popover above the caret, styled like the Export
+   menu. It lives at the body and src/ui/recording/camera-menu.ts places it. */
+.cam-menu{position:fixed;z-index:120;min-width:196px;padding:5px;border-radius:10px;border:1px solid var(--glass-b2);background:var(--surface);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);display:flex;flex-direction:column;gap:2px;opacity:0;visibility:hidden;transform:translateY(4px);transition:opacity .16s,transform .16s,visibility 0s linear .16s;}
+.cam-menu.on{opacity:1;visibility:visible;transform:translateY(0);transition:opacity .16s,transform .16s,visibility 0s;}
+.cam-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;border:none;background:transparent;color:var(--text);font-family:var(--font-ui);font-size:13px;letter-spacing:.02em;text-align:left;cursor:pointer;transition:background .15s;}
+.cam-item:hover{background:var(--glass);}
+.cam-item-name{flex:1;min-width:0;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;}
+.cam-item-check{flex-shrink:0;color:var(--green);font-size:12px;}
 
 /* Microphone level meter, beside the Mic button: a thin vertical bar that rises
    with the voice — green at the foot through to red at the top. The gradient is

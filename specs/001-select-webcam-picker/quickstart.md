@@ -79,7 +79,7 @@ The pure helpers cover the display label, duplicate labels, and the should-show 
 
 1. Copy `index.html` to `verify-camera-picker.html` and inject a module script before `</body>`.
 2. Stub `navigator.mediaDevices.enumerateDevices` to return two fake cameras and `getUserMedia` to return a fake stream whose track reports a `deviceId`.
-3. Check: the picker is hidden before the webcam starts; it shows two options after; the default is selected; the change event switches; the phase `recording` disables it.
+3. Check: the caret is hidden before the webcam starts; it shows two options after; the default is checked; choosing the other switches; the phase `recording` disables it.
 4. Open it on the dev server and read the `<pre id="verify">` output.
 5. Delete the file before committing.
 

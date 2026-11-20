@@ -69,20 +69,43 @@ export class CaptureAdapter implements CapturePort {
     return stream;
   }
 
-  // Open the chosen camera first, then release the old one, so a failure leaves
-  // the current preview running.
+  // A phone's camera hardware can only be open once, so the old stream is stopped
+  // before the chosen one opens. If the new camera cannot be read, the previous
+  // one is opened again so the preview is not left dead.
   async switchWebcam(deviceId: string): Promise<MediaStream> {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { deviceId: { exact: deviceId } },
-      audio: false,
-    });
+    const previousId = this.webcamStream?.getVideoTracks()[0]?.getSettings().deviceId;
     this.webcamStream?.getTracks().forEach(track => track.stop());
-    this.webcamStream = stream;
-    this.sources = this.sources.withWebcam(true);
-    const settings = stream.getVideoTracks()[0]?.getSettings();
-    this.width = settings?.width ?? this.width;
-    this.height = settings?.height ?? this.height;
-    return stream;
+    this.webcamStream = null;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: deviceId } },
+        audio: false,
+      });
+      this.webcamStream = stream;
+      this.sources = this.sources.withWebcam(true);
+      const settings = stream.getVideoTracks()[0]?.getSettings();
+      this.width = settings?.width ?? this.width;
+      this.height = settings?.height ?? this.height;
+      return stream;
+    } catch (error) {
+      if (previousId) {
+        try {
+          const restored = await navigator.mediaDevices.getUserMedia({
+            video: { deviceId: { exact: previousId } },
+            audio: false,
+          });
+          this.webcamStream = restored;
+          this.sources = this.sources.withWebcam(true);
+          const settings = restored.getVideoTracks()[0]?.getSettings();
+          this.width = settings?.width ?? this.width;
+          this.height = settings?.height ?? this.height;
+        } catch {
+          // The previous camera is gone too; leave the source stopped.
+        }
+      }
+      if (!this.webcamStream) this.sources = this.sources.withWebcam(false);
+      throw error;
+    }
   }
 
   currentWebcam(): MediaStream | null {
