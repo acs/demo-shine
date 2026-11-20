@@ -27,7 +27,13 @@ export class CaptureAdapter implements CapturePort {
   }
 
   async start(): Promise<CaptureSession> {
-    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    // `systemAudio: 'include'` asks for the sound of what is shared as well as the
+    // tab's. It is only a hint — Chrome decides whether the option appears and
+    // whether its box starts ticked, and the user still has to agree — so a share
+    // without audio is possible, and the flow says so.
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: true, audio: true, systemAudio: 'include',
+    } as DisplayMediaStreamOptions);
     const hasAudio = stream.getAudioTracks().length > 0;
     this.screenCapture = { stream, hasAudio };
     this.sources = this.sources.withScreen(true);
