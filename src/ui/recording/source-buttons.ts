@@ -34,6 +34,10 @@ function locked(phase: Phase): boolean {
 export function refreshSourceButtons(): void {
   const off = locked(currentPhase());
   el.screenBtn.disabled = off || !sources.screen;
+  // A browser that cannot share a screen at all has no use for the button on a
+  // narrow one: the stylesheet takes it out of the row there (styles.css), and the
+  // header's own warning is what says why.
+  el.screenBtn.classList.toggle('unavailable', !sources.screen);
   el.screenBtn.classList.toggle('active', capture.sources.screen);
   el.screenBtn.setAttribute('aria-pressed', capture.sources.screen ? 'true' : 'false');
   el.screenBtn.title = sources.screen

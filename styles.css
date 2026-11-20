@@ -258,17 +258,39 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 
 /* Reset and Export, at the end of the row */
 .ctrl-actions{display:flex;gap:7px;justify-self:end;}
-/* A narrow window has no room for three columns: stack them, centred. */
-@media (max-width:700px){
-  .ctrl{grid-template-columns:1fr;justify-items:center;gap:10px;}
-  .srcs{justify-content:center;}
-}
 .act-btn{padding:7px 16px;border-radius:8px;border:1px solid var(--glass-b);background:var(--glass);color:var(--text-mid);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;cursor:pointer;transition:all .2s;white-space:nowrap;}
 .act-btn:not(:disabled):hover{background:rgba(255,255,255,.07);color:var(--text);border-color:var(--glass-b2);}
 .act-btn:active:not(:disabled){transform:scale(.97);}
 .act-btn:disabled{opacity:.3;cursor:not-allowed;}
 .act-btn.export{background:rgba(59,127,255,.12);color:var(--blue);border-color:rgba(59,127,255,.28);}
 .act-btn.export:not(:disabled):hover{background:rgba(59,127,255,.22);border-color:rgba(59,127,255,.45);}
+
+/* The icon the action buttons carry when their word will not fit — a narrow window,
+   below. On a wide one the words are the button. */
+.act-ico{display:none;}
+
+/* A narrow window has no room for three columns, and the record button is the one
+   thing that must not move: one row, the source and action words dropped for their
+   icons, and the pulsing rings capped so the bar is not mostly decoration. A source
+   this browser cannot have at all is out of the row rather than disabled in it. */
+@media (max-width:700px){
+  .ctrl{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px;padding:6px 10px;}
+  .srcs{justify-content:flex-start;flex-wrap:nowrap;gap:4px;}
+  .src-btn{padding:6px 7px;gap:0;}
+  .src-lbl{display:none;}
+  .src-btn.unavailable{display:none;}
+  .rec-cell{gap:0;}
+  .rec-btn-lbl{display:none;}
+  #rec-btn{width:44px;height:44px;}
+  .rec-btn-core{width:16px;height:16px;}
+  .ring-1{inset:-5px;}
+  .ring-2{inset:-10px;}
+  .ring-3{display:none;}
+  .ctrl-actions{gap:5px;}
+  .act-btn{display:inline-flex;align-items:center;padding:6px 8px;}
+  .act-lbl{display:none;}
+  .act-ico{display:block;}
+}
 
 /* The Export menu — a small popover under the Export button. It lives at the
    body (the header clips what overflows it) and src/ui/export-menu.ts places it;
