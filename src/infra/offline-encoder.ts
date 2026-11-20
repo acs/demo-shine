@@ -86,7 +86,10 @@ export class EncoderAdapter implements EncoderPort {
             context.globalAlpha = alpha ?? 1;
             frame.draw(context, 0, 0, canvas.width, canvas.height);
             context.globalAlpha = 1;
-            renderer.draw(context, { sourceTime: source, outputTime: at, annotations: plan.annotationsAt(source) });
+            renderer.draw(context, {
+              sourceTime: source, outputTime: at, annotations: plan.annotationsAt(source),
+              recordingLength: plan.recordingLength,
+            });
             renderer.preview(context);
 
             await video.add(at, frame.duration);

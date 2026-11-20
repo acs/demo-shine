@@ -15,6 +15,7 @@ import { Span } from '../../domain/clip/Span.js';
 function fakeCtx(opts: { width?: number; clientWidth?: number } = {}) {
   const calls: string[] = [];
   const arcs: Array<{ x: number; y: number; r: number }> = [];
+  const alphas: number[] = [];
   const noop = (name: string) => () => { calls.push(name); };
   const base: Record<string, unknown> = {
     save: noop('save'), restore: noop('restore'), beginPath: noop('beginPath'),
@@ -23,12 +24,24 @@ function fakeCtx(opts: { width?: number; clientWidth?: number } = {}) {
     arc: (x: number, y: number, r: number) => { calls.push('arc'); arcs.push({ x, y, r }); },
     translate: noop('translate'), rotate: noop('rotate'),
   };
+  // A real context starts at 1; recording every write lets a test see the layer's blend.
+  let alpha = 1;
+  Object.defineProperty(base, 'globalAlpha', {
+    get: () => alpha,
+    set: (v: number) => { alpha = v; alphas.push(v); },
+  });
   if (opts.width !== undefined) base.canvas = { width: opts.width, clientWidth: opts.clientWidth ?? 0 };
-  return { ctx: base as unknown as CanvasRenderingContext2D, calls, arcs };
+  return { ctx: base as unknown as CanvasRenderingContext2D, calls, arcs, alphas };
 }
 
 const arrow = (id: string): Arrow => {
   const made = Arrow.create(Span.of(0, 1), { x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }, id);
+  if (!made) throw new Error('the test arrow should be usable');
+  return made;
+};
+
+const arrowOver = (id: string, s: number, e: number): Arrow => {
+  const made = Arrow.create(Span.of(s, e), { x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }, id);
   if (!made) throw new Error('the test arrow should be usable');
   return made;
 };
@@ -75,6 +88,32 @@ describe('the annotation layer', () => {
     drawAnnotations(ctx, 320, 180, [arrow('a')]);
     expect(calls).toContain('stroke');
     expect(calls).toContain('fill');
+  });
+
+  it('blends an annotation in at the start of its stretch, as a take dissolves at a join', () => {
+    const a = arrowOver('a', 0.2, 0.6);                 // a stretch of 0.2..0.6 of a 10s clip
+
+    const atStart = fakeCtx();
+    drawAnnotations(atStart.ctx, 320, 180, [a], null, { at: 2, total: 10, seconds: 0.8 });
+    expect(atStart.calls).toEqual([]);                  // its very first moment: not there yet
+
+    const arriving = fakeCtx();
+    drawAnnotations(arriving.ctx, 320, 180, [a], null, { at: 2.4, total: 10, seconds: 0.8 });
+    expect(arriving.calls).toContain('stroke');
+    expect(arriving.alphas.length).toBe(1);             // blended, not drawn plain
+    expect(arriving.alphas[0]).toBeCloseTo(0.5);        // halfway over the picture
+
+    const settled = fakeCtx();
+    drawAnnotations(settled.ctx, 320, 180, [a], null, { at: 4, total: 10, seconds: 0.8 });
+    expect(settled.calls).toContain('stroke');
+    expect(settled.alphas).toEqual([]);                 // in the middle: full, nothing to blend
+  });
+
+  it('draws an annotation at full strength on a still frame, however near its edge', () => {
+    const { ctx, calls, alphas } = fakeCtx();
+    drawAnnotations(ctx, 320, 180, [arrowOver('a', 0.2, 0.6)]);   // no dissolve: a hold or a seek
+    expect(calls).toContain('stroke');
+    expect(alphas).toEqual([]);
   });
 
   it('keeps an arrow small enough not to swamp the picture', () => {

@@ -111,6 +111,14 @@ export class ExportPlan {
     return this.annotations.shownAt(source, this.map);
   }
 
+  /**
+   * The recording's own length — what the annotations' stretches are fractions of,
+   * and so what a frame needs to work out how far into a stretch it is.
+   */
+  get recordingLength(): number {
+    return this.map.length;
+  }
+
   /** Where a take begins on the recording's own timeline. */
   startOf(takeIndex: number): number {
     return this.starts[takeIndex] ?? 0;

@@ -85,9 +85,11 @@ clip, whatever is then done with it.
 | **annotation layer** | the one place an annotation is drawn, used by playback and by the export alike, so the file matches the review — and the one place a picked annotation's grips are drawn, for every kind | `ui/annotating/annotation-layer.ts` |
 
 An annotation's geometry is held in fractions of the picture, so it lands in the
-same place on the preview, on the export canvas and after a reload. A **cut takes
-its part of an annotation's stretch with it** — the moment is gone from the
-timeline, so nothing is drawn there — and putting the cut back brings it back.
+same place on the preview, on the export canvas and after a reload. It **dissolves
+onto the picture** over the first moments of its stretch and **off it** over the
+last, as a take does at a join, so it never pops in or out. A **cut takes its part
+of an annotation's stretch with it** — the moment is gone from the timeline, so
+nothing is drawn there — and putting the cut back brings it back.
 
 ## Exporting
 
@@ -98,7 +100,7 @@ timeline, so nothing is drawn there — and putting the cut back brings it back.
 | **export** | writing the kept clip as a single file — WebM for the download, MP4 (H.264/AAC) for Bluesky — with the joins faded and dissolved | `planExport()` (use case), `exportOffline()` (adapter), driven by `doExport()` (flow) |
 | **export target** | which container an export writes — `webm` for the download, `mp4` for Bluesky — the codecs that follow from it, and **the picture** the encoder is given, which is the crop's own except that H.264 refuses an odd edge and is taken down to even | `ExportTarget`, `specFor()`, `evenPicture()` |
 | **fade** | the sound going down over the last 80 ms of a take and back up as the next begins | `FADE_S` |
-| **dissolve** | the picture blending from the last frame of a take into the first frames of the next, over the same 80 ms | `DISSOLVE_S` |
+| **dissolve** | the picture blending from the last frame of a take into the first frames of the next, over the same 80 ms — and, the same way, an annotation blending onto the picture over the first and last moments of its stretch | `DISSOLVE_S`, `Span.fadeAt()` |
 | **crop region** | the rectangle of the screen being recorded — the red box — as fractions of the capture. A region stays inside the picture and is never empty | `CropRegion` (`src/domain/capture/CropRegion.ts`) |
 
 ## Publishing to Bluesky

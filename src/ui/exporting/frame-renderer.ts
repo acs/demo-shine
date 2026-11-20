@@ -3,7 +3,7 @@
 
 import type { Frame, FrameRendererPort } from '../../application/ports/EncoderPort.js';
 import { drawAnnotations } from '../annotating/annotation-layer.js';
-import { dissolve } from '../clip/dissolve.js';
+import { DISSOLVE_S, dissolve } from '../clip/dissolve.js';
 import { el } from '../dom.js';
 
 export class FrameRenderer implements FrameRendererPort {
@@ -23,7 +23,11 @@ export class FrameRenderer implements FrameRendererPort {
   }
 
   draw(context: CanvasRenderingContext2D, frame: Frame): void {
-    drawAnnotations(context, context.canvas.width, context.canvas.height, frame.annotations);
+    // An annotation dissolves in and out at the edges of its stretch, exactly as the
+    // review draws it, so the file holds the same soft arrival and departure.
+    drawAnnotations(context, context.canvas.width, context.canvas.height, frame.annotations, null, {
+      at: frame.sourceTime, total: frame.recordingLength, seconds: DISSOLVE_S,
+    });
   }
 
   preview(context: CanvasRenderingContext2D): void {

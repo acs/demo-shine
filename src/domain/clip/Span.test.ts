@@ -21,6 +21,23 @@ describe('Span', () => {
     expect(span.touches(Span.of(2.5, 3))).toBe(false);
   });
 
+  it('dissolves in and out at its edges, full in the middle', () => {
+    const span = Span.of(0.2, 0.6);                    // length 0.4
+    expect(span.fadeAt(0.2, 0.08)).toBe(0);            // the start edge
+    expect(span.fadeAt(0.24, 0.08)).toBeCloseTo(0.5);  // halfway into the fade
+    expect(span.fadeAt(0.4, 0.08)).toBe(1);            // the middle, full
+    expect(span.fadeAt(0.56, 0.08)).toBeCloseTo(0.5);  // halfway out
+    expect(span.fadeAt(0.6, 0.08)).toBe(0);            // the end is outside it
+    expect(span.fadeAt(0.1, 0.08)).toBe(0);            // before it
+  });
+
+  it('is shown in full when there is no fade, and reaches full in a range thinner than one', () => {
+    expect(Span.of(0.2, 0.6).fadeAt(0.3, 0)).toBe(1);
+    // 0.06 long, a fade of 0.08 either side: the middle is still full
+    expect(Span.of(0.2, 0.26).fadeAt(0.23, 0.08)).toBe(1);
+    expect(Span.of(0.2, 0.26).fadeAt(0.21, 0.08)).toBeCloseTo(0.33, 1);
+  });
+
   it('merges two ranges into the width they cover', () => {
     expect(Span.of(1, 3).merge(Span.of(2.5, 6)).equals(Span.of(1, 6))).toBe(true);
   });
