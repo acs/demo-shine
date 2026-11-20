@@ -67,9 +67,11 @@ time. Passing one where the other was meant is the mistake it exists to prevent.
 Something drawn over the picture, for a stretch of the clip's time. A kind is
 described once — its shape in the domain, and a **plugin** in the view naming its
 action, its renderer and how a new one is made — and every kind is edited the same
-way, by the **annotation canvas**. The stretch is chosen with the **selection** — the
-same one a cut is approved from — so there is one way to point at a stretch of the
-clip, whatever is then done with it.
+way, by the **annotation canvas**. A kind also says what can be **changed** about it
+after it is placed — its **colour**, a text's **words** — and one **properties
+inspector** edits them, whatever the kind. The stretch is chosen with the
+**selection** — the same one a cut is approved from — so there is one way to point at
+a stretch of the clip, whatever is then done with it.
 
 | word | what it is | in the code |
 |---|---|---|
@@ -77,9 +79,13 @@ clip, whatever is then done with it.
 | **annotation kind** | what makes one annotation different from another — an arrow or an image. Its rules (how a geometry is normalised, whether it is worth keeping, how it resizes) live in the domain; how it is drawn and made lives in the view, under the same id | `AnnotationKind`, `kinds.ts`; the kind's `AnnotationPlugin` |
 | **annotation plugin** | everything a kind is in the view: its action on a selected stretch, its renderer, and how a new one is made (`begin`). Added with the kind, under the kind's id; it never describes selecting, moving, resizing, copying, deleting, saving or exporting, because those are shared | `AnnotationPlugin`, `ui/annotating/annotation-plugin.ts`, `ui/annotating/<kind>-plugin.ts` |
 | **annotation canvas** | the one shared editing surface every kind gets: pick, move, resize, copy, paste, delete and undo. It names no kind — it asks the annotation and the clip | `ui/annotating/annotation-canvas.ts` |
+| **annotation property** | something about an annotation the user can change after it is placed — its colour, a text's words. Its kind declares it: a label, which shared control edits it, and how to read and write the value on the annotation. The value lives with the annotation | `AnnotationProperty`, `AnnotationPlugin.properties`, `propertiesOf()` |
+| **properties inspector** | the one shared surface that shows and edits the picked annotation's properties, whatever its kind. Opened from a **settings control** on the picked annotation; it names no kind, it asks the plugin | `ui/annotating/properties-inspector.ts` |
 | **arrow** | the first kind: a line with a head, given by where it starts (`from`) and what it points at (`to`), in fractions of the picture. Its ends are its resize | `Arrow`, `ArrowGeometry`, `ui/annotating/arrow-plugin.ts` |
 | **image annotation** | the second kind: a chosen picture over the picture, a rect in fractions with the picture's own proportions kept on resize | `ImageAnnotation`, `ImageGeometry`, `ui/annotating/image-plugin.ts` |
 | **text annotation** | the third kind: a line of text over the picture, a box in fractions that scales with its font, so the text grows and shrinks with the box | `TextAnnotation`, `TextGeometry`, `ui/annotating/text-plugin.ts` |
+| **colour** | one flat colour an annotation is drawn in, from the app's own palette; a kind has a default and the user may choose another | `AnnotationColour`, `colourOf()`, `COLOURS` |
+| **text entry** | the app's own dialog for typing a line — an input, Cancel and Add, Enter to confirm, Escape to cancel — used for entering a text and for editing its words | `ui/annotating/text-entry.ts` |
 | **image store** | where an image annotation's picture is kept, written once apart from the recording, and the decoded copy drawn each frame | `ImageStorePort`, `src/infra/images.ts` |
 | **annotation lane** | the row on the timeline marking each annotation at the start of its stretch, in kept time, so one can be found without playing the clip | `ui/annotating/annotation-lane.ts` |
 | **annotation layer** | the one place an annotation is drawn, used by playback and by the export alike, so the file matches the review — and the one place a picked annotation's grips are drawn, for every kind | `ui/annotating/annotation-layer.ts` |

@@ -23,8 +23,9 @@ import { session } from '../../session.js';
 import { ctx, el, toast } from '../dom.js';
 import { Span } from '../../domain/clip/Span.js';
 import type { Annotation, Point } from '../../domain/annotation/Annotation.js';
-import { copyControl, drawAnnotations, removeControl } from './annotation-layer.js';
-import { pluginOf, type AnnotationPlugin, type CreationContext } from './annotation-plugin.js';
+import { copyControl, drawAnnotations, removeControl, settingsControl } from './annotation-layer.js';
+import { pluginOf, propertiesOf, type AnnotationPlugin, type CreationContext } from './annotation-plugin.js';
+import { inspector } from './properties-inspector.js';
 import { drawFrame } from '../recording/preview.js';
 import { player } from '../clip/clip.js';
 import { playback } from '../clip/playback.js';
@@ -105,6 +106,9 @@ export class AnnotationCanvas {
 
   /** Pick an annotation from outside the picture (the timeline lane). */
   pick(id: string | null): void {
+    // The panel belongs to one annotation; a different pick closes it. The new one's
+    // opens from its own settings control.
+    if (this.pickId !== id) inspector.close();
     this.pickId = id;
     this.grab = null;
     announceSelection();
@@ -114,6 +118,7 @@ export class AnnotationCanvas {
   /** The annotation in hand is gone (removed, or the session ended). */
   forget(id?: string): void {
     if (id && this.pickId !== id) return;
+    inspector.close();
     this.pickId = null;
     this.grab = null;
     announceSelection();
@@ -123,6 +128,7 @@ export class AnnotationCanvas {
   cancel(): void {
     const pending = this.pending;
     this.disarm();
+    inspector.close();
     this.pickId = null;
     announceSelection();
     pending?.reject(new Error('the creation was let go'));
@@ -231,6 +237,15 @@ export class AnnotationCanvas {
         if (copy && this.canvasDistance(copy, p) <= slopPx * scale) {
           this.duplicate(picked);
           return;
+        }
+        // The settings control is drawn only for a kind with properties, so it is a
+        // press target only then — a kind with none has no dead spot beside it.
+        if (propertiesOf(picked).length > 0) {
+          const settings = settingsControl(picked, w, h, scale);
+          if (settings && this.canvasDistance(settings, p) <= slopPx * scale) {
+            inspector.toggle(picked);            // the inspector is the panel's owner
+            return;
+          }
         }
       }
     }

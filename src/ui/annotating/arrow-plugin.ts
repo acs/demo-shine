@@ -14,11 +14,12 @@
 // try is a drag away rather than a selection to be made again.
 
 import { Arrow } from '../../domain/annotation/Arrow.js';
+import { colourOf } from '../../domain/annotation/AnnotationColour.js';
 import type { Annotation } from '../../domain/annotation/Annotation.js';
 import { registerRenderer, type AnnotationRenderer } from './annotation-layer.js';
 import {
   registerPlugin,
-  type AnnotationAction, type AnnotationPlugin, type CreationContext,
+  type AnnotationAction, type AnnotationPlugin, type AnnotationProperty, type CreationContext,
 } from './annotation-plugin.js';
 
 const DRAFT_ID = 'draft';
@@ -29,11 +30,10 @@ const ACTION_ICON = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none"
 
 // ── the look ──────────────────────────────────────────────────────────────────
 //
-// One style, defined once: a shaft with a solid head, in the app's action colour,
-// with a thin dark edge so it reads over both light and dark pictures. The exact
-// colour is a one-line change; a per-arrow style editor is not in this change.
+// One style, defined once: a shaft with a solid head, in the annotation's colour —
+// the arrow's red unless the user chose another — with a thin dark edge so it reads
+// over both light and dark pictures at every colour the palette holds.
 
-const ACCENT = '#e53e3e';
 const OUTLINE = 'rgba(2,3,8,0.72)';
 
 /**
@@ -59,6 +59,18 @@ export class ArrowPlugin implements AnnotationPlugin, AnnotationRenderer<Annotat
     title: 'Annotate this section with an arrow',
     icon: ACTION_ICON,
   };
+
+  /** The arrow's colour — the app's red unless the user chose another. */
+  readonly properties: readonly AnnotationProperty[] = [
+    {
+      id: 'colour',
+      label: 'Colour',
+      control: 'colour',
+      value: annotation => (annotation instanceof Arrow ? annotation.colour : Arrow.DEFAULT_COLOUR),
+      with: (annotation, value) =>
+        annotation instanceof Arrow ? annotation.withColour(colourOf(value, Arrow.DEFAULT_COLOUR)) : null,
+    },
+  ];
 
   /** The arrow is its own renderer, so a kind is one object with one id. */
   get renderer(): AnnotationRenderer<Annotation> {
@@ -96,9 +108,9 @@ export class ArrowPlugin implements AnnotationPlugin, AnnotationRenderer<Annotat
     ctx.save();
     ctx.lineCap = 'round';
     this.line(ctx, x0, y0, bx, by, weight + edge * 2, OUTLINE);   // the dark edge first
-    this.line(ctx, x0, y0, bx, by, weight, ACCENT);
+    this.line(ctx, x0, y0, bx, by, weight, annotation.colour);
     this.head(ctx, bx, by, angle, size + edge * 2, OUTLINE);
-    this.head(ctx, bx, by, angle, size, ACCENT);
+    this.head(ctx, bx, by, angle, size, annotation.colour);
     ctx.restore();
   }
 

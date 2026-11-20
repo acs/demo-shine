@@ -6,10 +6,16 @@
 //
 // Everything a drag and a pick need is here, because it is geometry and not drawing:
 // the ends to take hold of, how the arrow moves and aims, and how close a point has
-// to be to be on it. How it *looks* is in `src/ui/annotating/annotation-layer.ts`, under the
-// same id — the domain may not touch a canvas.
+// to be to be on it. How it *looks* — and the colour it is drawn in — is the arrow's
+// plugin (`src/ui/annotating/arrow-plugin.ts`), under the same id; the domain may not
+// touch a canvas.
+//
+// The colour is part of the arrow, not of its shape: it is carried beside the ends and
+// written down with them, so an arrow that is aimed, moved or copied keeps the colour
+// it was given, and one stored before colours existed reads back in the arrow's red.
 
 import { Span } from '../clip/Span.js';
+import { colourOf, type AnnotationColour } from './AnnotationColour.js';
 import {
   Annotation, newAnnotationId,
   type AnnotationHandle, type Point, type StoredAnnotation,
@@ -50,7 +56,13 @@ function distanceToSegment(px: number, py: number, x0: number, y0: number, x1: n
 export class Arrow extends Annotation {
   static readonly id = 'arrow';
 
-  private constructor(id: string, span: Span, readonly from: Point, readonly to: Point) {
+  /** The colour an arrow has when none is chosen — the app's action red. */
+  static readonly DEFAULT_COLOUR: AnnotationColour = '#e53e3e';
+
+  private constructor(
+    id: string, span: Span, readonly from: Point, readonly to: Point,
+    readonly colour: AnnotationColour,
+  ) {
     super(id, span, Arrow.id);
   }
 
@@ -58,16 +70,19 @@ export class Arrow extends Annotation {
    * A new arrow, both points pulled inside the picture. Null when the two are so
    * close that it is a stray click rather than an arrow.
    */
-  static create(span: Span, from: Point, to: Point, id: string = newAnnotationId()): Arrow | null {
-    const arrow = new Arrow(id, span, point(from), point(to));
+  static create(
+    span: Span, from: Point, to: Point,
+    id: string = newAnnotationId(), colour: AnnotationColour = Arrow.DEFAULT_COLOUR,
+  ): Arrow | null {
+    const arrow = new Arrow(id, span, point(from), point(to), colourOf(colour, Arrow.DEFAULT_COLOUR));
     return arrow.isUsable ? arrow : null;
   }
 
   /** Rebuild one from what was written down. Null when it is not an arrow to draw. */
   static restore(stored: StoredAnnotation): Arrow | null {
     const g = stored.geometry as
-      { from?: { x?: unknown; y?: unknown }; to?: { x?: unknown; y?: unknown } } | null | undefined;
-    return Arrow.create(Span.of(stored.s, stored.e), point(g?.from), point(g?.to), stored.id);
+      { from?: { x?: unknown; y?: unknown }; to?: { x?: unknown; y?: unknown }; colour?: unknown } | null | undefined;
+    return Arrow.create(Span.of(stored.s, stored.e), point(g?.from), point(g?.to), stored.id, colourOf(g?.colour, Arrow.DEFAULT_COLOUR));
   }
 
   /** Is this worth keeping, or a stray click? */
@@ -80,6 +95,11 @@ export class Arrow extends Annotation {
     return { from: this.from, to: this.to };
   }
 
+  /** The same arrow, same ends and stretch, in another colour. */
+  withColour(colour: AnnotationColour): Arrow {
+    return new Arrow(this.id, this.span, this.from, this.to, colourOf(colour, Arrow.DEFAULT_COLOUR));
+  }
+
   handles(): readonly AnnotationHandle[] {
     return [
       { x: this.from.x, y: this.from.y, end: 'from' },
@@ -88,8 +108,8 @@ export class Arrow extends Annotation {
   }
 
   withHandle(end: string, to: Point): Arrow | null {
-    if (end === 'from') return Arrow.create(this.span, to, this.to, this.id);
-    if (end === 'to')   return Arrow.create(this.span, this.from, to, this.id);
+    if (end === 'from') return Arrow.create(this.span, to, this.to, this.id, this.colour);
+    if (end === 'to')   return Arrow.create(this.span, this.from, to, this.id, this.colour);
     return null;
   }
 
@@ -99,20 +119,21 @@ export class Arrow extends Annotation {
       { x: this.from.x + dx, y: this.from.y + dy },
       { x: this.to.x + dx, y: this.to.y + dy },
       this.id,
+      this.colour,
     );
   }
 
   withSpan(span: Span): Arrow {
     // The stretch says when it is shown, not what shape it is, so it can never make
     // an arrow unusable — the ends are untouched.
-    return new Arrow(this.id, span, this.from, this.to);
+    return new Arrow(this.id, span, this.from, this.to, this.colour);
   }
 
   duplicated(span: Span): Arrow {
     // Built straight rather than through `create`: this came from an arrow that is
     // already inside the picture and already worth keeping, so there is nothing left
     // to normalise or refuse.
-    return new Arrow(newAnnotationId(), span, this.from, this.to);
+    return new Arrow(newAnnotationId(), span, this.from, this.to, this.colour);
   }
 
   hitTest(x: number, y: number, w: number, h: number, tolerancePx: number): boolean {
@@ -126,7 +147,7 @@ export class Arrow extends Annotation {
       kind: this.kind,
       s: this.span.s,
       e: this.span.e,
-      geometry: { from: this.from, to: this.to },
+      geometry: { from: this.from, to: this.to, colour: this.colour },
     };
   }
 }

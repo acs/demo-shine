@@ -126,7 +126,9 @@ describe('the annotation layer', () => {
   it('draws grips only for the picked annotation, at its own ends', () => {
     const { ctx, arcs } = fakeCtx();
     drawAnnotations(ctx, 320, 180, [arrow('a'), arrow('b')], 'b');
-    expect(arcs.length).toBe(4);                 // the two ends, and the two controls
+    // The two ends, then the three controls: the × and the copy are discs, and the
+    // settings control is a disc with three slider knobs — the arrow offers a property.
+    expect(arcs.length).toBe(8);
     expect(arcs[0].x).toBeCloseTo(0.1 * 320);
     expect(arcs[1].x).toBeCloseTo(0.9 * 320);
 

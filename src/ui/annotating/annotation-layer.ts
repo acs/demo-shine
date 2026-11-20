@@ -28,6 +28,7 @@
 // still, so a hold or a seek shows the annotation settled.
 
 import type { Annotation } from '../../domain/annotation/Annotation.js';
+import { propertiesOf } from './annotation-plugin.js';
 
 export interface AnnotationRenderer<A extends Annotation> {
   readonly id: string;
@@ -122,11 +123,12 @@ function screenScale(ctx: CanvasRenderingContext2D): number {
 const CONTROL_GAP = 22;  // screen px from the annotation's middle to a control, so it clears it
 const CONTROL_R   = 12;  // screen px: bigger than a grip — a button, and a finger's, not a cursor's
 
-type Control = 'remove' | 'copy';
+type Control = 'remove' | 'copy' | 'settings';
 
-// Which side of the middle a control sits on: the × on one, the copy on the other.
+// How far from the middle a control sits, in gaps: the × on one side, the copy on the
+// other, the settings a further gap out so the three never overlap.
 function controlSpot(
-  annotation: Annotation, w: number, h: number, scale: number, side: 1 | -1,
+  annotation: Annotation, w: number, h: number, scale: number, offset: number,
 ): { x: number; y: number } | null {
   const ends = annotation.handles();
   if (ends.length < 2) return null;
@@ -134,7 +136,7 @@ function controlSpot(
   const dx = (b.x - a.x) * w, dy = (b.y - a.y) * h;
   const len = Math.hypot(dx, dy);
   if (len < 1) return null;
-  const gap = CONTROL_GAP * scale * side;
+  const gap = CONTROL_GAP * scale * offset;
   const x = ((a.x + b.x) / 2) * w - (dy / len) * gap;
   const y = ((a.y + b.y) / 2) * h + (dx / len) * gap;
   const clamp = (v: number, hi: number) => (v < 0 ? 0 : v > hi ? hi : v);
@@ -160,6 +162,13 @@ export function copyControl(
   return controlSpot(annotation, w, h, scale, -1);
 }
 
+/** Where the settings control sits: a further gap out again, on the copy's side. */
+export function settingsControl(
+  annotation: Annotation, w: number, h: number, scale: number,
+): { x: number; y: number } | null {
+  return controlSpot(annotation, w, h, scale, -2);
+}
+
 const ACCENT = '#e53e3e';
 
 function drawHandles(ctx: CanvasRenderingContext2D, annotation: Annotation, w: number, h: number): void {
@@ -179,6 +188,11 @@ function drawHandles(ctx: CanvasRenderingContext2D, annotation: Annotation, w: n
     ['remove', removeControl(annotation, w, h, scale)],
     ['copy', copyControl(annotation, w, h, scale)],
   ];
+  // The settings control exists only for a kind that has something to change; a kind
+  // with no properties would only open an empty panel.
+  if (propertiesOf(annotation).length > 0) {
+    controls.push(['settings', settingsControl(annotation, w, h, scale)]);
+  }
   for (const [control, spot] of controls) {
     if (spot) drawControl(ctx, control, spot.x * w, spot.y * h, CONTROL_R * scale, scale);
   }
@@ -207,6 +221,25 @@ function drawControl(ctx: CanvasRenderingContext2D, control: Control, x: number,
     ctx.moveTo(x + k, y - k);
     ctx.lineTo(x - k, y + k);
     ctx.stroke();
+    return;
+  }
+
+  // The settings control: three sliders, the mark everyone reads as "change something".
+  if (control === 'settings') {
+    const half = r * 0.62;
+    const rows = [-0.4, 0, 0.4];
+    const knobs = [0.25, -0.35, 0.3];
+    rows.forEach((ry, i) => {
+      const cy = y + ry * r;
+      ctx.beginPath();
+      ctx.moveTo(x - half, cy);
+      ctx.lineTo(x + half, cy);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x + knobs[i] * half, cy, Math.max(1, r * 0.14), 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+    });
     return;
   }
 

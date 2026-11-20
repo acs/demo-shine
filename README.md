@@ -87,6 +87,7 @@ democlip/
 │   │   ├── Arrow.ts        # The first kind: its two ends, its aiming, its hit test
 │   │   ├── ImageAnnotation.ts # The second kind: a picture's rect, resized keeping proportions
 │   │   ├── TextAnnotation.ts  # The third kind: a line's box, scaled from a corner
+│   │   ├── AnnotationColour.ts # The colours an annotation may be drawn in, and how one is read back
 │   │   ├── AnnotationSet.ts # The clip's annotations: identified, and free to overlap
 │   │   └── kinds.ts        # The register: how a written-down annotation is read back
 │   ├── domain/session/   # The sitting: the clip and the audio flag
@@ -152,6 +153,8 @@ democlip/
 │       │   ├── arrow-plugin.ts        # The arrow kind: its look and its drag-to-draw
 │       │   ├── image-plugin.ts        # The image kind: choose a picture, place and draw it
 │       │   ├── text-plugin.ts         # The text kind: type a line, place and scale it
+│       │   ├── properties-inspector.ts # What a picked annotation's kind offers, shown and edited
+│       │   ├── text-entry.ts          # The one dialog for typing a line, entering and editing
 │       │   ├── annotation-lane.ts     # The timeline lane: where the annotations are
 │       │   └── annotation-clipboard.ts # The annotation a copy put aside, for a paste (Clipboard)
 │       ├── exporting/      # Writing the file
