@@ -80,7 +80,8 @@ export interface AgentSurface {
   /** The editing operations, each the app's own. */
   readonly edit: {
     cut(from: number, to: number): Result<{ removed: number }>;
-    annotate(kind: string, params: AnnotationParams): Result<{ id: string }>;
+    /** May wait on the browser: an image's picture is decoded and kept first. */
+    annotate(kind: string, params: AnnotationParams): Promise<Result<{ id: string }>>;
     setProperty(id: string, property: string, value: string): Result<{ value: string }>;
     remove(id: string): Result<{ kind: string }>;
     undo(): Result<{ change: string }>;

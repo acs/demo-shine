@@ -14,6 +14,7 @@ Named in the app's vocabulary, so a person reading the chat recognises what was 
 | `describe_clip` | — | the clip as data (length, kept length, takes, cuts, annotations with their properties) |
 | `cut` | `from`, `to` (fractions of the clip) | what was removed, in seconds |
 | `annotate` | `kind`, the shape's own numbers, and the stretch | the new annotation's id |
+| `add_image` | the stretch, and where the rect goes (optional); the picture is read from the person's clipboard, not passed in | the new annotation's id |
 | `set_property` | `id`, `property`, `value` | the value that now holds |
 | `remove_annotation` | `id` | the annotation that went |
 | `undo` | — | what was taken back |
@@ -26,7 +27,10 @@ Named in the app's vocabulary, so a person reading the chat recognises what was 
 **Guarantees**
 
 - **one tool per operation**, and no tool that evaluates code, scripts the page, reads or
-  writes a file, or reaches the network except through `publish_clip` (spec FR-015);
+  writes a file, or reaches the network except through `publish_clip` (spec FR-015).
+  **`add_image` reads the person's clipboard**, which is not a file and takes no path:
+  it is the one picture source an agent has for now, read in the server because a
+  browser gives a picture only to a focused window a hand has just touched;
 - **`turn_source_on` for `screen` is the server's own press**, not a call into the page:
   it is delivered as a real input event so the browser grants the activation the share
   picker needs (D2). Every other tool goes through the surface;

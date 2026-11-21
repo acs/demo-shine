@@ -9,7 +9,7 @@ import { TextAnnotation } from '../../domain/annotation/TextAnnotation.js';
 import type { TakeRepository } from '../../domain/clip/TakeRepository.js';
 import { registerPlugin, type AnnotationPlugin } from '../annotating/annotation-plugin.js';
 import { MIN_SECTION } from '../cutting/selection.js';
-import type { Made } from './edit.js';
+import type { MakeAnnotation } from './edit.js';
 
 // The editing operations, proved in node: what they do to the clip, and — the half
 // that matters most — what they refuse, and that a refusal leaves the clip alone.
@@ -56,7 +56,7 @@ const stubKind: AnnotationPlugin = {
   begin: () => {},
 };
 
-const editorOf = (clip: Clip, make = () => ({ reason: 'not in this check' }) as Made) =>
+const editorOf = (clip: Clip, make: MakeAnnotation = () => ({ reason: 'not in this check' })) =>
   createEditor(clip, make);
 
 describe('cut', () => {
@@ -83,37 +83,49 @@ describe('cut', () => {
 });
 
 describe('annotate', () => {
-  it('refuses a kind the app does not have', () => {
+  it('refuses a kind the app does not have', async () => {
     const clip = clipOf(10);
-    const result = editorOf(clip).annotate('hologram', { span: { s: 0.1, e: 0.4 } });
+    const result = await editorOf(clip).annotate('hologram', { span: { s: 0.1, e: 0.4 } });
     expect(result).toMatchObject({ ok: false });
     expect(clip.annotations.count).toBe(0);
   });
 
-  it('refuses a stretch that is too short to be shown over', () => {
+  it('refuses a stretch that is too short to be shown over', async () => {
     registerPlugin(stubKind);
     const clip = clipOf(10);
-    const result = editorOf(clip).annotate('stub', { span: { s: 0.1, e: 0.1 + MIN_SECTION / 2 } });
+    const result = await editorOf(clip).annotate('stub', { span: { s: 0.1, e: 0.1 + MIN_SECTION / 2 } });
     expect(result).toMatchObject({ ok: false });
     expect(clip.annotations.count).toBe(0);
   });
 
-  it('makes one through the kind\u2019s maker, and answers its id', () => {
+  it('makes one through the kind\u2019s maker, and answers its id', async () => {
     registerPlugin(stubKind);
     const clip = clipOf(10);
     const arrow = Arrow.create(Span.of(0.1, 0.4), { x: 0.2, y: 0.3 }, { x: 0.6, y: 0.7 });
     expect(arrow).not.toBeNull();
-    const result = editorOf(clip, () => ({ annotation: arrow! })).annotate('stub', { span: { s: 0.1, e: 0.4 } });
+    const result = await editorOf(clip, () => ({ annotation: arrow! })).annotate('stub', { span: { s: 0.1, e: 0.4 } });
     expect(result).toEqual({ ok: true, id: arrow!.id });
     expect(clip.annotations.count).toBe(1);
   });
 
-  it('passes a maker\u2019s own refusal through, and leaves the clip alone', () => {
+  it('waits for a maker that has to read something first, as an image does', async () => {
     registerPlugin(stubKind);
     const clip = clipOf(10);
-    const result = editorOf(clip, () => ({ reason: 'an image\u2019s picture is the person\u2019s to choose' }))
+    const arrow = Arrow.create(Span.of(0.1, 0.4), { x: 0.2, y: 0.3 }, { x: 0.6, y: 0.7 })!;
+    // The maker answers later, as one that decodes and keeps a picture must: the clip
+    // takes the annotation only once there is one, and the answer still arrives.
+    const result = await editorOf(clip, () => Promise.resolve({ annotation: arrow }))
       .annotate('stub', { span: { s: 0.1, e: 0.4 } });
-    expect(result).toEqual({ ok: false, reason: 'an image\u2019s picture is the person\u2019s to choose' });
+    expect(result).toEqual({ ok: true, id: arrow.id });
+    expect(clip.annotations.count).toBe(1);
+  });
+
+  it('passes a maker\u2019s own refusal through, and leaves the clip alone', async () => {
+    registerPlugin(stubKind);
+    const clip = clipOf(10);
+    const result = await editorOf(clip, () => ({ reason: 'that picture could not be read' }))
+      .annotate('stub', { span: { s: 0.1, e: 0.4 } });
+    expect(result).toEqual({ ok: false, reason: 'that picture could not be read' });
     expect(clip.annotations.count).toBe(0);
   });
 });

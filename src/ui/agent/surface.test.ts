@@ -74,7 +74,7 @@ describe('the gate', () => {
       takes: { start: () => ({ ok: true }), stop: async () => ({ ok: false, reason: 'none' }) },
       edit: {
         cut: () => ({ ok: true, removed: 0 }),
-        annotate: () => ({ ok: false, reason: 'none' }),
+        annotate: async () => ({ ok: false, reason: 'none' }),
         setProperty: () => ({ ok: false, reason: 'none' }),
         remove: () => ({ ok: false, reason: 'none' }),
         undo: () => ({ ok: false, reason: 'nothing to undo' }),

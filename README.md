@@ -77,10 +77,13 @@ picker; the agent can turn a source on and press Record, but what is *shared* is
 by you, in the picker, because that is the one thing a browser will not give away to
 anything but a hand. Then ask for the edit: *"cut the pauses, put an arrow on the button
 at 0:12, colour it yellow"*. The changes land in that window as you watch, and the app's
-own **undo** takes any of them back, in one action, whoever made it.
+own **undo** takes any of them back, in one action, whoever made it. Copy a screenshot
+and ask for it to be placed at 0:20, and the server reads your clipboard and adds it as
+an image annotation — no path and nothing to upload.
 
 The agent's reach is the app's own operations and nothing more — cut, annotate,
-set a property, remove, undo, seek, record a take, export, publish, and read the
+place the picture on your clipboard, set a property, remove, undo, seek, record a
+take, export, publish, and read the
 clip. There is no way for it to run code in the page, and the recording is never
 re-encoded. An export writes the same file a person would get, to your Downloads
 folder. A publish goes from **your** Bluesky account, signed in in that window —
@@ -197,6 +200,7 @@ democlip/
 │       │   ├── plugins.ts             # The view's register: one line per kind
 │       │   ├── arrow-plugin.ts        # The arrow kind: its look and its drag-to-draw
 │       │   ├── image-plugin.ts        # The image kind: choose a picture, place and draw it
+│       │   ├── picture.ts             # Preparing and placing a picture, for the picker and the clipboard
 │       │   ├── text-plugin.ts         # The text kind: type a line, place and scale it
 │       │   ├── properties-inspector.ts # What a picked annotation's kind offers, shown and edited
 │       │   ├── text-entry.ts          # The one dialog for typing a line, entering and editing
@@ -219,7 +223,7 @@ democlip/
 │           ├── surface.ts    # The operations, the gate, and the clip as data
 │           ├── describe.ts   # The clip described: length, takes, cuts, annotations, properties
 │           ├── edit.ts       # cut, annotate, set a property, remove, undo — each the app's own
-│           ├── make.ts       # Making an annotation of a kind from data alone
+│           ├── make.ts       # Making an annotation of a kind from data: an arrow, a text, an image's rect and picture
 │           ├── view.ts       # The transport: seek, play, pause
 │           ├── takes.ts      # The sources and the takes, through the app's own flow
 │           └── out.ts        # The file, and the post
@@ -232,6 +236,7 @@ democlip/
 │   │   ├── browser.ts      # Launching the browser, on a profile of its own
 │   │   ├── serve.ts        # Serving the app's build on loopback
 │   │   ├── tools.ts        # The tool list, in the app's own words
+│   │   ├── clipboard.ts    # The picture on the person's clipboard, read from the host
 │   │   ├── press.ts        # The one trusted press: turning the screen source on
 │   │   ├── downloads.ts    # Taking the exported file from the browser
 │   │   └── version.ts      # The version the server was built with, and the check

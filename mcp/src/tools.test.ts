@@ -11,6 +11,7 @@ describe('the tool list', () => {
       'describe_clip',
       'cut',
       'annotate',
+      'add_image',
       'set_property',
       'remove_annotation',
       'undo',
@@ -60,14 +61,20 @@ describe('the tool list', () => {
       expect(schema.type).toBe('object');
     }
     expect(byName.get('cut')!.inputSchema.required).toEqual(['from', 'to']);
+    expect(byName.get('add_image')!.inputSchema.required).toEqual(['span']);
     expect(byName.get('set_property')!.inputSchema.required).toEqual(['id', 'property', 'value']);
     expect(byName.get('seek')!.inputSchema.required).toEqual(['seconds']);
     for (const name of ['turn_source_on', 'turn_source_off']) {
       expect(byName.get(name)!.inputSchema.required).toEqual(['source']);
     }
-    // The kinds an agent may make are the ones whose shape is data.
+    // The kinds an agent may make are the ones whose shape is data. An image's shape is
+    // data too, but its picture is not: it comes from the clipboard, through its own
+    // tool, and is never something the agent invents.
     expect(byName.get('annotate')!.inputSchema.properties).toMatchObject({
       kind: { enum: ['arrow', 'text'] },
+    });
+    expect(byName.get('add_image')!.inputSchema.properties).toMatchObject({
+      span: { type: 'object' },
     });
     // An export writes one of the two containers the app writes.
     expect(byName.get('export_clip')!.inputSchema).toMatchObject({
@@ -78,7 +85,8 @@ describe('the tool list', () => {
 
   it('offers no tool that reads or writes a file of its own', () => {
     // `export_clip` writes a file, but it is the file the *app* writes, taken from the
-    // browser's own download; no tool takes a path, and none reaches the disk.
+    // browser's own download. `add_image` reads the person's clipboard, which is not a
+    // file and takes no path: no tool takes a path, and none reaches the disk.
     const paths = toolList().flatMap(tool => Object.keys(tool.inputSchema.properties ?? {}));
     expect(paths.some(key => /path|file|dir/i.test(key))).toBe(false);
   });
