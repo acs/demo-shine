@@ -27,7 +27,13 @@ describe('the server, end to end', () => {
       // bare `npm --prefix mcp test` works on a clean checkout.
       execSync('npm run build', { cwd: repoRoot, stdio: 'inherit' });
     }
-    session = await openSession({ headless: true });
+    // The build from *this checkout*, explicitly: the released server prefers the
+    // build packaged inside it, which is right for a release and wrong for a check —
+    // a stale packaged copy must never be able to make this pass.
+    session = await openSession({
+      headless: true,
+      appRoot: fileURLToPath(new URL('../../dist', import.meta.url)),
+    });
   }, 300_000);
 
   afterAll(async () => {
