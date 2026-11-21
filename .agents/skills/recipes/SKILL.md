@@ -99,3 +99,16 @@ the ratio, the byte size. A recipe that was reasoned about but never run says so
 
 Keep the app's vocabulary: name each operation as the tools name it, so a reader can
 follow the recipe in a chat and recognise every step.
+
+## Where a recipe travels
+
+These files are already in the format MCP reads: a directory holding a `SKILL.md`
+whose frontmatter carries `name` and `description`, with anything else referenced
+relative to it. MCP's **Skills over MCP** extension
+(`io.modelcontextprotocol/skills`, SEP-2640, Beta) serves exactly that shape over the
+existing `resources` primitive, discovered through `skills/list` and `skills/get`, so
+a client could load these recipes from the server itself rather than from a checkout.
+
+Serving them is not built yet. A skill is read only by an agent that has it installed,
+so today these reach agents working in the repo; reaching the agent driving the app
+through MCP is the follow-up this section names.
