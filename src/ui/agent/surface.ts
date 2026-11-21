@@ -15,7 +15,7 @@
 // node, beside it.
 
 /** What an operation answers: the outcome, or a reason it did nothing. */
-export type Result<T = Record<string, never>> = ({ ok: true } & T) | { ok: false; reason: string };
+export type Result<T = object> = ({ ok: true } & T) | { ok: false; reason: string };
 
 /** One take of the clip: where it sits, and how long it is. */
 export interface TakeSummary {
@@ -70,6 +70,27 @@ export interface AgentSurface {
   readonly version: string;
   /** What the clip is, as data. Read-only. */
   describe(): ClipDescription;
+  /** Which sources are on. Read-only — turning the screen on is the server's own press. */
+  sources(): SourceState;
+  /** The takes, through the app's own recording flow. */
+  readonly takes: {
+    start(): Result;
+    stop(): Promise<Result<{ take: TakeSummary }>>;
+  };
+  /** The editing operations, each the app's own. */
+  readonly edit: {
+    cut(from: number, to: number): Result<{ removed: number }>;
+    annotate(kind: string, params: AnnotationParams): Result<{ id: string }>;
+    setProperty(id: string, property: string, value: string): Result<{ value: string }>;
+    remove(id: string): Result<{ kind: string }>;
+    undo(): Result<{ change: string }>;
+  };
+  /** The transport, in the app's own terms. */
+  readonly view: {
+    seek(seconds: number): Result<{ at: number }>;
+    play(): Result;
+    pause(): Result;
+  };
 }
 
 /** Was this page opened asking to be driven? The whole of the gate. */
@@ -81,6 +102,10 @@ export function agentAskedFor(search: string): boolean {
 export interface AgentParts {
   readonly version: string;
   readonly describe: () => ClipDescription;
+  readonly sources: () => SourceState;
+  readonly takes: AgentSurface['takes'];
+  readonly edit: AgentSurface['edit'];
+  readonly view: AgentSurface['view'];
 }
 
 /** The surface: the parts it was given, and nothing else of its own. */
@@ -88,6 +113,10 @@ export function createAgentSurface(parts: AgentParts): AgentSurface {
   return {
     version: parts.version,
     describe: parts.describe,
+    sources: parts.sources,
+    takes: parts.takes,
+    edit: parts.edit,
+    view: parts.view,
   };
 }
 

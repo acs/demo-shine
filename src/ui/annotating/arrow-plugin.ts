@@ -14,7 +14,7 @@
 // try is a drag away rather than a selection to be made again.
 
 import { Arrow } from '../../domain/annotation/Arrow.js';
-import { colourOf } from '../../domain/annotation/AnnotationColour.js';
+import { isColour } from '../../domain/annotation/AnnotationColour.js';
 import type { Annotation } from '../../domain/annotation/Annotation.js';
 import { registerRenderer, type AnnotationRenderer } from './annotation-layer.js';
 import {
@@ -68,7 +68,10 @@ export class ArrowPlugin implements AnnotationPlugin, AnnotationRenderer<Annotat
       control: 'colour',
       value: annotation => (annotation instanceof Arrow ? annotation.colour : Arrow.DEFAULT_COLOUR),
       with: (annotation, value) =>
-        annotation instanceof Arrow ? annotation.withColour(colourOf(value, Arrow.DEFAULT_COLOUR)) : null,
+        // A value the palette does not hold is refused, not silently turned into the
+        // default: a caller asking for a colour that is not one of ours is told so,
+        // rather than being handed the arrow's red and told it worked.
+        annotation instanceof Arrow && isColour(value) ? annotation.withColour(value) : null,
     },
   ];
 

@@ -22,6 +22,8 @@ interface PageWindow {
 export interface Booted {
   /** Navigate to "/" and wait until the status chip reads Ready. */
   goto(): Promise<void>;
+  /** Navigate with the flag that asks the app to publish its automation surface. */
+  gotoAgent(): Promise<void>;
   /** Clear the clip, so no check inherits state. */
   clear(): Promise<void>;
   /** Clear the clip and add the given takes, through the app's own module. */
@@ -33,11 +35,18 @@ export interface Booted {
 }
 
 export function boot(page: Page): Booted {
+  // A person-visible signal, not a fixed timeout: the chip says the app is up.
+  const ready = async () => expect(page.locator('#s-text')).toHaveText('Ready');
+
   return {
     async goto() {
       await page.goto('/');
-      // A person-visible signal, not a fixed timeout: the chip says the app is up.
-      await expect(page.locator('#s-text')).toHaveText('Ready');
+      await ready();
+    },
+
+    async gotoAgent() {
+      await page.goto('/?agent=1');
+      await ready();
     },
 
     async clear() {

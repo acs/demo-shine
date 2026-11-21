@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { COLOURS, colourOf } from './AnnotationColour.js';
+import { COLOURS, colourOf, isColour } from './AnnotationColour.js';
 
 describe('the annotation colour', () => {
   it('takes every colour the palette holds', () => {
@@ -20,5 +20,16 @@ describe('the annotation colour', () => {
   it('answers the fallback the kind gave it, not one of its own', () => {
     expect(colourOf('nonsense', '#111827')).toBe('#111827');
     expect(colourOf('nonsense', '#e53e3e')).toBe('#e53e3e');
+  });
+
+  // The predicate the kinds use to *refuse* a value rather than fall back to the
+  // default: a caller asking for a colour that is not ours is told so, which is what
+  // lets a property change from outside the app be refused rather than quietly
+  // turned into the arrow's red.
+  it('says which values are colours, and which are not', () => {
+    for (const colour of COLOURS) expect(isColour(colour)).toBe(true);
+    for (const value of [undefined, null, '', 'red', '#E53E3E', 42, {}, [], true]) {
+      expect(isColour(value)).toBe(false);
+    }
   });
 });

@@ -66,10 +66,27 @@ describe('the gate', () => {
     expect(agentAskedFor('?other=1')).toBe(false);
   });
 
-  it('publishes the version it was handed, and nothing else', () => {
-    const surface = createAgentSurface({ version: '1.2.3', describe: () => describeClip(clipOf()) });
+  it('publishes the version it was handed, and the app\u2019s own operations', () => {
+    const surface = createAgentSurface({
+      version: '1.2.3',
+      describe: () => describeClip(clipOf()),
+      sources: () => ({ screen: false, webcam: false, microphone: false }),
+      takes: { start: () => ({ ok: true }), stop: async () => ({ ok: false, reason: 'none' }) },
+      edit: {
+        cut: () => ({ ok: true, removed: 0 }),
+        annotate: () => ({ ok: false, reason: 'none' }),
+        setProperty: () => ({ ok: false, reason: 'none' }),
+        remove: () => ({ ok: false, reason: 'none' }),
+        undo: () => ({ ok: false, reason: 'nothing to undo' }),
+      },
+      view: {
+        seek: () => ({ ok: true, at: 0 }),
+        play: () => ({ ok: true }),
+        pause: () => ({ ok: true }),
+      },
+    });
     expect(surface.version).toBe('1.2.3');
-    expect(Object.keys(surface).sort()).toEqual(['describe', 'version']);
+    expect(Object.keys(surface).sort()).toEqual(['describe', 'edit', 'sources', 'takes', 'version', 'view']);
   });
 });
 

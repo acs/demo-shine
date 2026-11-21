@@ -7,7 +7,19 @@ import { findTool, toolDefinitions, toolList } from './tools.js';
 
 describe('the tool list', () => {
   it('offers one tool per operation, named in the app\u2019s vocabulary', () => {
-    expect(toolList().map(tool => tool.name)).toEqual(['describe_clip']);
+    expect(toolList().map(tool => tool.name)).toEqual([
+      'describe_clip',
+      'cut',
+      'annotate',
+      'set_property',
+      'remove_annotation',
+      'undo',
+      'seek',
+      'start_take',
+      'stop_take',
+      'turn_source_on',
+      'turn_source_off',
+    ]);
   });
 
   it('offers no tool that evaluates code or scripts the page', () => {
@@ -34,5 +46,26 @@ describe('the tool list', () => {
   it('finds a tool by name, and nothing for a name it does not offer', () => {
     expect(findTool('describe_clip')?.name).toBe('describe_clip');
     expect(findTool('run_anything')).toBeNull();
+  });
+
+  it('names each operation in the app\u2019s words, with the inputs the app takes', () => {
+    const byName = new Map(toolList().map(tool => [tool.name, tool]));
+    // The stretch a cut or an annotation is shown over is a fraction of the clip,
+    // as everywhere else in the app, so a tool call and a person's edit mean the
+    // same moment.
+    for (const name of ['cut', 'annotate']) {
+      const schema = byName.get(name)!.inputSchema;
+      expect(schema.type).toBe('object');
+    }
+    expect(byName.get('cut')!.inputSchema.required).toEqual(['from', 'to']);
+    expect(byName.get('set_property')!.inputSchema.required).toEqual(['id', 'property', 'value']);
+    expect(byName.get('seek')!.inputSchema.required).toEqual(['seconds']);
+    for (const name of ['turn_source_on', 'turn_source_off']) {
+      expect(byName.get(name)!.inputSchema.required).toEqual(['source']);
+    }
+    // The kinds an agent may make are the ones whose shape is data.
+    expect(byName.get('annotate')!.inputSchema.properties).toMatchObject({
+      kind: { enum: ['arrow', 'text'] },
+    });
   });
 });

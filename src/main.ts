@@ -4,6 +4,10 @@ import { el, setStatus, toast } from './ui/dom.js';
 import { initVersion, appVersion } from './ui/shell/version.js';
 import { agentAskedFor, createAgentSurface } from './ui/agent/surface.js';
 import { describeClip } from './ui/agent/describe.js';
+import { createEditor } from './ui/agent/edit.js';
+import { makeAnnotation } from './ui/agent/make.js';
+import { createViewer } from './ui/agent/view.js';
+import { createTakes, type Recording, type SourceName } from './ui/agent/takes.js';
 import { onPhaseChange, currentPhase, type Phase } from './state.js';
 import { session } from './session.js';
 import { loadPrefs } from './prefs.js';
@@ -18,7 +22,7 @@ import { initAnnotationLane } from './ui/annotating/annotation-lane.js';
 import { inspector } from './ui/annotating/properties-inspector.js';
 import { textEntry } from './ui/annotating/text-entry.js';
 import { initViewLifetime } from './ui/lifecycle/view-lifetime.js';
-import { toggleRecord, toggleScreen, syncSources, onScreenEnded, initRecordFlow } from './ui/recording/record-flow.js';
+import { toggleRecord, toggleScreen, syncSources, onScreenEnded, initRecordFlow, startTake, stopRecording, hasPicture } from './ui/recording/record-flow.js';
 import { doExport } from './ui/exporting/export-flow.js';
 import { startNewSession } from './ui/lifecycle/new-session-flow.js';
 import { playback, initPlaybackKeys } from './ui/clip/playback.js';
@@ -167,8 +171,35 @@ function init(): void {
     window.democlip = createAgentSurface({
       version: appVersion(),
       describe: () => describeClip(session.clip),
+      sources: () => recording.sources(),
+      takes: createTakes(session.clip, recording),
+      edit: createEditor(session.clip, makeAnnotation),
+      view: createViewer(playback, currentPhase, () => session.clip.total()),
     });
   }
 }
+
+// What the surface's recording operations drive: the app's own toggles and flows, so
+// a take an agent starts is a take a person sees. The screen source is turned *off*
+// here and never on — turning it on opens the picker, which is the person's.
+const recording: Recording = {
+  start: startTake,
+  stop: stopRecording,
+  hasPicture,
+  sources: () => ({
+    screen: capture.sources.screen,
+    webcam: capture.sources.webcam,
+    microphone: capture.sources.mic,
+  }),
+  turnOff: async (source: SourceName) => {
+    if (source === 'screen') await toggleScreen();
+    else if (source === 'webcam') { await toggleWebcam(); syncSources(); }
+    else { await toggleMic(); syncSources(); }
+  },
+  turnOn: async (source: SourceName) => {
+    if (source === 'webcam') { await toggleWebcam(); syncSources(); }
+    else if (source === 'microphone') { await toggleMic(); syncSources(); }
+  },
+};
 
 init();

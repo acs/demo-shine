@@ -16,7 +16,12 @@ export type AnnotationColour = (typeof COLOURS)[number];
 
 const KNOWN: ReadonlySet<string> = new Set(COLOURS);
 
+/** Is this one of the colours an annotation may be drawn in? */
+export function isColour(value: unknown): value is AnnotationColour {
+  return typeof value === 'string' && KNOWN.has(value);
+}
+
 /** The colour `value` means, or the fallback when it is not one of ours. */
 export function colourOf(value: unknown, fallback: AnnotationColour): AnnotationColour {
-  return typeof value === 'string' && KNOWN.has(value) ? (value as AnnotationColour) : fallback;
+  return isColour(value) ? value : fallback;
 }
