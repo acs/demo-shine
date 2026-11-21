@@ -28,6 +28,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          # The MCP server is published from the same merge; the token below is what
+          # lets `npm publish` in mcp/ authenticate.
+          registry-url: https://registry.npmjs.org
 
       # Every merge to main is a new version: the patch is bumped, the bump is
       # pushed back and tagged `vX.Y.Z`, and the build below bakes that number
@@ -35,6 +38,10 @@ jobs:
       # logo all agree. A push made with GITHUB_TOKEN does not start another run,
       # and `[skip ci]` says so as well. Bump the minor or major by hand before
       # merging when a release deserves it: see VERSIONING.md.
+      #
+      # The MCP server carries the same number, because a clip's written shape is a
+      # contract between the two: CI owns it, and stamps both in this one commit so
+      # they cannot drift.
       - name: Bump the version and tag it
         id: version
         run: |
@@ -43,13 +50,30 @@ jobs:
           npm version patch --no-git-tag-version
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          git add package.json package-lock.json
+          npm --prefix mcp run sync-version
+          npm --prefix mcp install --package-lock-only --no-audit --no-fund
+          git add package.json package-lock.json mcp/package.json mcp/package-lock.json
           git commit -m "chore: bump version to v$VERSION [skip ci]"
           git tag "v$VERSION"
           git push --atomic origin HEAD:main "v$VERSION"
 
       - run: npm ci
       - run: npm run build
+
+      # The server ships the app's own build inside it, which is what makes "the two
+      # agree on how a clip is written down" true by construction rather than a
+      # promise. No token is a skip, not a failure: the version was still stamped.
+      - name: Publish the MCP server
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "No NPM_TOKEN secret is set — the version was stamped and the server built, but nothing was published."
+            exit 0
+          fi
+          npm --prefix mcp run bundle-app
+          npm --prefix mcp run build
+          cd mcp && npm publish --access public
 
       - uses: actions/configure-pages@v6
         with:

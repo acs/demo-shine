@@ -56,3 +56,26 @@ jobs:
             test-results/
           retention-days: 7
           if-no-files-found: ignore
+
+  # The MCP server is a second artefact in this repository, so it is built and
+  # tested like one. Its integration check serves the app's own build, so the app is
+  # built first, and it opens a browser — the same Chromium the end-to-end suite uses.
+  mcp:
+    name: MCP server
+    runs-on: ubuntu-latest
+    env:
+      HUSKY: 0
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm --prefix mcp ci
+      - run: npm --prefix mcp run build
+      - run: npm --prefix mcp test

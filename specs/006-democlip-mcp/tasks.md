@@ -148,13 +148,13 @@ Two artefacts, per plan.md. The app keeps its four layers: domain in `src/domain
 
 ## Phase 6: Polish & Cross-Cutting Concerns (branches `feat/mcp-install-release`, `docs/agent-final`)
 
-- [ ] T039 [P] Add the README section on adding the server to a harness (OpenCode first): `opencode mcp add democlip -- npx -y democlip-mcp`, the config block, and the note that a harness may deny `democlip_publish_clip` while every other tool keeps working (`contracts/mcp-tools.md` §4).
-- [ ] T040 [P] Add the agent entry to `FEATURES.md`: a session the agent opens, edits in the person's sight, and exports or publishes.
-- [ ] T041 [P] Update the module maps: `README.md` (`src/ui/agent/`, `mcp/`) and `.agents/skills/overview/SKILL.md`, to the layout that actually landed.
-- [ ] T042 CI and release (plan step 6): add a job to `.github/workflows/ci.yml` that installs and tests the server (`npm --prefix mcp ci && npm --prefix mcp test`), and extend `.github/workflows/deploy.yml` so the same merge that bumps the app stamps `mcp/package.json` with the app's version and publishes the package **with the app's build inside it** — CI owns both versions, and they are the same one (`research.md` D3; spec FR-018; constitution VI).
-- [ ] T043 Packaging dry run: `npm run build`, build the server, and pack it locally — confirm the app's build is inside the package, the server runs from the packed copy, and its version equals the app's (`plan.md` step 6).
-- [ ] T044 Run the full gate from `package.json`, plus the server's: `npm run lint && npm run typecheck && npx vitest run && npm run build && npm run test:e2e` and `npm --prefix mcp test`.
-- [ ] T045 Run `quickstart.md` end to end and paste its output into the pull request, stating which Verification level each part got and what was **not** verified.
+- [x] T039 [P] Add the README section on adding the server to a harness (OpenCode first): `opencode mcp add democlip -- npx -y democlip-mcp`, the config block, and the note that a harness may deny `democlip_publish_clip` while every other tool keeps working (`contracts/mcp-tools.md` §4).
+- [x] T040 [P] Add the agent entry to `FEATURES.md`: a session the agent opens, edits in the person's sight, and exports or publishes.
+- [x] T041 [P] Update the module maps: `README.md` (`src/ui/agent/`, `mcp/`) and `.agents/skills/overview/SKILL.md`, to the layout that actually landed.
+- [x] T042 CI and release (plan step 6): add a job to `.github/workflows/ci.yml` that installs and tests the server (`npm --prefix mcp ci && npm --prefix mcp test`), and extend `.github/workflows/deploy.yml` so the same merge that bumps the app stamps `mcp/package.json` with the app's version and publishes the package **with the app's build inside it** — CI owns both versions, and they are the same one (`research.md` D3; spec FR-018; constitution VI).
+- [x] T043 Packaging dry run: `npm run build`, build the server, and pack it locally — confirm the app's build is inside the package, the server runs from the packed copy, and its version equals the app's (`plan.md` step 6).
+- [x] T044 Run the full gate from `package.json`, plus the server's: `npm run lint && npm run typecheck && npx vitest run && npm run build && npm run test:e2e` and `npm --prefix mcp test`.
+- [x] T045 Run `quickstart.md` end to end and paste its output into the pull request, stating which Verification level each part got and what was **not** verified.
 - [ ] T046 The real session, by the user (plan step 7): ask the agent to turn the screen source on and choose a window, tab or screen in the browser's own picker — if the press does not carry the activation the picker needs, FR-004 goes back to the source toggle being the person's and the spec is amended rather than the behaviour quietly weakened; and sign in to publish in that window, ask for a post, and look at it. Report both in the pull request (`quickstart.md` §4; `research.md` D2).
 
 ---
