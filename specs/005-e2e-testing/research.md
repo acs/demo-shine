@@ -115,8 +115,10 @@ Every open question in the Technical Context is resolved here. Nothing is left a
 
 - **Decision**: A second job, `e2e`, beside `quality` in
   `.github/workflows/ci.yml`: `npm ci`, `npx playwright install --with-deps
-  chromium`, `npm run test:e2e`, and `actions/upload-artifact` of `test-results/`
-  **only on failure**. Chromium only.
+  chromium`, `npm run test:e2e`, and `actions/upload-artifact` (the GitHub
+  equivalent of GitLab's `artifacts:`) of `playwright-report/` and `test-results/`
+  **on every run**, with `retention-days: 7`. The evidence inside is failure-only,
+  because the config keeps it that way. Chromium only.
 - **Rationale**: FR-002 (block the merge) and FR-017 (evidence). Making the job a
   **required status check** is a repository setting the maintainer applies; the
   workflow only provides the job.

@@ -103,7 +103,8 @@ One execution of every check on a pull request.
 |---|---|---|
 | `outcomes` | per check: passed / failed / skipped | skipped is distinct from passed |
 | `duration` | number | under 5 minutes, the browser install included (SC-004) |
-| `evidence` | `EvidenceArtifact[]` | produced **only on failure** |
+| `report` | file | the HTML report, written every run, uploaded as a CI artifact |
+| `evidence` | `EvidenceArtifact[]` | produced **only on failure**, and embedded in the report |
 
 **Rule**: the run is deterministic — the same code gives the same outcomes every run;
 an intermittent failure is a bug fixed at its source, never waited out (SC-003,
@@ -115,8 +116,8 @@ What a failed run leaves behind for a reader.
 
 | Field | Type | Rule |
 |---|---|---|
-| `kind` | `trace` \| `screenshot` \| `video` \| `log` | a trace on first retry; a screenshot and video on failure |
-| `path` | string | under `test-results/`, uploaded by the CI job on failure |
+| `kind` | `trace` \| `screenshot` \| `video` \| `log` | a trace, a screenshot and a video, each kept on failure |
+| `path` | string | under `test-results/`; the CI job uploads `test-results/` and the report as an artifact on every run |
 
 **Rule**: enough to see what happened **without re-running locally** (FR-017).
 

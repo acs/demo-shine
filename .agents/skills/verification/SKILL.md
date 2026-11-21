@@ -62,7 +62,8 @@ then on, where a harness deleted before the commit left nothing behind.
    `npx playwright test --config e2e/playwright.config.ts e2e/checks/cutting.spec.ts`).
    The dev server is started for you.
 5. Commit the check with the change. A failing run leaves a trace, a screenshot and
-   a video under `test-results/`; CI uploads them on failure.
+   a video under `test-results/`, and the CI job keeps the report and the evidence as
+   artifacts on every run (GitHub's answer to GitLab's artifacts).
 
 A check that cannot run in its environment calls `test.skip(true, '<reason>')` — it
 is reported **skipped**, with the reason, and never counted as a pass.

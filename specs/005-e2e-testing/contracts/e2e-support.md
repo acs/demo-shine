@@ -123,8 +123,14 @@ e2e:
     - run: npx playwright install --with-deps chromium
     - run: npm run test:e2e
     - uses: actions/upload-artifact@v6
-      if: failure()
-      with: { name: playwright-evidence, path: test-results/ }
+      if: always()
+      with:
+        name: playwright-artifacts
+        path: |
+          playwright-report/
+          test-results/
+        retention-days: 7
+        if-no-files-found: ignore
 ```
 
 **Contract**:
@@ -133,7 +139,9 @@ e2e:
   failure blocks the merge (FR-002).
 - Chromium only (R10).
 - The whole job stays **under 5 minutes** (SC-004).
-- Evidence is uploaded **only on failure** (FR-017).
+- The report and the evidence are kept as **artifacts on every run** — GitHub's
+  `actions/upload-artifact` is GitLab's `artifacts:` — with a `retention-days` cap;
+  the evidence inside is failure-only, because the config keeps it that way (FR-017).
 - `package.json` gains `"test:e2e": "playwright test --config e2e/playwright.config.ts"`; `version` is not touched.
 
 ## 6. The runner config — `e2e/playwright.config.ts`

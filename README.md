@@ -249,8 +249,9 @@ Unit tests live beside the rules they prove (`src/domain/`, `src/application/`);
 anything drawn, played or encoded is proven by a committed check in the
 end-to-end suite. Run it with `npm run test:e2e`; it drives the real app on the
 dev server, builds a clip from deterministic fixture takes without recording
-one, and leaves a trace, screenshot and video when a check fails. What counts as
-proof, and what to say about what you could not check, is in
+one, and leaves a trace, screenshot and video when a check fails. The CI job
+keeps the report and that evidence as downloadable artifacts, the way GitLab
+does. What counts as proof, and what to say about what you could not check, is in
 [`.agents/skills/verification`](.agents/skills/verification/SKILL.md).
 
 **How the project is worked on is written down**, so it does not have to be
