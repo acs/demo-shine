@@ -22,6 +22,12 @@ export class Meter {
     this.analyser = this.context.createAnalyser();
     this.analyser.fftSize = 256;
     source.connect(this.analyser);
+    // A browser strict about autoplay hands the context back suspended, and this one
+    // is built after `getUserMedia` resolved — outside the click that asked for the
+    // microphone. Suspended, the analyser reads nothing and the meter sits dead while
+    // the person talks into a microphone that records perfectly well. So it is asked
+    // to run; the graph keeps it alive as long as the microphone is on.
+    void this.context.resume();
     el.vu.classList.add('on');
     const data = new Uint8Array(this.analyser.frequencyBinCount);
     const draw = () => {
