@@ -5,6 +5,7 @@
 // them there — and the test holds only their metadata.
 
 import type { Page } from '@playwright/test';
+import { pageModule } from '../helpers/page-module.js';
 
 export interface FixtureSpec {
   width: number;
@@ -36,8 +37,9 @@ export async function makeTake(page: Page, spec: FixtureSpec): Promise<FixtureTa
 
 /** Build several takes in the page, for a multi-take clip. */
 export async function makeTakes(page: Page, ...specs: FixtureSpec[]): Promise<FixtureTake[]> {
-  return page.evaluate(async (specs) => {
-    const mod = await import('/e2e/fixtures/encode-take.ts');
+  const url = pageModule('e2e/fixtures/encode-take.ts');
+  return page.evaluate(async ({ specs, url }) => {
+    const mod = await import(/* @vite-ignore */ url);
     const store = ((window as unknown as PageWindow).__e2eTakes ??= []);
     const metas: FixtureTake[] = [];
     for (const spec of specs) {
@@ -46,5 +48,5 @@ export async function makeTakes(page: Page, ...specs: FixtureSpec[]): Promise<Fi
       metas.push({ index, seconds: take.seconds, shape: take.shape, hasAudio: take.hasAudio });
     }
     return metas;
-  }, specs);
+  }, { specs, url });
 }

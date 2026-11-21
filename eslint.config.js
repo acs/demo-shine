@@ -4,7 +4,7 @@ import globals from 'globals';
 
 export default tseslint.config(
   // Compiled output and generated files are not linted.
-  { ignores: ['dist/**', 'node_modules/**', '.husky/**', 'src/**/*.js'] },
+  { ignores: ['dist/**', 'node_modules/**', '.husky/**', 'src/**/*.js', 'playwright-report/**', 'test-results/**'] },
 
   js.configs.recommended,
   ...tseslint.configs.recommended,

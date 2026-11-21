@@ -1,15 +1,19 @@
 // The boot helper: load the real app, wait for it to be ready, seed a clip.
 //
 // It changes no application code. A check reaches the app through the dev server's
-// own module URLs — `/src/session.js` is the same module instance main.ts imports —
-// exactly as a browser would, so no test hook is added to the app.
+// own module URLs — the same module instances the app loaded — exactly as a browser
+// would, so no test hook is added to the app.
 //
-// The imports go through `e2e/support/app-hooks.ts`, which Vite serves and rewrites
-// to the URLs the app loaded: importing `/src/session.js` here directly would make a
-// second instance the app's views never see.
+// The imports go through `e2e/support/app-hooks.ts`. The Vite root is `web/`, so a
+// module at the repository root is served at `/@fs/<absolute path>`; the hooks file's
+// own relative imports then resolve to the app's modules, so the suite and the app
+// share one instance of each.
 
 import { expect, type Page } from '@playwright/test';
+import { pageModule } from './page-module.js';
 import type { FixtureTake } from '../fixtures/takes.js';
+
+const HOOKS = pageModule('e2e/support/app-hooks.ts');
 
 interface PageWindow {
   __e2eTakes?: Array<{ blob: Blob; seconds: number }>;
@@ -37,37 +41,37 @@ export function boot(page: Page): Booted {
     },
 
     async clear() {
-      await page.evaluate(async () => {
-        const { session } = await import('/e2e/support/app-hooks.ts');
+      await page.evaluate(async (url) => {
+        const { session } = await import(/* @vite-ignore */ url);
         session.clip.clear();
-      });
+      }, HOOKS);
     },
 
     async seed(takes) {
-      await page.evaluate(async (indices) => {
-        const { session } = await import('/e2e/support/app-hooks.ts');
+      await page.evaluate(async ({ url, indices }) => {
+        const { session } = await import(/* @vite-ignore */ url);
         session.clip.clear();
         const store = (window as unknown as PageWindow).__e2eTakes ?? [];
         for (const index of indices) {
           const take = store[index];
           if (take) session.clip.addTake(take.blob, take.seconds);
         }
-      }, takes.map(take => take.index));
+      }, { url: HOOKS, indices: takes.map(take => take.index) });
     },
 
     async clipLength() {
-      return page.evaluate(async () => {
-        const { session } = await import('/e2e/support/app-hooks.ts');
+      return page.evaluate(async (url) => {
+        const { session } = await import(/* @vite-ignore */ url);
         return session.clip.total();
-      });
+      }, HOOKS);
     },
 
     async review() {
-      await page.evaluate(async () => {
-        const { setPhase, openReview } = await import('/e2e/support/app-hooks.ts');
+      await page.evaluate(async (url) => {
+        const { setPhase, openReview } = await import(/* @vite-ignore */ url);
         setPhase('review');
         await openReview(0, 0);
-      });
+      }, HOOKS);
       // openReview builds the strip in the background; wait for the first cell.
       await expect(page.locator('#thumbs canvas').first()).toBeVisible();
     },

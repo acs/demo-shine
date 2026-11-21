@@ -24,10 +24,13 @@ built from — the replacement for recording one.
 
 | Field | Type | Rule |
 |---|---|---|
-| `blob` | `Blob` | a **WebM** (`video/webm`) — `offline-encoder` reads takes with `formats: [WEBM]` |
+| `index` | number | where the take's blob is kept in the page, for `boot.seed` to read back |
 | `seconds` | number | the spec's `seconds`; the file carries a real duration and cues |
 | `shape` | string | `${width}×${height}`, for assertions on the strip |
 | `hasAudio` | boolean | whether the file carries a sound track |
+
+The blob itself **stays in the page** (it is a browser `Blob`, not something a test
+holds); the test carries only the metadata above.
 
 **Validation**: the blob decodes (the app's own `take-probe` reads its duration); the
 duration matches `seconds` to within one frame; two takes from the same spec are the
@@ -42,7 +45,7 @@ used through; its contract is in `contracts/e2e-support.md`.
 | Operation | Effect |
 |---|---|
 | `goto()` | navigate to `/` and wait for the status chip to read **Ready** |
-| `seed(takes)` | clear the clip and add the given takes, through `/src/session.js` |
+| `seed(takes)` | clear the clip and add the given takes, through the app's own module |
 | `clear()` | clear the clip, the kept copy and the stored pictures — so no check inherits state |
 
 **Rule**: the helper changes **no application code**; it reaches the app's own

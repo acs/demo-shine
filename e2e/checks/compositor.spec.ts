@@ -8,6 +8,9 @@
 import { expect, test } from '@playwright/test';
 import { boot } from '../helpers/app.js';
 import { installStandInShare } from '../helpers/stand-ins.js';
+import { pageModule } from '../helpers/page-module.js';
+
+const HOOKS = pageModule('e2e/support/app-hooks.ts');
 
 test('the compositor records the picture at its own size', async ({ page }) => {
   await installStandInShare(page, {
@@ -35,8 +38,8 @@ test('the compositor records the picture at its own size', async ({ page }) => {
   // The take lands when the probe has its length, a moment after the stop.
   await expect.poll(() => app.clipLength(), { timeout: 10_000 }).toBeGreaterThan(0.2);
 
-  const size = await page.evaluate(async () => {
-    const { session } = await import('/e2e/support/app-hooks.ts');
+  const size = await page.evaluate(async (url) => {
+    const { session } = await import(/* @vite-ignore */ url);
     const take = session.clip.takes.at(0);
     if (!take) return null;
     const video = document.createElement('video');
@@ -47,7 +50,7 @@ test('the compositor records the picture at its own size', async ({ page }) => {
       setTimeout(resolve, 3000);
     });
     return { width: video.videoWidth, height: video.videoHeight };
-  });
+  }, HOOKS);
 
   expect(size).toEqual({ width: 640, height: 360 });
 });

@@ -19,23 +19,28 @@ export interface FixtureSpec {
 }
 
 export interface FixtureTake {
-  blob: Blob;             // video/webm, real duration and cues
+  index: number;          // where its blob is kept in the page, for boot.seed
   seconds: number;
   shape: string;          // "1280×720"
   hasAudio: boolean;
 }
 
-/** Build one deterministic take. Resolves in milliseconds, never in real time. */
-export function makeTake(spec: FixtureSpec): Promise<FixtureTake>;
+/** Build one deterministic take in the page. Resolves in milliseconds, never in real time. */
+export function makeTake(page: Page, spec: FixtureSpec): Promise<FixtureTake>;
 
 /** Build several, for a multi-take clip. */
-export function makeTakes(...specs: FixtureSpec[]): Promise<FixtureTake[]>;
+export function makeTakes(page: Page, ...specs: FixtureSpec[]): Promise<FixtureTake[]>;
+
+/** A page-side module at the repository root, as the dev server serves it (`/@fs/...`). */
+export function pageModule(path: string): string;
 ```
 
 **Contract**:
 
 - The blob is **WebM** with a real duration and cues, produced with WebCodecs +
   Mediabunny (the app's own encoder path). It is not a `MediaRecorder` file.
+- The blob **stays in the page**; the test holds only its metadata and its index, and
+  `boot.seed` reads it back there.
 - The same spec yields the same take from run to run.
 - The blob decodes through the app's own `take-probe` and strip unchanged.
 - Nothing is committed as a binary; takes are generated in the check.
@@ -48,7 +53,7 @@ export interface Booted {
   goto(): Promise<void>;
   /** Clear the clip, the kept copy and the stored pictures. */
   clear(): Promise<void>;
-  /** Clear the clip and add the given takes, through /src/session.js. */
+  /** Clear the clip and add the given takes, through the app's own module. */
   seed(takes: FixtureTake[]): Promise<void>;
 }
 
@@ -60,9 +65,11 @@ export function boot(page: Page): Booted;
 
 - `goto()` waits on a **person-visible** signal (the status chip's text), not a fixed
   timeout.
-- `seed()` reaches the app through a dynamic import of `/src/session.js` in page
-  context — the same module instance the views use — so no test hook is added to the
-  app.
+- `seed()` reaches the app through a dynamic import of `e2e/support/app-hooks.ts` in
+  page context — the same module instance the views use — so no test hook is added to
+  the app. The file is served at `/@fs/<repo-root>/e2e/support/app-hooks.ts` (the Vite
+  root is `web/`); `pageModule()` (`e2e/helpers/page-module.ts`) builds that URL from
+  the file's own location, so nothing is machine-specific.
 - `clear()` empties the clip and the IndexedDB stores, so no check inherits state
   (FR-013).
 - The helper never asserts; it only sets up.
@@ -127,16 +134,18 @@ e2e:
 - Chromium only (R10).
 - The whole job stays **under 5 minutes** (SC-004).
 - Evidence is uploaded **only on failure** (FR-017).
-- `package.json` gains `"test:e2e": "playwright test"`; `version` is not touched.
+- `package.json` gains `"test:e2e": "playwright test --config e2e/playwright.config.ts"`; `version` is not touched.
 
 ## 6. The runner config — `e2e/playwright.config.ts`
 
 - `testDir: 'e2e/checks'`, one `chromium` project.
-- `webServer`: `npm run dev`, `url: 'http://127.0.0.1:5173'`,
-  `reuseExistingServer: !process.env.CI`.
+- `webServer`: `npm run dev -- --port 5174 --strictPort`,
+  `url: 'http://127.0.0.1:5174'`, `reuseExistingServer: false` — the suite always starts
+  its own server, so it never attaches to a foreign one on the default 5173 (R12).
+- `workers: process.env.CI ? 2 : 4` — bounded so parallel checks do not starve each
+  other's fixture encoders (R12).
 - Launch args: `--use-fake-device-for-media-stream`,
   `--use-fake-ui-for-media-stream`, `--autoplay-policy=no-user-gesture-required`.
-- `trace: 'on-first-retry'`, `screenshot: 'only-on-failure'`,
+- `trace: 'retain-on-failure'`, `screenshot: 'only-on-failure'`,
   `video: 'retain-on-failure'`.
-- `workers` may be greater than one; checks must not share state, so `clear()` runs
-  before each.
+- Checks must not share state, so `seed()` clears the clip before it adds takes.

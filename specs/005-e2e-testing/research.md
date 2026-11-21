@@ -6,7 +6,7 @@ Every open question in the Technical Context is resolved here. Nothing is left a
 ## R1. The runner
 
 - **Decision**: **Playwright Test** (`@playwright/test`, development-only).
-- **Rationale**: It navigates the app's real `index.html` on the dev server, starts
+- **Rationale**: It navigates the app's real page (`web/index.html`) on the dev server, starts
   and stops that server for us (`webServer`), drives a headless Chromium, lets a
   check stand in for the network (`page.route`) and for the share API
   (`addInitScript`), passes the fake-device flags Chromium needs, and leaves a trace,
@@ -45,8 +45,9 @@ Every open question in the Technical Context is resolved here. Nothing is left a
 
 ## R3. Where the suite runs
 
-- **Decision**: The **Vite dev server** (`npm run dev`, port 5173), started by
-  Playwright's `webServer`, `reuseExistingServer` outside CI.
+- **Decision**: The **Vite dev server** (`npm run dev`), started by Playwright's
+  `webServer` on a dedicated port **5174** with `reuseExistingServer: false` (see
+  R12). The Vite root is `web/` (see R11).
 - **Rationale**: In dev the app **unregisters its service worker**, so a reload check
   reads fresh code and not a cache — the edge case the spec calls out. Startup is
   fast, and it is the same server the throwaway harnesses ran on.
@@ -57,11 +58,12 @@ Every open question in the Technical Context is resolved here. Nothing is left a
 ## R4. How a check seeds the app, without changing it
 
 - **Decision**: Navigate to `/`, wait for the status chip to read Ready, then seed
-  state in **page context** through a dynamic import of `/src/session.js`.
-- **Rationale**: `main.ts` imports `./session.js`, which the dev server serves at the
-  same URL, so the dynamic import is the **same module instance** the views are wired
-  to — the mechanism the throwaway harnesses already rely on. The application gains
-  no test hook and no runtime code (FR-015).
+  state in **page context** through a dynamic import of `e2e/support/app-hooks.ts`,
+  reached at `/@fs/<repo-root>/e2e/support/app-hooks.ts` (see R11).
+- **Rationale**: The hooks file re-exports the app's own modules, and its relative
+  imports resolve to the URLs the app loaded, so it is the **same module instance**
+  the views are wired to. The application gains no test hook and no runtime code
+  (FR-015).
 - **Alternatives considered**:
   - A `window.__democlip` test hook — changes the app for the test's sake; rejected.
   - Driving the UI only — impossible for editing without recording, which the spec
@@ -128,3 +130,29 @@ Every open question in the Technical Context is resolved here. Nothing is left a
 - **Rationale**: The app targets modern browsers, and one engine keeps CI honest and
   quick. WebKit and Firefox are a later, optional project; a Safari-only capture
   quirk stays outside the net until then, and that is said out loud.
+
+## R11. Reaching the app now that the Vite root is `web/`
+
+- **Decision**: A page-side module at the repository root is imported at
+  `/@fs/<repo-root>/<path>`, built by `pageModule()` (`e2e/helpers/page-module.ts`)
+  from that file's own location.
+- **Rationale**: The web-shell refactor moved the page, the stylesheet and `public/`
+  into `web/` and set the Vite root there. A page cannot name a file at the repository
+  root by its path — the dev server answers with the page — and the dev server serves
+  files outside the root (allowed by `server.fs.allow: ['..']`) at `/@fs/<abs>`. The
+  suite's browser-side modules (`encode-take.ts`, `app-hooks.ts`) live at the root, so
+  they are reached this way; `app-hooks.ts`'s own relative imports then resolve to the
+  app's module URLs, so the two share one instance each.
+- **Alternative considered**: move the suite's browser modules into `web/` so their
+  URLs are stable — rejected, because it puts test support inside the app shell.
+
+## R12. A dedicated port, and never a server the suite did not start
+
+- **Decision**: The suite starts its own dev server on **5174** with `strictPort`, and
+  `reuseExistingServer: false`; workers are bounded to 4 (2 in CI).
+- **Rationale**: The first full runs failed with the page stuck on *Initialising* and
+  the suite's modules 404ing, because `reuseExistingServer` attached to a Vite server
+  on the default port 5173 from **another worktree** — the suite was testing the wrong
+  app. Starting its own server makes a run independent of what is already listening
+  (FR-013). Sixteen parallel workers also starved each other's encoders; four keep the
+  run inside its budget without starving them.

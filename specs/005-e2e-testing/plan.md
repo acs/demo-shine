@@ -6,7 +6,7 @@
 
 ## Summary
 
-Add a committed, automated end-to-end layer that drives the real DemoClip app in a real browser on every pull request. **Playwright Test** navigates the app's own `index.html` on the dev server; a shared **boot helper** seeds state through the app's own modules — the mechanism the throwaway harnesses already use — with **no change to the application**; deterministic **fixture takes** are encoded in milliseconds with WebCodecs and Mediabunny (the app's own export path), so the timeline, cutting, annotations, export and keeping are proved **without recording**. The four regressions that shipped by hand get a **regression check** each, proved to fail before its fix and pass after. The layer ships as a sequence of pull requests, **replaces the temporary `verify-*.html` practice**, and leaves the node unit suite untouched.
+Add a committed, automated end-to-end layer that drives the real DemoClip app in a real browser on every pull request. **Playwright Test** navigates the app's own page (`web/index.html`) on the dev server; a shared **boot helper** seeds state through the app's own modules — the mechanism the throwaway harnesses already use — with **no change to the application**; deterministic **fixture takes** are encoded in milliseconds with WebCodecs and Mediabunny (the app's own export path), so the timeline, cutting, annotations, export and keeping are proved **without recording**. The four regressions that shipped by hand get a **regression check** each, proved to fail before its fix and pass after. The layer ships as a single pull request, **replaces the temporary `verify-*.html` practice**, and leaves the node unit suite untouched.
 
 ## Technical Context
 
@@ -87,7 +87,7 @@ package-lock.json                 # the lockfile follows
 # untouched: src/ (no application change), vitest.config.ts, the unit suite
 ```
 
-**Structure Decision**: Keep the suite in a new top-level `e2e/` directory, separate from `src/`. Vitest's `include` is `src/**/*.test.ts`, so `e2e/**/*.spec.ts` can never be picked up by the unit runner, and the unit suite is provably unchanged. The application itself is not modified: a check reaches the app's own modules through the dev server's URLs (`/src/session.js`), exactly as the throwaway harnesses do, so the suite needs no test hook and adds no runtime code.
+**Structure Decision**: Keep the suite in a new top-level `e2e/` directory, separate from `src/`. Vitest's `include` is `src/**/*.test.ts`, so `e2e/**/*.spec.ts` can never be picked up by the unit runner, and the unit suite is provably unchanged. The application itself is not modified: a check reaches the app's own modules through `e2e/support/app-hooks.ts`, served at `/@fs/<repo-root>/e2e/support/app-hooks.ts` (the Vite root is `web/`), whose relative imports resolve to the app's module URLs, so the suite needs no test hook and adds no runtime code.
 
 ## Implementation Sequence
 
