@@ -115,21 +115,24 @@ test('a property change through the surface repaints, and one undo puts it back'
   });
   expect(made.ok).toBe(true);
 
-  // Hold the frame the arrow is shown over, so the picture holds it.
+  // Hold the frame the arrow is shown over, so the picture holds it. The seek draws
+  // asynchronously, so each count waits for the paint rather than racing it.
   await call(page, 'view.seek', 1.5);
-  const before = await pixelNear(page, 0.5, 0.5);
+  await expect.poll(() => countOf(page, ARROW_RED)).toBeGreaterThan(10);
+  expect(await countOf(page, PALETTE_GREEN)).toBe(0);
 
-  const changed = await call<{ ok: boolean; value: string }>(page, 'edit.setProperty', made.id, 'colour', '#38a169');
+  const changed = await call<{ ok: boolean; value: string }>(page, 'edit.setProperty', made.id, 'colour', PALETTE_GREEN);
   expect(changed.ok).toBe(true);
 
   // The value is what the app holds...
   const described = await call<{ annotations: Array<{ properties: Array<{ id: string; value: string }> }> }>(page, 'describe');
-  expect(described.annotations[0].properties[0]).toMatchObject({ id: 'colour', value: '#38a169' });
+  expect(described.annotations[0].properties[0]).toMatchObject({ id: 'colour', value: PALETTE_GREEN });
 
-  // ...and the picture is painted differently.
+  // ...and the picture is painted differently: the arrow's red is gone and the green
+  // is there instead. Counting a colour is a fact about what the layer painted.
   await call(page, 'view.seek', 1.5);
-  const after = await pixelNear(page, 0.5, 0.5);
-  expect(after).not.toBe(before);
+  await expect.poll(() => countOf(page, PALETTE_GREEN)).toBeGreaterThan(10);
+  expect(await countOf(page, ARROW_RED)).toBe(0);
 
   // A colour the palette does not hold is refused, rather than silently becoming the
   // kind's default and reporting success.
@@ -141,7 +144,8 @@ test('a property change through the surface repaints, and one undo puts it back'
   const undone = await call<{ ok: boolean; change: string }>(page, 'edit.undo');
   expect(undone).toEqual({ ok: true, change: 'annotation-changed' });
   await call(page, 'view.seek', 1.5);
-  expect(await pixelNear(page, 0.5, 0.5)).toBe(before);
+  await expect.poll(() => countOf(page, ARROW_RED)).toBeGreaterThan(10);
+  expect(await countOf(page, PALETTE_GREEN)).toBe(0);
 });
 
 test('a refusal is a value, and leaves the clip alone', async ({ page }) => {
@@ -323,27 +327,31 @@ function arrowPoints(x0: number, y0: number, x1: number, y1: number): Record<str
  * `r,g,b`. The window is what makes it find a thin mark — the arrow's shaft is a few
  * pixels wide — rather than whatever happens to be at the exact spot.
  */
-async function pixelNear(page: Page, fx: number, fy: number): Promise<string> {
-  return page.evaluate(
-    ({ fx, fy }) => {
-      const canvas = document.querySelector<HTMLCanvasElement>('#preview');
-      if (!canvas) return 'none';
-      const context = canvas.getContext('2d');
-      if (!context) return 'none';
-      const x = Math.round(canvas.width * fx);
-      const y = Math.round(canvas.height * fy);
-      const size = 9;
-      const { data } = context.getImageData(
-        Math.max(0, x - size), Math.max(0, y - size), size * 2, size * 2,
-      );
-      let best = 0;
-      let bestAt = 0;
-      for (let at = 0; at < data.length; at += 4) {
-        const spread = Math.max(data[at], data[at + 1], data[at + 2]) - Math.min(data[at], data[at + 1], data[at + 2]);
-        if (spread > best) { best = spread; bestAt = at; }
-      }
-      return `${data[bestAt]},${data[bestAt + 1]},${data[bestAt + 2]}`;
-    },
-    { fx, fy },
-  );
+const ARROW_RED = '#e53e3e';      // the arrow's own colour
+const PALETTE_GREEN = '#38a169';  // another colour the palette holds
+
+/**
+ * How many pixels of the preview are this colour, within a small tolerance.
+ *
+ * Counting a colour is a fact about what the layer painted; sampling one pixel near a
+ * point is not. The fixture picture underneath is itself saturated — `hsl(hue 70% 45%)`
+ * — so a "most saturated pixel nearby" sample is a coin toss between the annotation and
+ * the background, which is exactly how this check passed on one machine and failed on
+ * another. The palette's colours are far enough from the fixture's to tell apart.
+ */
+async function countOf(page: Page, colour: string): Promise<number> {
+  return page.evaluate(css => {
+    const canvas = document.querySelector<HTMLCanvasElement>('#preview');
+    if (!canvas) return -1;
+    const context = canvas.getContext('2d');
+    if (!context) return -1;
+    const want = [1, 3, 5].map(at => parseInt(css.slice(at, at + 2), 16));
+    const near = (a: number, b: number): boolean => Math.abs(a - b) <= 8;
+    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+    let count = 0;
+    for (let at = 0; at < data.length; at += 4) {
+      if (near(data[at], want[0]) && near(data[at + 1], want[1]) && near(data[at + 2], want[2])) count++;
+    }
+    return count;
+  }, colour);
 }
