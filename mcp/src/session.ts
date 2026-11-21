@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import type { Page } from 'playwright';
 import { serveApp, type AppServer } from './serve.js';
 import { openApp, type OpenedApp } from './browser.js';
+import { downloadsDirectory } from './downloads.js';
 import { serverVersion, versionMismatchReason } from './version.js';
 
 export interface Session {
@@ -18,6 +19,8 @@ export interface Session {
   readonly origin: string;
   /** The app's version, as the surface reported it. */
   readonly version: string;
+  /** Where an exported file is saved. */
+  readonly downloadsDir: string;
   close(): Promise<void>;
 }
 
@@ -26,6 +29,8 @@ export interface SessionOptions {
   readonly headless?: boolean;
   /** The directory of the app's build to serve; the packaged build by default. */
   readonly appRoot?: string;
+  /** Where an exported file is saved; the person's Downloads by default. */
+  readonly downloadsDir?: string;
 }
 
 export async function openSession(options: SessionOptions = {}): Promise<Session> {
@@ -47,6 +52,7 @@ export async function openSession(options: SessionOptions = {}): Promise<Session
       page: opened.page,
       origin: app.origin,
       version,
+      downloadsDir: options.downloadsDir ?? downloadsDirectory(),
       close: async () => {
         await opened?.close().catch(() => {});
         await app.close().catch(() => {});

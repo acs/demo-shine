@@ -84,9 +84,13 @@ describe('the gate', () => {
         play: () => ({ ok: true }),
         pause: () => ({ ok: true }),
       },
+      out: {
+        export: async () => ({ ok: true, filename: 'democlip-1.webm' }),
+        publish: async () => ({ ok: false, reason: 'nobody is signed in' }),
+      },
     });
     expect(surface.version).toBe('1.2.3');
-    expect(Object.keys(surface).sort()).toEqual(['describe', 'edit', 'sources', 'takes', 'version', 'view']);
+    expect(Object.keys(surface).sort()).toEqual(['describe', 'edit', 'out', 'sources', 'takes', 'version', 'view']);
   });
 });
 

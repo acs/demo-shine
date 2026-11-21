@@ -113,14 +113,14 @@ Two artefacts, per plan.md. The app keeps its four layers: domain in `src/domain
 
 ### Implementation for User Story 2
 
-- [ ] T026 [US2] Have `doExport` in `src/ui/exporting/export-flow.ts` **return** its outcome (`{ kind: 'exported'; bytes } | { kind: 'refused'; reason } | { kind: 'failed'; reason }`) rather than only toasting it, so the surface can answer with what happened. The buttons' behaviour is unchanged.
-- [ ] T027 [US2] Create `src/ui/agent/out.ts` — `export(target)` through `doExport` (`data-model.md AgentSurface.out`), and `publish({ text, alt })` through the app's `publishClip`, answering with the post's address; when nobody is signed in (`blueskyAccount()` is null) it returns `{ ok: false, reason }` and publishes nothing (`contracts/agent-surface.md` §2; `research.md` D6; spec FR-006, FR-013, FR-014).
-- [ ] T028 [US2] Assemble `out` into `createAgentSurface` in `src/ui/agent/surface.ts` and the gate wiring in `src/main.ts`.
-- [ ] T029 [US2] Add `export_clip` and `publish_clip` to `mcp/src/tools.ts` with schemas and dispatch (`data-model.md Tool`; `contracts/mcp-tools.md` §1).
-- [ ] T030 [US2] Create `mcp/src/downloads.ts` — take the browser's own download for the export, save it to a path the person is told, and answer `export_clip` with that path and the file's size. The bytes are the browser's, byte for byte, not copied through the protocol (`research.md` D5; `contracts/mcp-tools.md` §1).
-- [ ] T031 [P] [US2] Extend the server's node tests: the out tools' schemas and dispatch, and a `publish_clip` with no sign-in refused with a reason and nothing sent (`contracts/mcp-tools.md` §3; spec FR-014).
-- [ ] T032 [US2] Extend `e2e/checks/agent.spec.ts` — `export_clip('webm')` produces the browser's download, the check reads it back, and the file holds the cut and the annotation that were made (`research.md` D5; spec FR-006; spec SC-003).
-- [ ] T033 [US2] Extend `e2e/checks/agent.spec.ts` — with the Bluesky service stood in for by `page.route`, a publish posts and answers with an address; **without** a sign-in it is refused with a reason and nothing is sent (`research.md` D6; spec FR-013, FR-014).
+- [x] T026 [US2] Have `doExport` in `src/ui/exporting/export-flow.ts` **return** its outcome (`{ kind: 'exported'; bytes } | { kind: 'refused'; reason } | { kind: 'failed'; reason }`) rather than only toasting it, so the surface can answer with what happened. The buttons' behaviour is unchanged.
+- [x] T027 [US2] Create `src/ui/agent/out.ts` — `export(target)` through `doExport` (`data-model.md AgentSurface.out`), and `publish({ text, alt })` through the app's `publishClip`, answering with the post's address; when nobody is signed in (`blueskyAccount()` is null) it returns `{ ok: false, reason }` and publishes nothing (`contracts/agent-surface.md` §2; `research.md` D6; spec FR-006, FR-013, FR-014).
+- [x] T028 [US2] Assemble `out` into `createAgentSurface` in `src/ui/agent/surface.ts` and the gate wiring in `src/main.ts`.
+- [x] T029 [US2] Add `export_clip` and `publish_clip` to `mcp/src/tools.ts` with schemas and dispatch (`data-model.md Tool`; `contracts/mcp-tools.md` §1).
+- [x] T030 [US2] Create `mcp/src/downloads.ts` — take the browser's own download for the export, save it to a path the person is told, and answer `export_clip` with that path and the file's size. The bytes are the browser's, byte for byte, not copied through the protocol (`research.md` D5; `contracts/mcp-tools.md` §1).
+- [x] T031 [P] [US2] Extend the server's node tests: the out tools' schemas and dispatch, and a `publish_clip` with no sign-in refused with a reason and nothing sent (`contracts/mcp-tools.md` §3; spec FR-014).
+- [x] T032 [US2] Extend `e2e/checks/agent.spec.ts` — `export_clip('webm')` produces the browser's download, the check reads it back, and the file holds the cut and the annotation that were made (`research.md` D5; spec FR-006; spec SC-003).
+- [x] T033 [US2] Extend `e2e/checks/agent.spec.ts` — with the Bluesky service stood in for by `page.route`, a publish posts and answers with an address; **without** a sign-in it is refused with a reason and nothing is sent (`research.md` D6; spec FR-013, FR-014).
 
 **Checkpoint**: US1 and US2 both work independently; a clip the agent edited leaves as a file or a post.
 

@@ -11,7 +11,7 @@ import type { ClockPort } from './ports/ClockPort.js';
 import { planExport } from './export-clip.js';
 
 export type ExportOutcome =
-  | { kind: 'exported'; blob: Blob; stats: ExportStats }
+  | { kind: 'exported'; blob: Blob; stats: ExportStats; filename: string }
   | { kind: 'refused'; reason: string }
   | { kind: 'failed'; reason: string };
 
@@ -36,8 +36,11 @@ export class ExportVideo {
     if (!plan) return { kind: 'refused', reason: 'There is nothing to export.' };
     try {
       const encoded = await this.deps.encoder.encode(plan, this.deps.renderer, { target, onProgress });
-      this.deps.download.save(encoded.blob, `democlip-${this.deps.clock.now()}.${target}`);
-      return { kind: 'exported', blob: encoded.blob, stats: encoded.stats };
+      // The name is chosen here, so it is answered here: a caller that wants to tell
+      // someone where the file went should not have to guess what it was called.
+      const filename = `democlip-${this.deps.clock.now()}.${target}`;
+      this.deps.download.save(encoded.blob, filename);
+      return { kind: 'exported', blob: encoded.blob, stats: encoded.stats, filename };
     } catch (error) {
       return { kind: 'failed', reason: error instanceof Error ? error.message : 'the export failed' };
     }

@@ -11,7 +11,7 @@ function sessionWith(answer: unknown): Session {
   const page = {
     evaluate: async () => answer,
   } as unknown as Page;
-  return { page, origin: 'http://127.0.0.1:0', version: '1.2.3', close: async () => {} };
+  return { page, origin: 'http://127.0.0.1:0', version: '1.2.3', downloadsDir: '/tmp', close: async () => {} };
 }
 
 const opens = (session: Session): BuildOptions => ({ openSession: async () => session });
@@ -30,6 +30,13 @@ describe('a tool call', () => {
   it('hands back an app-level refusal as a result, not an error', async () => {
     const refusal = { ok: false, reason: 'that stretch is too short' };
     const result = await handleToolCall(opens(sessionWith(refusal)), 'describe_clip', {});
+    expect(result.isError).toBe(false);
+    expect(textOf(result)).toEqual(refusal);
+  });
+
+  it('hands back a publish with no sign-in as a result, with the reason', async () => {
+    const refusal = { ok: false, reason: 'nobody is signed in to publish \u2014 sign in to Bluesky in this window first' };
+    const result = await handleToolCall(opens(sessionWith(refusal)), 'publish_clip', { text: 'hello' });
     expect(result.isError).toBe(false);
     expect(textOf(result)).toEqual(refusal);
   });

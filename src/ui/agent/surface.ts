@@ -91,6 +91,11 @@ export interface AgentSurface {
     play(): Result;
     pause(): Result;
   };
+  /** What leaves the browser: the file, and the post. */
+  readonly out: {
+    export(target: string): Promise<Result<{ filename: string }>>;
+    publish(options: { text?: string; alt?: string }): Promise<Result<{ url: string }>>;
+  };
 }
 
 /** Was this page opened asking to be driven? The whole of the gate. */
@@ -106,6 +111,7 @@ export interface AgentParts {
   readonly takes: AgentSurface['takes'];
   readonly edit: AgentSurface['edit'];
   readonly view: AgentSurface['view'];
+  readonly out: AgentSurface['out'];
 }
 
 /** The surface: the parts it was given, and nothing else of its own. */
@@ -117,6 +123,7 @@ export function createAgentSurface(parts: AgentParts): AgentSurface {
     takes: parts.takes,
     edit: parts.edit,
     view: parts.view,
+    out: parts.out,
   };
 }
 

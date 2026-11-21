@@ -7,6 +7,7 @@
 // stays the user's session.
 
 import { expect, test, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import { boot } from '../helpers/app.js';
 import { makeTakes } from '../fixtures/takes.js';
 import { activationAtShare, askedFor, installStandInShare } from '../helpers/stand-ins.js';
@@ -212,6 +213,82 @@ test('a take with no picture is refused, with the reason a person would be told'
   expect(refused.ok).toBe(false);
   expect(refused.reason).toContain('picture');
 });
+
+test('an export through the surface writes the file a person would get, holding the edit', async ({ page }) => {
+  await reviewed(page);
+
+  // An edit the file must carry: a second of the four gone, and an arrow over it.
+  await call(page, 'edit.cut', 0.25, 0.5);
+  await call(page, 'edit.annotate', 'arrow', {
+    span: { s: 0.1, e: 0.9 },
+    ...arrowPoints(0.3, 0.4, 0.7, 0.6),
+  });
+
+  const download = page.waitForEvent('download');
+  const exported = await call<{ ok: boolean; filename: string }>(page, 'out.export', 'webm');
+  expect(exported.ok).toBe(true);
+
+  const file = await download;
+  const path = await file.path();
+  if (!path) throw new Error('the export wrote no file');
+  const bytes = await readFile(path);
+  expect(bytes.byteLength).toBeGreaterThan(1000);
+
+  // The file is the clip the person watched: the cut is in it, so it is shorter.
+  const duration = await durationOf(page, bytes, 'video/webm');
+  expect(duration).toBeGreaterThan(2);
+  expect(duration).toBeLessThan(4);
+});
+
+test('a publish with nobody signed in is refused, and nothing leaves the machine', async ({ page }) => {
+  // The publishing service is out of reach, so a post that was attempted would fail
+  // loudly rather than quietly succeed. The app's own font stylesheet is not the
+  // service, so only what would reach Bluesky is counted.
+  const toTheService: string[] = [];
+  await page.route('**/*', route => {
+    const url = route.request().url();
+    if (url.startsWith('http://127.0.0.1') || url.startsWith('http://localhost')) return route.continue();
+    if (/bluesky|bsky|atproto/i.test(url)) toTheService.push(url);
+    return route.abort();
+  });
+
+  await reviewed(page);
+
+  const refused = await call<{ ok: boolean; reason: string }>(page, 'out.publish', { text: 'hello' });
+  expect(refused.ok).toBe(false);
+  expect(refused.reason).toContain('signed in');
+  // Nothing was sent to the service: no post was attempted at all.
+  expect(toTheService).toEqual([]);
+});
+
+test('an export target the app does not write is refused', async ({ page }) => {
+  await reviewed(page);
+
+  const refused = await call<{ ok: boolean; reason: string }>(page, 'out.export', 'gif');
+  expect(refused.ok).toBe(false);
+  expect(refused.reason).toContain('gif');
+});
+
+/** Decode a downloaded file's metadata in the page and read its duration. */
+async function durationOf(page: Page, bytes: Buffer, mime: string): Promise<number> {
+  return page.evaluate(async ({ base64, type }) => {
+    const binary = atob(base64);
+    const data = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) data[i] = binary.charCodeAt(i);
+    const blob = new Blob([data], { type });
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    const url = URL.createObjectURL(blob);
+    video.src = url;
+    await new Promise<void>(resolve => {
+      video.addEventListener('loadedmetadata', () => resolve(), { once: true });
+      setTimeout(resolve, 3000);
+    });
+    const seconds = video.duration;
+    URL.revokeObjectURL(url);
+    return seconds;
+  }, { base64: bytes.toString('base64'), type: mime });
+}
 
 /** The arrow's own shape: a tail and a head, as fractions of the picture. */
 function arrowPoints(x0: number, y0: number, x1: number, y1: number): Record<string, unknown> {

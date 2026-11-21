@@ -19,6 +19,8 @@ describe('the tool list', () => {
       'stop_take',
       'turn_source_on',
       'turn_source_off',
+      'export_clip',
+      'publish_clip',
     ]);
   });
 
@@ -67,5 +69,17 @@ describe('the tool list', () => {
     expect(byName.get('annotate')!.inputSchema.properties).toMatchObject({
       kind: { enum: ['arrow', 'text'] },
     });
+    // An export writes one of the two containers the app writes.
+    expect(byName.get('export_clip')!.inputSchema).toMatchObject({
+      required: ['target'],
+      properties: { target: { enum: ['webm', 'mp4'] } },
+    });
+  });
+
+  it('offers no tool that reads or writes a file of its own', () => {
+    // `export_clip` writes a file, but it is the file the *app* writes, taken from the
+    // browser's own download; no tool takes a path, and none reaches the disk.
+    const paths = toolList().flatMap(tool => Object.keys(tool.inputSchema.properties ?? {}));
+    expect(paths.some(key => /path|file|dir/i.test(key))).toBe(false);
   });
 });

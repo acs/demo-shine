@@ -12,6 +12,7 @@
 
 import type { Session } from './session.js';
 import { pressScreenButton } from './press.js';
+import { watchDownload } from './downloads.js';
 
 export type Args = Readonly<Record<string, unknown>>;
 
@@ -185,6 +186,45 @@ const turnSourceOff: Tool = {
   run: (session, args) => callSurface(session, 'takes.turnSourceOff', args.source),
 };
 
+/** Encode the clip and write it to a file. */
+const exportClip: Tool = {
+  name: 'export_clip',
+  description:
+    'Encode the clip offline and write it to a file, answering with the path it was written to and its size. `target` is "webm" or "mp4". The file holds exactly the cuts and annotations the person watched.',
+  inputSchema: objectSchema({ target: { type: 'string', enum: ['webm', 'mp4'], description: 'Which container' } }, ['target']),
+  async run(session, args) {
+    const target = String(args.target ?? '');
+    if (target !== 'webm' && target !== 'mp4') {
+      return { ok: false, reason: `the app exports webm or mp4, not ${target}` };
+    }
+    // The browser hands the finished file back as a download, so the watcher goes up
+    // before the export is asked for — a download already fired is one you cannot wait
+    // for.
+    const watcher = watchDownload(session.page, session.downloadsDir);
+    const outcome = await callSurface<{ ok: boolean; filename?: string; reason?: string }>(
+      session, 'out.export', target,
+    );
+    if (!outcome.ok) {
+      watcher.stop();
+      return outcome;
+    }
+    const saved = await watcher.saved;
+    return { ok: true, path: saved.path, bytes: saved.bytes, filename: outcome.filename };
+  },
+};
+
+/** Post the clip, from the person's own account. */
+const publishClip: Tool = {
+  name: 'publish_clip',
+  description:
+    'Post the clip to Bluesky, from the account the person signed in with in this window. Needs a sign-in: with nobody signed in it is refused with a reason and nothing leaves the machine. `text` is the post\u2019s words and `alt` describes the video.',
+  inputSchema: objectSchema({
+    text: { type: 'string', description: 'The post\u2019s words' },
+    alt: { type: 'string', description: 'A description of the video, for readers who cannot see it' },
+  }),
+  run: (session, args) => callSurface(session, 'out.publish', { text: args.text, alt: args.alt }),
+};
+
 /** Every tool the server offers, in the order a reader should meet them. */
 export function toolList(): readonly Tool[] {
   return [
@@ -199,6 +239,8 @@ export function toolList(): readonly Tool[] {
     stopTake,
     turnSourceOn,
     turnSourceOff,
+    exportClip,
+    publishClip,
   ];
 }
 

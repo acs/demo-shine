@@ -8,6 +8,7 @@ import { createEditor } from './ui/agent/edit.js';
 import { makeAnnotation } from './ui/agent/make.js';
 import { createViewer } from './ui/agent/view.js';
 import { createTakes, type Recording, type SourceName } from './ui/agent/takes.js';
+import { createOut } from './ui/agent/out.js';
 import { onPhaseChange, currentPhase, type Phase } from './state.js';
 import { session } from './session.js';
 import { loadPrefs } from './prefs.js';
@@ -34,6 +35,7 @@ import { initMic, toggleMic } from './ui/recording/mic.js';
 import { initSourceButtons, setScreenAvailable } from './ui/recording/source-buttons.js';
 import { exportMenu } from './ui/exporting/export-menu.js';
 import { publishDialog } from './ui/publishing/publish-dialog.js';
+import { blueskyAccount, publishClip } from './ui/publishing/publish-flow.js';
 import { keep } from './ui/keeping/keep.js';
 import { resumeClip } from './ui/keeping/resume-flow.js';
 import { capture } from './infra/capture.js';
@@ -175,6 +177,16 @@ function init(): void {
       takes: createTakes(session.clip, recording),
       edit: createEditor(session.clip, makeAnnotation),
       view: createViewer(playback, currentPhase, () => session.clip.total()),
+      out: createOut(
+        { export: target => doExport(target) },
+        {
+          account: async () => {
+            const account = await blueskyAccount();
+            return account ? { handle: account.handle } : null;
+          },
+          publish: (text, alt, handlers) => publishClip(text, alt, handlers),
+        },
+      ),
     });
   }
 }
