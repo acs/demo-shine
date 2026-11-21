@@ -42,7 +42,6 @@ function busy(): boolean {
   const phase = currentPhase();
   return phase === 'starting' || phase === 'recording' || phase === 'encoding';
 }
-
 // ...but a share being *asked for* is not a take in flight. Once the share is in
 // hand, `syncSources` is exactly what settles the phase, so 'starting' must not
 // stop it — only a take already running may. (Guarding it on `busy` left a
@@ -155,6 +154,15 @@ export async function toggleRecord(): Promise<void> {
   if (phase === 'recording') { await stopRecording(); return; }
   if (phase === 'live' || phase === 'review') { await startRecording(); return; }
   toast('Turn on the screen or the webcam first');
+}
+
+/**
+ * Start a take, explicitly, without the phase deciding it. The Record button does
+ * what it always did (`toggleRecord`); this is the same start, for a caller that has
+ * already decided — the automation surface, where an agent asked for a take.
+ */
+export function startTake(): void {
+  void startRecording();
 }
 
 async function startRecording(): Promise<void> {

@@ -19,7 +19,7 @@
 // the image.
 
 import { TextAnnotation, type TextGeometry } from '../../domain/annotation/TextAnnotation.js';
-import { colourOf } from '../../domain/annotation/AnnotationColour.js';
+import { isColour } from '../../domain/annotation/AnnotationColour.js';
 import type { Annotation } from '../../domain/annotation/Annotation.js';
 import { el } from '../dom.js';
 import { registerRenderer, type AnnotationRenderer } from './annotation-layer.js';
@@ -49,6 +49,43 @@ function fontFor(pixels: number): string {
   return `${FONT_WEIGHT} ${pixels}px ${FONT_FAMILY}`;
 }
 
+/** The width a line measures at a given font-size fraction, as a fraction of the picture. */
+export function measureTextWidth(text: string, height: number, picture: { w: number; h: number }): number {
+  if (!(picture.w > 0) || !(picture.h > 0)) return 0;
+  const context = el.cv.getContext('2d');
+  if (!context) return 0;
+  const previous = context.font;
+  context.font = fontFor(height * picture.h);
+  const measured = context.measureText(text).width;
+  context.font = previous;
+  return measured / picture.w;
+}
+
+/**
+ * The box a line needs at the default size, in fractions of the picture: its width
+ * comes from measuring with the renderer's font, and its height is the font size. A
+ * line too wide to fit is shrunk, keeping the two in step.
+ *
+ * Exported because the automation surface places a text the same way the kind does —
+ * one rule, one place, so an agent's text and a person's land identically.
+ */
+export function measureText(
+  text: string,
+  picture: { w: number; h: number },
+): { width: number; height: number } | null {
+  const measured = measureTextWidth(text, DEFAULT_HEIGHT, picture);
+  if (!(measured > 0)) return null;
+
+  let width = measured;
+  let height = DEFAULT_HEIGHT;
+  if (width > MAX_WIDTH) {
+    const k = MAX_WIDTH / width;
+    width = MAX_WIDTH;
+    height *= k;
+  }
+  return { width, height };
+}
+
 /** The text kind in the view: its action, its look, and how a new one is made and changed. */
 export class TextPlugin implements AnnotationPlugin, AnnotationRenderer<Annotation> {
   readonly id = TextAnnotation.id;
@@ -67,7 +104,7 @@ export class TextPlugin implements AnnotationPlugin, AnnotationRenderer<Annotati
       control: 'colour',
       value: annotation => (annotation instanceof TextAnnotation ? annotation.colour : TextAnnotation.DEFAULT_COLOUR),
       with: (annotation, value) =>
-        annotation instanceof TextAnnotation ? annotation.withColour(colourOf(value, TextAnnotation.DEFAULT_COLOUR)) : null,
+        annotation instanceof TextAnnotation && isColour(value) ? annotation.withColour(value) : null,
     },
     {
       id: 'words',
@@ -112,7 +149,7 @@ export class TextPlugin implements AnnotationPlugin, AnnotationRenderer<Annotati
     const text = typed.trim();
     if (!text) { ctx.cancel(NO_TEXT); return; }
 
-    const size = this.measure(text, ctx.picture);
+    const size = measureText(text, ctx.picture);
     if (!size) { ctx.cancel(NO_FIT); return; }
 
     const annotation = TextAnnotation.create(ctx.span, {
@@ -131,39 +168,8 @@ export class TextPlugin implements AnnotationPlugin, AnnotationRenderer<Annotati
     if (!(annotation instanceof TextAnnotation)) return null;
     const words = value.trim();
     if (!words) return null;                  // nothing to say is not a value text can take
-    const width = this.measureAt(words, annotation.geometry.height, { w: el.cv.width, h: el.cv.height });
+    const width = measureTextWidth(words, annotation.geometry.height, { w: el.cv.width, h: el.cv.height });
     return annotation.withWords(words, width);
-  }
-
-  /**
-   * The box a line needs at the default size, in fractions of the picture: its width
-   * comes from measuring with the renderer's font, and its height is the font size. A
-   * line too wide to fit is shrunk, keeping the two in step.
-   */
-  private measure(text: string, picture: { w: number; h: number }): { width: number; height: number } | null {
-    const measured = this.measureAt(text, DEFAULT_HEIGHT, picture);
-    if (!(measured > 0)) return null;
-
-    let width = measured;
-    let height = DEFAULT_HEIGHT;
-    if (width > MAX_WIDTH) {
-      const k = MAX_WIDTH / width;
-      width = MAX_WIDTH;
-      height *= k;
-    }
-    return { width, height };
-  }
-
-  /** The width a line measures at a given font-size fraction, as a fraction of the picture. */
-  private measureAt(text: string, height: number, picture: { w: number; h: number }): number {
-    if (!(picture.w > 0) || !(picture.h > 0)) return 0;
-    const context = el.cv.getContext('2d');
-    if (!context) return 0;
-    const previous = context.font;
-    context.font = fontFor(height * picture.h);
-    const measured = context.measureText(text).width;
-    context.font = previous;
-    return measured / picture.w;
   }
 }
 

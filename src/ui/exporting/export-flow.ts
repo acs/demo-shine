@@ -28,8 +28,19 @@ const exportVideo = new ExportVideo({
   fadeSeconds: FADE_S,
 });
 
-export async function doExport(target: ExportTarget = 'webm'): Promise<void> {
-  if (currentPhase() !== 'review') return;
+/**
+ * What an export came to. The buttons only toast it; the automation surface answers
+ * with it, so an agent can be told what happened rather than guessing from a toast.
+ */
+export type ExportResult =
+  | { kind: 'exported'; bytes: number; filename: string }
+  | { kind: 'refused'; reason: string }
+  | { kind: 'failed'; reason: string };
+
+export async function doExport(target: ExportTarget = 'webm'): Promise<ExportResult> {
+  if (currentPhase() !== 'review') {
+    return { kind: 'refused', reason: 'the clip is not in the review, so there is nothing to export' };
+  }
   playback.pause();
   setPhase('encoding');
   el.recBtn.disabled = true;
@@ -60,4 +71,9 @@ export async function doExport(target: ExportTarget = 'webm'): Promise<void> {
   el.playBtn.disabled = false;
   endEncoding(wasCut);
   playback.pause();
+
+  if (outcome.kind === 'exported') {
+    return { kind: 'exported', bytes: outcome.stats.bytes, filename: outcome.filename };
+  }
+  return { kind: outcome.kind, reason: outcome.reason };
 }

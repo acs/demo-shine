@@ -55,6 +55,38 @@ The headline capabilities; the **[full list is in FEATURES.md](FEATURES.md)**.
 
 ---
 
+## Drive it from an agent
+
+DemoClip ships a local [MCP](https://modelcontextprotocol.io) server, so an agent
+in your chat can open the app in a browser and edit the clip while you watch.
+
+Add it to [OpenCode](https://opencode.ai) once:
+
+```bash
+opencode mcp add democlip -- npx -y democlip-mcp
+```
+
+Then, in a chat, ask for a DemoClip session. A browser opens on the app, on a
+profile of its own. **You** record exactly as you always have — press **Screen**
+and pick the window, tab or screen in the browser's own picker; the agent can turn
+a source on and press Record, but what is *shared* is chosen by you, in the picker,
+because that is the one thing a browser will not give away to anything but a hand.
+Then ask for the edit: *"cut the pauses, put an arrow on the button at 0:12, colour
+it yellow"*. The changes land in that window as you watch, and the app's own
+**undo** takes any of them back, in one action, whoever made it.
+
+The agent's reach is the app's own operations and nothing more — cut, annotate,
+set a property, remove, undo, seek, record a take, export, publish, and read the
+clip. There is no way for it to run code in the page, and the recording is never
+re-encoded. An export writes the same file a person would get, to your Downloads
+folder. A publish goes from **your** Bluesky account, signed in in that window —
+and a harness can deny that one tool while keeping the rest.
+
+Requires Node 20+ and a desktop with a display (the browser is opened headful, on
+purpose: you are watching it).
+
+---
+
 ## File structure
 
 ```
@@ -170,10 +202,31 @@ democlip/
 │       ├── keeping/        # Keeping a clip and coming back to it
 │       │   ├── keep.ts       # The KeepClip composition the app uses
 │       │   └── resume-flow.ts # The startup restore — a sequence over RestoreClip
-│       └── lifecycle/      # Starting and ending a session
-│           ├── new-session-flow.ts # The New button — end the session and go back for a source
-│           └── view-lifetime.ts # The view's answer to clip.cleared: every view resets itself
-├── public/               # Copied verbatim into the build
+│       ├── lifecycle/      # Starting and ending a session
+│       │   ├── new-session-flow.ts # The New button — end the session and go back for a source
+│       │   └── view-lifetime.ts # The view's answer to clip.cleared: every view resets itself
+│       └── agent/          # The automation surface an agent drives — published only when asked
+│           ├── surface.ts    # The operations, the gate, and the clip as data
+│           ├── describe.ts   # The clip described: length, takes, cuts, annotations, properties
+│           ├── edit.ts       # cut, annotate, set a property, remove, undo — each the app's own
+│           ├── make.ts       # Making an annotation of a kind from data alone
+│           ├── view.ts       # The transport: seek, play, pause
+│           ├── takes.ts      # The sources and the takes, through the app's own flow
+│           └── out.ts        # The file, and the post
+├── mcp/                  # The MCP server: a second artefact, released with the app
+│   ├── package.json      # Its own dependencies (Playwright, the MCP SDK) and its version
+│   ├── src/
+│   │   ├── index.ts        # The entry: the server on stdio
+│   │   ├── server.ts       # The tools, over the protocol
+│   │   ├── session.ts      # One session: the build served, the browser, the version checked
+│   │   ├── browser.ts      # Launching the browser, on a profile of its own
+│   │   ├── serve.ts        # Serving the app's build on loopback
+│   │   ├── tools.ts        # The tool list, in the app's own words
+│   │   ├── press.ts        # The one trusted press: turning the screen source on
+│   │   ├── downloads.ts    # Taking the exported file from the browser
+│   │   └── version.ts      # The version the server was built with, and the check
+│   └── scripts/          # sync-version.mjs (keep the two versions equal), bundle-app.mjs
+├── web/public/           # Copied verbatim into the build
 │   ├── manifest.json       # PWA manifest
 │   ├── sw.js               # Service worker — cache-first offline support
 │   ├── oauth-client-metadata.json # the Bluesky OAuth client_id document
@@ -198,7 +251,11 @@ the DOM, and the `ui/` flows — `record-flow.ts`, `export-flow.ts`,
 `publish-flow.ts`, `resume-flow.ts`, `new-session-flow.ts` — are the sequences
 `main.ts` composes. Each `ui/` module exports the object its state lives on; the
 session owns the clip and names no view, and `view-lifetime.ts` is the view's
-answer to the clip being cleared. The vocabulary is in [GLOSSARY.md](GLOSSARY.md),
+answer to the clip being cleared. The `agent/` group is the automation surface an
+agent drives: the app's own operations in one object, published only when the page
+asked (`?agent=1`), and adding no rule of its own. `mcp/` beside `src/` is the
+server — a second artefact, in node, reaching the app only through the page and
+released with the app's version. The vocabulary is in [GLOSSARY.md](GLOSSARY.md),
 and where a rule belongs is in
 [`.agents/skills/domain-model`](.agents/skills/domain-model/SKILL.md). It is
 written in TypeScript and served and bundled by [Vite](https://vite.dev/).

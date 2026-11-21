@@ -1,8 +1,16 @@
 // Composition root: wires the UI to the use cases and boots the app.
 
 import { el, setStatus, toast } from './ui/dom.js';
-import { initVersion } from './ui/shell/version.js';
+import { initVersion, appVersion } from './ui/shell/version.js';
+import { agentAskedFor, createAgentSurface } from './ui/agent/surface.js';
+import { describeClip } from './ui/agent/describe.js';
+import { createEditor } from './ui/agent/edit.js';
+import { makeAnnotation } from './ui/agent/make.js';
+import { createViewer } from './ui/agent/view.js';
+import { createTakes, type Recording, type SourceName } from './ui/agent/takes.js';
+import { createOut } from './ui/agent/out.js';
 import { onPhaseChange, currentPhase, type Phase } from './state.js';
+import { session } from './session.js';
 import { loadPrefs } from './prefs.js';
 import { applyTheme, toggleTheme } from './ui/shell/theme.js';
 import { toggleHelp, helpBdClick } from './ui/shell/help.js';
@@ -15,7 +23,7 @@ import { initAnnotationLane } from './ui/annotating/annotation-lane.js';
 import { inspector } from './ui/annotating/properties-inspector.js';
 import { textEntry } from './ui/annotating/text-entry.js';
 import { initViewLifetime } from './ui/lifecycle/view-lifetime.js';
-import { toggleRecord, toggleScreen, syncSources, onScreenEnded, initRecordFlow } from './ui/recording/record-flow.js';
+import { toggleRecord, toggleScreen, syncSources, onScreenEnded, initRecordFlow, startTake, stopRecording, hasPicture } from './ui/recording/record-flow.js';
 import { doExport } from './ui/exporting/export-flow.js';
 import { startNewSession } from './ui/lifecycle/new-session-flow.js';
 import { playback, initPlaybackKeys } from './ui/clip/playback.js';
@@ -27,6 +35,7 @@ import { initMic, toggleMic } from './ui/recording/mic.js';
 import { initSourceButtons, setScreenAvailable } from './ui/recording/source-buttons.js';
 import { exportMenu } from './ui/exporting/export-menu.js';
 import { publishDialog } from './ui/publishing/publish-dialog.js';
+import { blueskyAccount, publishClip } from './ui/publishing/publish-flow.js';
 import { keep } from './ui/keeping/keep.js';
 import { resumeClip } from './ui/keeping/resume-flow.js';
 import { capture } from './infra/capture.js';
@@ -155,6 +164,54 @@ function init(): void {
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
   }
+
+  // The automation surface: published **only** when the page asked to be driven.
+  // A page opened without the flag carries nothing at all — no global, no listener,
+  // no timer — so a person opening DemoClip gets the app and nothing else. The
+  // operations it offers are the app's own; this only hands them over.
+  if (agentAskedFor(window.location.search)) {
+    window.democlip = createAgentSurface({
+      version: appVersion(),
+      describe: () => describeClip(session.clip),
+      sources: () => recording.sources(),
+      takes: createTakes(session.clip, recording),
+      edit: createEditor(session.clip, makeAnnotation),
+      view: createViewer(playback, currentPhase, () => session.clip.total()),
+      out: createOut(
+        { export: target => doExport(target) },
+        {
+          account: async () => {
+            const account = await blueskyAccount();
+            return account ? { handle: account.handle } : null;
+          },
+          publish: (text, alt, handlers) => publishClip(text, alt, handlers),
+        },
+      ),
+    });
+  }
 }
+
+// What the surface's recording operations drive: the app's own toggles and flows, so
+// a take an agent starts is a take a person sees. The screen source is turned *off*
+// here and never on — turning it on opens the picker, which is the person's.
+const recording: Recording = {
+  start: startTake,
+  stop: stopRecording,
+  hasPicture,
+  sources: () => ({
+    screen: capture.sources.screen,
+    webcam: capture.sources.webcam,
+    microphone: capture.sources.mic,
+  }),
+  turnOff: async (source: SourceName) => {
+    if (source === 'screen') await toggleScreen();
+    else if (source === 'webcam') { await toggleWebcam(); syncSources(); }
+    else { await toggleMic(); syncSources(); }
+  },
+  turnOn: async (source: SourceName) => {
+    if (source === 'webcam') { await toggleWebcam(); syncSources(); }
+    else if (source === 'microphone') { await toggleMic(); syncSources(); }
+  },
+};
 
 init();

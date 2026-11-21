@@ -27,10 +27,15 @@ src/
     annotating/ the annotation plugin seam: the plugin registry, the plugin and the
                 canvas every kind is edited through, the properties inspector and the
                 text entry, and one file per kind
+    agent/      the automation surface: the app's own operations in one object,
+                published only when the page asks (`?agent=1`). It adds no rule — it
+                calls the flows and the clip, exactly as a button does
     *-flow.ts  the view flows: record, review, export, publish, resume
   state.ts     the phase only — one owner and one change event
   session.ts   the composition: the single Session object
   main.ts      the composition root: the only module importing all four layers
+mcp/           the MCP server — outside the app's four layers, in node, reaching
+               the app only through the page. It owns no rule of the app either
 ```
 
 A port lives beside the use case that needs it; an adapter lives in `infra/`; a

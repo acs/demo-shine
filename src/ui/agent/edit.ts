@@ -1,0 +1,92 @@
+// The surface's editing operations.
+//
+// Every one is the app's own: a cut is the clip's own approve, an annotation goes in
+// through the clip, a property change goes through the kind's own descriptor, and the
+// undo is the clip's one undo. There is no second implementation of any rule, so a
+// change an agent makes is announced to the views, taken back by the one undo, and
+// kept with the clip — exactly as a person's change is.
+//
+// A refusal is a **value**, not a throw: the app's answer, with a reason, and the clip
+// left alone.
+
+import { Span } from '../../domain/clip/Span.js';
+import type { Clip } from '../../domain/clip/Clip.js';
+import type { Annotation } from '../../domain/annotation/Annotation.js';
+import { pluginOf, propertiesOf } from '../annotating/annotation-plugin.js';
+import { MIN_SECTION } from '../cutting/selection.js';
+import type { AnnotationParams, Result } from './surface.js';
+
+/** What a kind's maker answered: the annotation, or why it would not make one. */
+export type Made = { readonly annotation: Annotation } | { readonly reason: string };
+
+/**
+ * Make a new annotation of a kind from data alone. The kinds whose shape *is* data
+ * are here; a kind that needs something from outside the clip is not, and says so.
+ */
+export type MakeAnnotation = (kind: string, params: AnnotationParams, span: Span) => Made;
+
+export interface Editor {
+  cut(from: number, to: number): Result<{ removed: number }>;
+  annotate(kind: string, params: AnnotationParams): Result<{ id: string }>;
+  setProperty(id: string, property: string, value: string): Result<{ value: string }>;
+  remove(id: string): Result<{ kind: string }>;
+  undo(): Result<{ change: string }>;
+}
+
+export function createEditor(clip: Clip, make: MakeAnnotation): Editor {
+  return {
+    cut(from, to) {
+      const span = Span.between(from, to, MIN_SECTION);
+      if (!span) {
+        return { ok: false, reason: `a cut has to be at least ${MIN_SECTION} of the clip, and inside it` };
+      }
+      return { ok: true, removed: clip.approve(span) };
+    },
+
+    annotate(kind, params) {
+      if (!pluginOf(kind)) return { ok: false, reason: `the app has no annotation kind called ${kind}` };
+      const span = spanIn(params);
+      if (!span) {
+        return { ok: false, reason: `an annotation needs a stretch of the clip to be shown over, at least ${MIN_SECTION} long` };
+      }
+      const made = make(kind, params, span);
+      if ('reason' in made) return { ok: false, reason: made.reason };
+      clip.addAnnotation(made.annotation);
+      return { ok: true, id: made.annotation.id };
+    },
+
+    setProperty(id, property, value) {
+      const annotation = clip.annotations.byId(id);
+      if (!annotation) return { ok: false, reason: `there is no annotation with id ${id}` };
+      const descriptor = propertiesOf(annotation).find(candidate => candidate.id === property);
+      if (!descriptor) return { ok: false, reason: `a ${annotation.kind} has no property called ${property}` };
+      if (typeof value !== 'string') return { ok: false, reason: 'a property value is a string' };
+      const next = descriptor.with(annotation, value);
+      if (!next) return { ok: false, reason: `${property} will not take ${JSON.stringify(value)}` };
+      clip.changeAnnotation(id, next);
+      return { ok: true, value: descriptor.value(next) };
+    },
+
+    remove(id) {
+      const annotation = clip.annotations.byId(id);
+      if (!annotation) return { ok: false, reason: `there is no annotation with id ${id}` };
+      clip.removeAnnotation(id);
+      return { ok: true, kind: annotation.kind };
+    },
+
+    undo() {
+      const change = clip.undo();
+      if (!change) return { ok: false, reason: 'there is nothing to undo' };
+      return { ok: true, change: change.type };
+    },
+  };
+}
+
+/** The stretch an annotation is shown over: `params.span`, as `{ s, e }` fractions. */
+function spanIn(params: AnnotationParams): Span | null {
+  const value = params.span;
+  if (!value || typeof value !== 'object') return null;
+  const { s, e } = value as { s?: unknown; e?: unknown };
+  if (typeof s !== 'number' || typeof e !== 'number') return null;
+  return Span.between(s, e, MIN_SECTION);
+}

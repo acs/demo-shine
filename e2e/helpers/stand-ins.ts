@@ -21,6 +21,7 @@ export interface StandInShareOptions {
 
 interface AskedWindow {
   __e2eAskedFor?: DisplayMediaStreamOptions | null;
+  __e2eActivationAtShare?: boolean | null;
 }
 
 /** Install before `boot.goto()`, so the stand-in is in place before the app loads. */
@@ -31,6 +32,10 @@ export async function installStandInShare(page: Page, options: StandInShareOptio
 
     media.getDisplayMedia = async (constraints?: DisplayMediaStreamOptions) => {
       (window as unknown as AskedWindow).__e2eAskedFor = constraints ?? null;
+      // A browser only opens the picker for a transient activation, so whether the
+      // call carried one is the half of the picker a check *can* hold. Read here,
+      // where the app's own call is made.
+      (window as unknown as AskedWindow).__e2eActivationAtShare = navigator.userActivation?.isActive ?? null;
 
       const canvas = document.createElement('canvas');
       canvas.width = opts.width ?? 1280;
@@ -74,4 +79,13 @@ export async function installStandInShare(page: Page, options: StandInShareOptio
 /** The constraints the app passed to `getDisplayMedia`, or null if it was not asked. */
 export async function askedFor(page: Page): Promise<DisplayMediaStreamOptions | null> {
   return page.evaluate(() => (window as unknown as AskedWindow).__e2eAskedFor ?? null);
+}
+
+/**
+ * Did the call to `getDisplayMedia` carry a transient user activation? A browser only
+ * opens the picker for one, so this is the half of the picker a check can hold — the
+ * other half is the person choosing, which is theirs.
+ */
+export async function activationAtShare(page: Page): Promise<boolean | null> {
+  return page.evaluate(() => (window as unknown as AskedWindow).__e2eActivationAtShare ?? null);
 }

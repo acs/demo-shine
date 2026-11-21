@@ -57,10 +57,13 @@ src/
                 the image store, Bluesky
   ui/           the DOM and the interaction — renders the model, owns no rules;
                 the annotation plugins and the shared canvas under annotating/;
-                the view flows (record, review, export, publish, resume) sequence
+                the view flows (record, review, export, publish, resume) sequence;
+                agent/ the surface an agent drives, published only when asked
   state.ts      the phase only
   session.ts    the composition: the single Session
   main.ts       the composition root
+mcp/            the MCP server: a second artefact, released with the app, that
+                opens a browser on the app and drives it through the surface
 ```
 
 A rule about a range goes in the value object, about the clip as a whole in the
@@ -68,6 +71,11 @@ aggregate, about the browser in an adapter; collaborators behind a port. And **t
 view listens**: the clip announces what changed and the modules that draw it react,
 rather than a caller re-rendering around the call. The sibling **Domain model**
 skill covers this properly — read it before adding a rule.
+
+`mcp/` is not part of the app: it runs in node, reaches the app only through the
+page, and is released from this repository with the app's version. The app's own
+`src/` knows nothing of it; the **automation surface** it publishes is the whole of
+the coupling (`GLOSSARY.md`, "Being driven by an agent").
 
 ## Which document owns which fact
 
