@@ -24,3 +24,35 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  e2e:
+    name: End-to-end (Chromium)
+    runs-on: ubuntu-latest
+    env:
+      HUSKY: 0
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+      # The report and the evidence are kept on every run, as GitLab's artifacts
+      # are: the HTML report is there even when the suite passed, and the videos,
+      # screenshots and traces appear in it exactly when a check fails (the config
+      # keeps them only on failure). The retention cap keeps a long-lived branch
+      # from piling runs up.
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: playwright-artifacts
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore

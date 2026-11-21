@@ -1,6 +1,6 @@
 ---
 name: Verification
-description: How to prove a change works in DemoClip — unit tests in node, a browser harness on the running dev server, and what must be said about what was not verified. Use before claiming any change works, and when reviewing one.
+description: How to prove a change works in DemoClip — unit tests in node, a committed check in the end-to-end suite that drives the real app in a browser, and what must be said about what was not verified. Use before claiming any change works, and when reviewing one.
 ---
 
 # Verification
@@ -13,21 +13,23 @@ as working because `npm run lint`, `npm run typecheck` and `npm run build` passe
 | the change touches | it is proved by |
 |---|---|
 | a rule in `src/domain/` | a **unit test**, in node, next to the file |
-| anything drawn, played, encoded or wired to the DOM | a **browser harness** on the running dev server |
-| the recorder's flow (screen share, a take arriving) | a **real session**, by the user — no harness can start a share |
+| anything drawn, played, encoded or wired to the DOM | a **committed check** in the end-to-end suite (`e2e/`), run in a real browser |
+| the recorder's flow (screen share, a take arriving) | a **real session**, by the user — no check can open the share picker |
 
 Say which level a change got, in the pull request, in those words.
 
 The recorder's row is not a gap to be closed later: `getDisplayMedia` needs a user
-gesture and a browser picker, so **no harness here can start a share**. Keep changes
-to that flow small, and ask the user to run it.
+gesture and a browser picker, so **no check can open a share**. The suite covers
+everything *after* a share is handed back, and the webcam and mic on stand-in
+devices; keep changes to the picker itself small, and ask the user to run a real
+session.
 
 ## A regression fix is proved by the check that fails before it
 
 When the change fixes something that used to work, run the check against the old code
-and the new: the same test, harness or assertion must **fail before and pass after**,
-and both results go in the pull request. A suite that is green after the fix says
-nothing about the bug it fixed.
+and the new: the same check must **fail before and pass after**, and both results go
+in the pull request. A suite that is green after the fix says nothing about the bug it
+fixed.
 
 The pull request also carries a **post-mortem** — what introduced the regression, and
 why it was not caught — which the project workflow skill lays out.
@@ -41,29 +43,45 @@ why it was not caught — which the project workflow skill lays out.
   `FakeTakes` with no browser at all.
 - `npx vitest run`, or one file while iterating: `npx vitest run src/domain/clip/Clip.test.ts`
 
-## The browser harness
+## The end-to-end suite
 
-1. Write `web/verify-<what>.html`: a copy of `web/index.html` with a module script
-   injected before `</body>`. The Vite root is `web/`, so it is served at
-   `/verify-<what>.html`.
-2. Build the state by hand rather than recording it:
-   `session.clip.clear(); session.clip.addTake(blob, 4);`, and set `selection.marks`
-   and `setPhase('review')`.
-3. Report through a `<pre id="verify">` and read that element back — the panel is
-   the only view of the page there is.
-4. Open it on the running dev server and read the element back.
-5. **Delete the file before committing.** These are never part of a change; the
-   evidence is the output pasted into the pull request.
+The suite lives in `e2e/` and drives the real page (`web/index.html`) in a headless
+Chromium. It is the committed replacement for the old throwaway `verify-*.html`
+harness, which is retired: a check written once and kept guards the behaviour from
+then on, where a harness deleted before the commit left nothing behind.
 
-## What the sandbox cannot do, and the stubs that get around it
+1. Add a check under `e2e/checks/<area>.spec.ts`. It runs the real app, so it needs
+   no copy of `index.html` and no injected script.
+2. Build the state with the shared helpers rather than by recording: `boot(page)`
+   loads the app and seeds a clip, and `makeTake(...)` builds a **fixture take** — a
+   real, decodable WebM with an exact duration, produced in milliseconds. Editing
+   checks never record.
+3. Assert **what a person would see** — a chip's text, a button's visibility, the
+   status line — and reach for the model only where the view shows nothing.
+4. Run it: `npm run test:e2e` (or, for one check,
+   `npx playwright test --config e2e/playwright.config.ts e2e/checks/cutting.spec.ts`).
+   The dev server is started for you.
+5. Commit the check with the change. A failing run leaves a trace, a screenshot and
+   a video under `test-results/`, and the CI job keeps the report and the evidence as
+   artifacts on every run (GitHub's answer to GitLab's artifacts).
 
-- A WebM recorded here has `duration = 0` and cannot be seeked. Model the element:
-  define `currentTime`, `paused`, `duration`, `ended`, `seeking`, `play()`, `pause()`
-  on `el.rv`, and dispatch `seeked` and `loadeddata` when they are asked for.
-- The panel is **backgrounded**, so animation frames may never run: re-route them
-  before importing anything —
-  `window.requestAnimationFrame = fn => setTimeout(() => fn(performance.now()), 16)`.
-- Effects leave traces worth asserting on: `CanvasRenderingContext2D.prototype.drawImage`
+A check that cannot run in its environment calls `test.skip(true, '<reason>')` — it
+is reported **skipped**, with the reason, and never counted as a pass.
+
+### Stubbing what the browser will not give you
+
+- The **share picker** is never opened. `installStandInShare(page)` takes the place of
+  `getDisplayMedia` with a `canvas.captureStream()`, so the app's handling of a share
+  that is *handed back* is covered; `askedFor(page)` reads the constraints the app
+  passed.
+- The **webcam and mic** come from Chromium's fake devices, set as launch args in
+  `e2e/playwright.config.ts`.
+- The **publishing service** is stood in for with `page.route`; no check touches the
+  network.
+- A WebM's `duration = 0` quirk is the app's own `take-probe`'s problem, not the
+  check's: a fixture take carries a real duration, so no seek-past-the-end guess is
+  needed.
+- Effects still leave traces worth asserting on: `CanvasRenderingContext2D.prototype.drawImage`
   and `globalAlpha` for compositing, `AudioParam.prototype.linearRampToValueAtTime`
   for the fades, `URL.revokeObjectURL` for what the repository releases,
   `HTMLAnchorElement.prototype.click` for the download.
@@ -75,7 +93,7 @@ bug in the *view* is invisible to a model assertion, and one was found exactly t
 way: the marks rendered while the model was still announcing, so the chip showed a
 section of zero length and the undo button never appeared.
 
-## When a harness fails, check the expectation first
+## When a check fails, check the expectation first
 
 It has been the test's own arithmetic far more often than the code. Work the number
 out before changing anything: a 6 s clip with 3.6 s removed has **2.4 s** left, and
@@ -83,6 +101,6 @@ out before changing anything: a 6 s clip with 3.6 s removed has **2.4 s** left, 
 
 ## Say what was not verified
 
-Every pull request says what it could not check and why — the recorder's flow, a
+Every pull request says what it could not check and why — the share picker, a
 real recording, an ear on the exported audio, headless numbers being headless
 numbers. An honest gap is worth more than a clean story.

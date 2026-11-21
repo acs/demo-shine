@@ -16,6 +16,7 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test --config e2e/playwright.config.ts",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.65.1",
     "@vitejs/plugin-basic-ssl": "^2.3.0",
     "eslint": "^10.15.0",
     "globals": "^17.14.0",
