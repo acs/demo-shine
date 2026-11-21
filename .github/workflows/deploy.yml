@@ -71,6 +71,12 @@ jobs:
             echo "No NPM_TOKEN secret is set — the version was stamped and the server built, but nothing was published."
             exit 0
           fi
+          # The server's own dependencies, before anything is built with them: `tsc`
+          # needs the type definitions the package declares, and a release never
+          # installed them — which is exactly how the first run of this step failed.
+          # Playwright's browser download is skipped: a release compiles and packs,
+          # and it is the person's own install that needs a browser.
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm --prefix mcp ci
           npm --prefix mcp run bundle-app
           npm --prefix mcp run build
           cd mcp && npm publish --access public
