@@ -21,9 +21,8 @@ test('a section becomes a cut, and the one undo puts it back', async ({ page }) 
   await clickAt(0.25);
   await clickAt(0.5);
 
-  // The chip names the section a person just bounded. The app's markup carries two
-  // elements with id `t-cut` (a duplicate id); this one is the chip in the header.
-  await expect(page.locator('#t-cut-wrap #t-cut')).toContainText('CUT');
+  // The chip names the section a person just bounded.
+  await expect(page.locator('#t-cut')).toContainText('CUT');
 
   // The scissors takes it out; the timeline closes up over it.
   await page.locator('[data-act="cut"]').click();
