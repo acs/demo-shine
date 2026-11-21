@@ -1,0 +1,33 @@
+{
+  "name": "democlip-mcp",
+  "version": "1.0.88",
+  "description": "Drive DemoClip from an agent: an MCP server that opens a browser on the app, lets you record with the normal picker, and edits the clip while you watch.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "democlip-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "app"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bundle-app": "node scripts/bundle-app.mjs",
+    "sync-version": "node scripts/sync-version.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "playwright": "^1.65.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.0"
+  }
+}

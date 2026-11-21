@@ -4,7 +4,7 @@ import globals from 'globals';
 
 export default tseslint.config(
   // Compiled output and generated files are not linted.
-  { ignores: ['dist/**', 'node_modules/**', '.husky/**', 'src/**/*.js', 'playwright-report/**', 'test-results/**'] },
+  { ignores: ['dist/**', 'node_modules/**', '.husky/**', 'src/**/*.js', 'playwright-report/**', 'test-results/**', 'mcp/dist/**', 'mcp/app/**'] },
 
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -17,7 +17,15 @@ export default tseslint.config(
 
   // Dev tooling runs in Node.
   {
-    files: ['scripts/**/*.mjs', 'eslint.config.js', 'vitest.config.ts', 'vite.config.ts', 'e2e/playwright.config.ts'],
+    files: ['scripts/**/*.mjs', 'eslint.config.js', 'vitest.config.ts', 'vite.config.ts', 'e2e/playwright.config.ts', 'mcp/scripts/**/*.mjs'],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
+
+  // The MCP server is a second artefact, in node, outside the app's four layers.
+  {
+    files: ['mcp/src/**/*.ts'],
     languageOptions: {
       globals: { ...globals.node },
     },
