@@ -85,7 +85,7 @@ test('describe reports the clip, and a cut through the surface lands where a per
 
   // What a person sees: the chip says what was cut, the undo is offered, and the
   // clip is shorter.
-  await expect(page.locator('#t-cut-wrap #t-cut')).toContainText('CUT');
+  await expect(page.locator('#t-cut')).toContainText('CUT');
   await expect(page.locator('#cut-undo')).toBeVisible();
   await expect(page.locator('#t-clip')).toHaveText('3.00s');
 });
