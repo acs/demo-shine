@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -17,16 +17,34 @@ import { serverVersion } from './version.js';
 
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 const builtApp = fileURLToPath(new URL('../../dist/index.html', import.meta.url));
+const builtVersion = fileURLToPath(new URL('../../dist/version.json', import.meta.url));
+
+/**
+ * Build the app unless the build on disk is already this release's.
+ *
+ * The check drives the app *this checkout* built, and the session refuses a page whose
+ * version is not its own — which is correct, and which turns a stale build into a
+ * puzzling failure after a branch switch. So the build is made current instead.
+ */
+function ensureBuiltApp(): void {
+  if (existsSync(builtApp) && builtVersionOnDisk() === serverVersion()) return;
+  execSync('npm run build', { cwd: repoRoot, stdio: 'inherit' });
+}
+
+function builtVersionOnDisk(): string {
+  try {
+    const build = JSON.parse(readFileSync(builtVersion, 'utf8')) as { version?: string };
+    return build.version ?? '';
+  } catch {
+    return '';
+  }
+}
 
 describe('the server, end to end', () => {
   let session: Session;
 
   beforeAll(async () => {
-    if (!existsSync(builtApp)) {
-      // The check needs the app's build; the repository's own build makes it, so a
-      // bare `npm --prefix mcp test` works on a clean checkout.
-      execSync('npm run build', { cwd: repoRoot, stdio: 'inherit' });
-    }
+    ensureBuiltApp();
     // The build from *this checkout*, explicitly: the released server prefers the
     // build packaged inside it, which is right for a release and wrong for a check —
     // a stale packaged copy must never be able to make this pass.
