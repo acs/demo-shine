@@ -31,6 +31,8 @@ export interface SessionOptions {
   readonly appRoot?: string;
   /** Where an exported file is saved; the person's Downloads by default. */
   readonly downloadsDir?: string;
+  /** The browser to launch, when the person keeps it somewhere unusual. */
+  readonly executablePath?: string;
 }
 
 export async function openSession(options: SessionOptions = {}): Promise<Session> {
@@ -44,7 +46,10 @@ export async function openSession(options: SessionOptions = {}): Promise<Session
   const app: AppServer = await serveApp(root);
   let opened: OpenedApp | null = null;
   try {
-    opened = await openApp(app.origin, { headless: options.headless });
+    opened = await openApp(app.origin, {
+      headless: options.headless,
+      executablePath: options.executablePath,
+    });
     const version = await readSurfaceVersion(opened.page);
     const mismatch = versionMismatchReason(version, serverVersion());
     if (mismatch) throw new Error(mismatch);

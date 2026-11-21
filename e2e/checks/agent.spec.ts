@@ -214,6 +214,29 @@ test('a take with no picture is refused, with the reason a person would be told'
   expect(refused.reason).toContain('picture');
 });
 
+test('a change the agent made is taken back by the app\u2019s own undo, in one action', async ({ page }) => {
+  await reviewed(page);
+
+  await call(page, 'edit.cut', 0.25, 0.5);
+  await expect(page.locator('#t-clip')).toHaveText('3.00s');
+
+  // The person presses the app's own undo — not the surface's — and the change goes
+  // back in one action, whoever made it.
+  await page.locator('#cut-undo').click();
+  await expect(page.locator('#t-clip')).toHaveText('4.00s');
+});
+
+test('a page that did not ask carries no surface at all, before or after it is used', async ({ page }) => {
+  const app = boot(page);
+  await app.goto();
+
+  // Not merely absent: nothing was published to be found, and the app carries on
+  // being the app.
+  expect(await page.evaluate(() => Object.keys(globalThis).filter(k => k === 'democlip'))).toEqual([]);
+  await page.locator('#screen-btn').click();
+  expect(await published(page)).toBe('undefined');
+});
+
 test('an export through the surface writes the file a person would get, holding the edit', async ({ page }) => {
   await reviewed(page);
 

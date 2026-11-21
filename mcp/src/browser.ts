@@ -21,6 +21,8 @@ export interface OpenedApp {
 export interface LaunchOptions {
   /** Headless is for the server's own checks only; a session for a person is headful. */
   readonly headless?: boolean;
+  /** The browser to launch, when the person keeps it somewhere unusual. */
+  readonly executablePath?: string;
 }
 
 /** Open the app, in a browser of our own, on the page that asked to be driven. */
@@ -30,6 +32,7 @@ export async function openApp(origin: string, options: LaunchOptions = {}): Prom
     headless: options.headless ?? false,
     viewport: null,
     args: ['--no-first-run', '--no-default-browser-check'],
+    ...(options.executablePath ? { executablePath: options.executablePath } : {}),
   });
   const page = context.pages()[0] ?? (await context.newPage());
   await page.goto(`${origin}/?agent=1`, { waitUntil: 'domcontentloaded' });

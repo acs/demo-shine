@@ -136,11 +136,11 @@ Two artefacts, per plan.md. The app keeps its four layers: domain in `src/domain
 
 ### Verification for User Story 3
 
-- [ ] T034 [US3] Extend `e2e/checks/agent.spec.ts` — the gate both ways (a page without the flag publishes nothing at all; one with it publishes the surface), and a change the agent made is taken back by the app's **one undo** in one action, whoever made it (`contracts/agent-surface.md` §1; spec FR-012, FR-017, SC-004).
-- [ ] T035 [P] [US3] Node test in `mcp/`: a version mismatch is refused with a reason **before any tool runs**, and the clip is not half-read (`research.md` D7; spec FR-018).
-- [ ] T036 [US3] Node test in `mcp/`: no browser can be opened (none installed, or no display) — the person is told plainly and nothing half-starts (`spec.md` Edge Cases).
-- [ ] T037 [US3] Record the guarantee in the pull request: the tool list contains no tool that evaluates code, scripts the page, reads or writes a file, or reaches the network except through `publish_clip`; the surface offers the app's own operations and nothing else; and the contract says plainly that the surface is **not** a security sandbox — the promise is about what the server offers, not what the page could be made to do (`contracts/agent-surface.md` §4; `contracts/mcp-tools.md` §1; spec FR-015).
-- [ ] T038 [US3] Record that adding the surface changed no existing check's outcome: the full `e2e/` suite is green with **no existing check modified**; if one had to change, name it and say why (spec SC-007; constitution VI).
+- [x] T034 [US3] Extend `e2e/checks/agent.spec.ts` — the gate both ways (a page without the flag publishes nothing at all; one with it publishes the surface), and a change the agent made is taken back by the app's **one undo** in one action, whoever made it (`contracts/agent-surface.md` §1; spec FR-012, FR-017, SC-004).
+- [x] T035 [P] [US3] Node test in `mcp/`: a version mismatch is refused with a reason **before any tool runs**, and the clip is not half-read (`research.md` D7; spec FR-018).
+- [x] T036 [US3] Node test in `mcp/`: no browser can be opened (none installed, or no display) — the person is told plainly and nothing half-starts (`spec.md` Edge Cases).
+- [x] T037 [US3] Record the guarantee in the pull request: the tool list contains no tool that evaluates code, scripts the page, reads or writes a file, or reaches the network except through `publish_clip`; the surface offers the app's own operations and nothing else; and the contract says plainly that the surface is **not** a security sandbox — the promise is about what the server offers, not what the page could be made to do (`contracts/agent-surface.md` §4; `contracts/mcp-tools.md` §1; spec FR-015).
+- [x] T038 [US3] Record that adding the surface changed no existing check's outcome: the full `e2e/` suite is green with **no existing check modified**; if one had to change, name it and say why (spec SC-007; constitution VI).
 
 **Checkpoint**: The promise holds — the picker and the account stay the person's, every change is an ordinary change, and a refusal leaves the clip untouched.
 
