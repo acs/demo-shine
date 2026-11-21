@@ -65,6 +65,22 @@ it, and a second instance on the real profile is refused; a browser extension �
 it is the only way to reach the person's own logged-in browser, and it is more to build
 than this version needs.
 
+**What the real session changed.** The decision held; one thing about it did not, and only
+a person could have found it. The browser the server opened was the Chromium Playwright
+downloads — the right browser, wrongly started. macOS grants Screen Recording per
+*application bundle* **and attributes it to the responsible process**, so a browser spawned
+as a child of the server is one the system will never let the person grant: it does not
+appear in System Settings, the picker never opens, and nothing says why. Switching to the
+installed Chrome was not enough — the identity was right and the *launch context* was the
+problem. So on macOS a headful session now starts the person's Chrome through
+**LaunchServices** (`open -na`), which is an ordinary app launch whose parent is `launchd`,
+and the server **attaches to its debugging port** instead of owning the browser.
+
+That is the "attaching" the alternatives above rejected, and the rejection still stands for
+what it described: attaching to a browser *the person already has running*, on their real
+profile. Starting the app ourselves, on a profile of our own, is a different thing — and it
+is what made capture possible at all.
+
 ## D4 — The tools are the app's operations, named in its words
 
 **Decision**: one tool per operation the app has, named after it — record a take, cut a

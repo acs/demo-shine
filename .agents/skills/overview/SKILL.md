@@ -77,6 +77,15 @@ page, and is released from this repository with the app's version. The app's own
 `src/` knows nothing of it; the **automation surface** it publishes is the whole of
 the coupling (`GLOSSARY.md`, "Being driven by an agent").
 
+It reaches that page over the browser's **DevTools Protocol** — Playwright is its
+client for that protocol and nothing more, a library with no browser download, whose
+browser the server never uses: a session launches the person's **own Chrome**. On
+macOS that is forced rather than chosen, since screen recording is granted per
+application bundle, so the browser is started through LaunchServices and the server
+attaches to its debugging port. The protocol is the transport and it cannot be
+bounded — anything holding the port can do anything to the page — so the bound is the
+**tool list**, which is the app's own operations.
+
 ## Which document owns which fact
 
 - `README.md` — what it is, how to use it, and the module map.
