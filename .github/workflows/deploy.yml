@@ -12,7 +12,13 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # A release is a version, and a version is a fact: cancelling a run in flight drops
+  # one silently, which is exactly what happened to v1.0.94 — its publish was cancelled
+  # when the next merge arrived, and npm went from 1.0.93 to 1.0.95 with nothing said.
+  # Runs queue instead. That is also why each publish job takes the commit *its own run*
+  # stamped rather than whatever `main` says by the time it starts: two merges in quick
+  # succession are two runs, and each must publish the version it made.
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -21,6 +27,9 @@ jobs:
       HUSKY: 0
     outputs:
       version: ${{ steps.version.outputs.version }}
+      # The bump commit this run pushed. The publish job checks this out rather than
+      # `main`, so a queued run publishes the release it made and not a later one.
+      commit: ${{ steps.version.outputs.commit }}
     steps:
       - uses: actions/checkout@v7
 
@@ -53,6 +62,7 @@ jobs:
           git commit -m "chore: bump version to v$VERSION [skip ci]"
           git tag "v$VERSION"
           git push --atomic origin HEAD:main "v$VERSION"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - run: npm ci
       - run: npm run build
@@ -90,11 +100,13 @@ jobs:
     env:
       HUSKY: 0
     steps:
-      # The bump commit the build job has just pushed, because the server carries the
-      # app's version and that is where the number now lives.
+      # This run's own release, not whatever `main` says by the time this job starts:
+      # two merges close together are two queued runs, and each publishes the version it
+      # stamped. Publishing `main` would have both of them publish the newer version, and
+      # the second would fail on a version that already exists.
       - uses: actions/checkout@v7
         with:
-          ref: main
+          ref: ${{ needs.build.outputs.commit }}
 
       - uses: actions/setup-node@v7
         with:
