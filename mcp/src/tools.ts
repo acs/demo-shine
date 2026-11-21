@@ -11,7 +11,7 @@
 // try something else.
 
 import type { Session } from './session.js';
-import { pressScreenButton } from './press.js';
+import { pressScreenButton, screenCaptureBlocked } from './press.js';
 import { watchDownload } from './downloads.js';
 
 export type Args = Readonly<Record<string, unknown>>;
@@ -170,6 +170,11 @@ const turnSourceOn: Tool = {
   async run(session, args) {
     const source = String(args.source ?? '');
     if (source === 'screen') {
+      // macOS grants Screen Recording per application bundle, so a browser it does not
+      // recognise cannot be granted it and the picker would never open. Say so, rather
+      // than pressing a button that does nothing.
+      const blocked = screenCaptureBlocked(session.browser, process.platform);
+      if (blocked) return { ok: false, reason: blocked };
       const pressed = await pressScreenButton(session);
       if (!pressed.pressed) return { ok: false, reason: pressed.reason };
       return { ok: true, sources: await callSurface(session, 'sources'), note: 'the browser is asking the person what to share' };

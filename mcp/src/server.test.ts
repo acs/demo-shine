@@ -11,7 +11,14 @@ function sessionWith(answer: unknown): Session {
   const page = {
     evaluate: async () => answer,
   } as unknown as Page;
-  return { page, origin: 'http://127.0.0.1:0', version: '1.2.3', downloadsDir: '/tmp', close: async () => {} };
+  return {
+    page,
+    origin: 'http://127.0.0.1:0',
+    version: '1.2.3',
+    browser: { label: 'Google Chrome', grantable: true },
+    downloadsDir: '/tmp',
+    close: async () => {},
+  };
 }
 
 const opens = (session: Session): BuildOptions => ({ openSession: async () => session });

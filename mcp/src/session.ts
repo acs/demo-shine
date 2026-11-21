@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import type { Page } from 'playwright';
 import { serveApp, type AppServer } from './serve.js';
-import { openApp, type OpenedApp } from './browser.js';
+import { openApp, type BrowserIdentity, type OpenedApp } from './browser.js';
 import { downloadsDirectory } from './downloads.js';
 import { serverVersion, versionMismatchReason } from './version.js';
 
@@ -19,6 +19,8 @@ export interface Session {
   readonly origin: string;
   /** The app's version, as the surface reported it. */
   readonly version: string;
+  /** Which browser was opened, and whether the system can grant it the screen. */
+  readonly browser: BrowserIdentity;
   /** Where an exported file is saved. */
   readonly downloadsDir: string;
   close(): Promise<void>;
@@ -57,6 +59,7 @@ export async function openSession(options: SessionOptions = {}): Promise<Session
       page: opened.page,
       origin: app.origin,
       version,
+      browser: opened.browser,
       downloadsDir: options.downloadsDir ?? downloadsDirectory(),
       close: async () => {
         await opened?.close().catch(() => {});
