@@ -4,6 +4,12 @@
   "description": "Drive DemoClip from an agent: an MCP server that opens a browser on the app, lets you record with the normal picker, and edits the clip while you watch.",
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/acs/democlip.git",
+    "directory": "mcp"
+  },
+  "homepage": "https://github.com/acs/democlip#readme",
   "bin": {
     "democlip-mcp": "dist/index.js"
   },
