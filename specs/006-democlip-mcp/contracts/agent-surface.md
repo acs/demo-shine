@@ -98,6 +98,11 @@ interface ClipDescription {
   *offers* — the tool list in `mcp-tools.md` — not what the page can be made to do. This is
   said here because the spec's FR-015 is a promise about the surface and the tools, and it
   should not be read as a security boundary it is not.
+  **The transport is the browser's DevTools Protocol**, over a debugging port on loopback
+  that lives only as long as the session — a documented interface Chrome ships, and one
+  that can evaluate arbitrary script in the page. So the bound could not be the transport
+  even if we wanted it to be; it is the tool list, which is the app's own vocabulary. The
+  server sends a path *it* wrote plus JSON arguments, never code from the agent.
 - **not a recorder.** It cannot choose what is shared, and it cannot make a capture happen
   without the browser's picker (FR-004).
 - **not a second editor.** Every rule it touches already lives in a flow or in the domain.
