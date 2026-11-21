@@ -187,8 +187,36 @@ browser capability sits behind a port; the adapter that implements it lives in
 `ui/` is grouped by the concept it serves: `shell/` the frame, `recording/` a
 take, `clip/` the clip and its review, `cutting/` a stretch and its cut,
 `annotating/` the drawing, `exporting/` the file, `publishing/` the post,
-`keeping/` a kept clip and its restore, and `lifecycle/` the start and end of a
-session. `dom.ts` stays at the root as the one registry every group reaches.
+`keeping/` a kept clip and its restore, `lifecycle/` the start and end of a
+session, and `agent/` the surface an agent drives. `dom.ts` stays at the root as
+the one registry every group reaches.
+
+## Being driven by an agent
+
+A person asks their agent to start a session. An **MCP server** — a local program
+the person's **agent harness** starts — opens a browser on DemoClip, on a profile
+of its own, and offers the agent the app's own **operations** as tools: cut,
+annotate, change a property, undo, seek, record a take, export, publish. The agent
+calls them, and the person watches each change land in that window and can take
+any of it back with the app's own undo.
+
+What the agent may drive is the **automation surface**: one object the app
+publishes **only when the page asks for it**, holding the app's own operations and
+nothing else — no way to run code, to script the page, or to reach outside the
+clip. The recording itself stays the person's in the one place the browser will
+not give it away: what is *shared* is chosen in the picker, by a hand.
+
+| word | what it is | in the code |
+|---|---|---|
+| **agent session** | one sitting driven by an agent: the browser the server opened, the clip in it, and the person watching. One at a time | `mcp/src/server.ts`; the browser `mcp/src/browser.ts` |
+| **agent harness** | the chat that starts the server and offers its tools to the model — OpenCode first | the person's own tool, configured with `mcp` |
+| **operation** | one thing an agent may do, named in the app's vocabulary: cut, annotate, set a property, remove, undo, seek, record a take, export, publish | `AgentSurface` (`src/ui/agent/surface.ts`) |
+| **automation surface** | what the app offers to be driven, deliberately bounded to its own operations. Published on the page only when the page asks (`?agent=1`); a page that did not ask carries nothing | `src/ui/agent/`, published by `src/main.ts` |
+| **MCP server** | the local program that launches the browser, serves the app's own build on loopback, and offers the surface as tools over stdio. In this repository, released with the app | `mcp/` |
+
+The surface is not a sandbox: the server is the person's own program and can reach
+the page. What is bounded is what the server **offers** — the tool list — not what
+the page could be made to do.
 
 ## Testing
 
