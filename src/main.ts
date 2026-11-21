@@ -1,8 +1,11 @@
 // Composition root: wires the UI to the use cases and boots the app.
 
 import { el, setStatus, toast } from './ui/dom.js';
-import { initVersion } from './ui/shell/version.js';
+import { initVersion, appVersion } from './ui/shell/version.js';
+import { agentAskedFor, createAgentSurface } from './ui/agent/surface.js';
+import { describeClip } from './ui/agent/describe.js';
 import { onPhaseChange, currentPhase, type Phase } from './state.js';
+import { session } from './session.js';
 import { loadPrefs } from './prefs.js';
 import { applyTheme, toggleTheme } from './ui/shell/theme.js';
 import { toggleHelp, helpBdClick } from './ui/shell/help.js';
@@ -154,6 +157,17 @@ function init(): void {
     } else {
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
+  }
+
+  // The automation surface: published **only** when the page asked to be driven.
+  // A page opened without the flag carries nothing at all — no global, no listener,
+  // no timer — so a person opening DemoClip gets the app and nothing else. The
+  // operations it offers are the app's own; this only hands them over.
+  if (agentAskedFor(window.location.search)) {
+    window.democlip = createAgentSurface({
+      version: appVersion(),
+      describe: () => describeClip(session.clip),
+    });
   }
 }
 
