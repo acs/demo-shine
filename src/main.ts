@@ -170,6 +170,9 @@ function init(): void {
   // no timer — so a person opening DemoClip gets the app and nothing else. The
   // operations it offers are the app's own; this only hands them over.
   if (agentAskedFor(window.location.search)) {
+    // The page says so too. The badge is the visible half of the same gate, decided
+    // here and nowhere else, so what the page offers and what it says cannot disagree.
+    el.agentChip.classList.add('on');
     window.democlip = createAgentSurface({
       version: appVersion(),
       describe: () => describeClip(session.clip),

@@ -58,9 +58,24 @@ test('the surface is published on a page that asked, and on no other', async ({ 
 
   await app.goto();
   expect(await published(page)).toBe('undefined');
+  // The badge is the visible half of the same gate, so it is absent too — not merely
+  // hidden behind a class that a stray rule could reveal.
+  await expect(page.locator('#agent-chip')).toBeHidden();
 
   await app.gotoAgent();
   expect(await published(page)).toBe('object');
+
+  // And the page says so, in the header's own chip family, beside the status chip.
+  const badge = page.locator('#agent-chip');
+  await expect(badge).toBeVisible();
+  await expect(badge).toHaveText('Agent');
+  await expect(page.locator('.status-chip')).toHaveText('Ready');   // still its own chip
+
+  // The help is for a person's first use and this is not that, so the tooltip is the
+  // whole of the explanation — and it has to be an explanation, not a label.
+  const title = (await badge.getAttribute('title')) ?? '';
+  expect(title).toMatch(/agent/i);
+  expect(title.length).toBeGreaterThan(40);
 });
 
 test('the surface reports the app\u2019s own version', async ({ page }) => {
@@ -118,8 +133,7 @@ test('a property change through the surface repaints, and one undo puts it back'
   // Hold the frame the arrow is shown over, so the picture holds it. The seek draws
   // asynchronously, so each count waits for the paint rather than racing it.
   await call(page, 'view.seek', 1.5);
-  await expect.poll(() => countOf(page, ARROW_RED)).toBeGreaterThan(10);
-  expect(await countOf(page, PALETTE_GREEN)).toBe(0);
+  await expectArrowPainted(page, 'red');
 
   const changed = await call<{ ok: boolean; value: string }>(page, 'edit.setProperty', made.id, 'colour', PALETTE_GREEN);
   expect(changed.ok).toBe(true);
@@ -131,8 +145,7 @@ test('a property change through the surface repaints, and one undo puts it back'
   // ...and the picture is painted differently: the arrow's red is gone and the green
   // is there instead. Counting a colour is a fact about what the layer painted.
   await call(page, 'view.seek', 1.5);
-  await expect.poll(() => countOf(page, PALETTE_GREEN)).toBeGreaterThan(10);
-  expect(await countOf(page, ARROW_RED)).toBe(0);
+  await expectArrowPainted(page, 'green');
 
   // A colour the palette does not hold is refused, rather than silently becoming the
   // kind's default and reporting success.
@@ -144,8 +157,7 @@ test('a property change through the surface repaints, and one undo puts it back'
   const undone = await call<{ ok: boolean; change: string }>(page, 'edit.undo');
   expect(undone).toEqual({ ok: true, change: 'annotation-changed' });
   await call(page, 'view.seek', 1.5);
-  await expect.poll(() => countOf(page, ARROW_RED)).toBeGreaterThan(10);
-  expect(await countOf(page, PALETTE_GREEN)).toBe(0);
+  await expectArrowPainted(page, 'red');
 });
 
 test('a refusal is a value, and leaves the clip alone', async ({ page }) => {
@@ -330,28 +342,41 @@ function arrowPoints(x0: number, y0: number, x1: number, y1: number): Record<str
 const ARROW_RED = '#e53e3e';      // the arrow's own colour
 const PALETTE_GREEN = '#38a169';  // another colour the palette holds
 
-/**
- * How many pixels of the preview are this colour, within a small tolerance.
- *
- * Counting a colour is a fact about what the layer painted; sampling one pixel near a
- * point is not. The fixture picture underneath is itself saturated — `hsl(hue 70% 45%)`
- * — so a "most saturated pixel nearby" sample is a coin toss between the annotation and
- * the background, which is exactly how this check passed on one machine and failed on
- * another. The palette's colours are far enough from the fixture's to tell apart.
- */
-async function countOf(page: Page, colour: string): Promise<number> {
-  return page.evaluate(css => {
+/** How much of each colour the preview holds right now, counted in one read. */
+async function arrowColours(page: Page): Promise<{ red: number; green: number }> {
+  return page.evaluate(([redCss, greenCss]) => {
     const canvas = document.querySelector<HTMLCanvasElement>('#preview');
-    if (!canvas) return -1;
+    if (!canvas) return { red: -1, green: -1 };
     const context = canvas.getContext('2d');
-    if (!context) return -1;
-    const want = [1, 3, 5].map(at => parseInt(css.slice(at, at + 2), 16));
+    if (!context) return { red: -1, green: -1 };
+    const want = (css: string): number[] => [1, 3, 5].map(at => parseInt(css.slice(at, at + 2), 16));
     const near = (a: number, b: number): boolean => Math.abs(a - b) <= 8;
+    const red = want(redCss);
+    const green = want(greenCss);
     const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
-    let count = 0;
+    let reds = 0;
+    let greens = 0;
     for (let at = 0; at < data.length; at += 4) {
-      if (near(data[at], want[0]) && near(data[at + 1], want[1]) && near(data[at + 2], want[2])) count++;
+      if (near(data[at], red[0]) && near(data[at + 1], red[1]) && near(data[at + 2], red[2])) reds++;
+      else if (near(data[at], green[0]) && near(data[at + 1], green[1]) && near(data[at + 2], green[2])) greens++;
     }
-    return count;
-  }, colour);
+    return { red: reds, green: greens };
+  }, [ARROW_RED, PALETTE_GREEN]);
+}
+
+/**
+ * Wait until the arrow is painted in one colour and not the other.
+ *
+ * A *state*, not a single read: the seek draws asynchronously, so one read can catch a
+ * frame that is half painted — or blank, which would make "the red is gone" pass for
+ * the wrong reason. Counting the colour is a fact about what the layer painted; the
+ * fixture underneath is itself saturated, so sampling one pixel is a coin toss.
+ */
+async function expectArrowPainted(page: Page, colour: 'red' | 'green'): Promise<void> {
+  await expect.poll(async () => {
+    const counts = await arrowColours(page);
+    return colour === 'red'
+      ? counts.red > 10 && counts.green === 0
+      : counts.green > 10 && counts.red === 0;
+  }).toBe(true);
 }

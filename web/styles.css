@@ -90,6 +90,20 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .s-dot.ready{background:var(--green);box-shadow:0 0 6px var(--green);}
 .s-dot.rec{background:var(--crimson);box-shadow:0 0 8px var(--crimson-glow);animation:blink 1s infinite;}
 .s-dot.proc{background:var(--blue);box-shadow:0 0 6px var(--blue);animation:blink .7s infinite;}
+
+/* The agent badge: a page that asked to be driven says so, beside the status chip.
+   It is the header's chip family — the same shape, ink and type as .status-chip and
+   .res-badge — and its dot is the status dot in its ready state, so "a green dot that
+   says on" keeps one definition. Revealed by the same gate that publishes the surface,
+   so what the page offers and what it says cannot disagree.
+
+   Not carried to a narrow window (see the media query below). The header overflows a
+   phone width already — measured at 390px: 381px of content in a 346px row, with the
+   status chip ending 13px past the viewport — and this badge would take that to 94px,
+   costing the status chip its word. That overflow is older than this badge and worth
+   its own change; this one does not add to it. */
+.agent-chip{display:none;align-items:center;gap:7px;padding:5px 12px;border-radius:100px;background:var(--glass);border:1px solid var(--glass-b);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--text-mid);user-select:none;flex-shrink:0;}
+.agent-chip.on{display:flex;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
 
 /* ── PREVIEW ── */
@@ -317,6 +331,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
    also saying "add", and a plus there would be a lie. A source this browser cannot
    have at all is out of the row rather than disabled in it. */
 @media (max-width:700px){
+  /* The badge is not carried to a narrow window. The header already overflows one
+     without it — see the note beside .agent-chip — and the flag it answers to only
+     comes from a desktop session, so showing it here would cost the status chip its
+     word for a signal that cannot occur. */
+  .agent-chip.on{display:none;}
   .ctrl{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px;padding:6px 10px;}
   .srcs{justify-content:flex-start;flex-wrap:nowrap;gap:4px;}
   .src-btn{padding:6px 7px;gap:0;}

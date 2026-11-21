@@ -206,12 +206,17 @@ nothing else — no way to run code, to script the page, or to reach outside the
 clip. The recording itself stays the person's in the one place the browser will
 not give it away: what is *shared* is chosen in the picker, by a hand.
 
+The page says so as well. A page that asked to be driven wears the **agent badge**
+beside the status chip, which is the visible half of the same gate — so what the
+page offers and what it says cannot disagree, because one flag decides both.
+
 | word | what it is | in the code |
 |---|---|---|
 | **agent session** | one sitting driven by an agent: the browser the server opened, the clip in it, and the person watching. One at a time | `mcp/src/server.ts`; the browser `mcp/src/browser.ts` |
 | **agent harness** | the chat that starts the server and offers its tools to the model — OpenCode first | the person's own tool, configured with `mcp` |
 | **operation** | one thing an agent may do, named in the app's vocabulary: cut, annotate, set a property, remove, undo, seek, record a take, export, publish | `AgentSurface` (`src/ui/agent/surface.ts`) |
 | **automation surface** | what the app offers to be driven, deliberately bounded to its own operations. Published on the page only when the page asks (`?agent=1`); a page that did not ask carries nothing | `src/ui/agent/`, published by `src/main.ts` |
+| **agent badge** | the chip reading **Agent**, beside the status chip, worn only by a page that asked to be driven — the visible half of the same gate as the surface. Explained by its own tooltip: the help is for a person's first use, and this is not that | `#agent-chip` (`web/index.html`, `web/styles.css`), revealed by `src/main.ts` |
 | **MCP server** | the local program that launches the browser, serves the app's own build on loopback, and offers the surface as tools over stdio. In this repository, released with the app | `mcp/` |
 
 The surface is not a sandbox: the server is the person's own program and can reach
