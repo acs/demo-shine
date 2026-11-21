@@ -89,3 +89,32 @@ export async function askedFor(page: Page): Promise<DisplayMediaStreamOptions | 
 export async function activationAtShare(page: Page): Promise<boolean | null> {
   return page.evaluate(() => (window as unknown as AskedWindow).__e2eActivationAtShare ?? null);
 }
+
+/**
+ * Make every `AudioContext` come up suspended, as a browser strict about autoplay
+ * hands one back, and let a `resume()` bring it round. Chromium under the suite
+ * starts contexts running, so a check for what an app does with a suspended one has
+ * no other way to see it. `suspend()` is awaited before `resume()` runs: the two are
+ * control messages, and a resume that overtook its suspend would make the stand-in
+ * hand back something the real browser never would.
+ */
+export async function installSuspendedAudio(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const pending = new WeakMap<AudioContext, Promise<void>>();
+    const Real = window.AudioContext;
+
+    class SuspendedFirst extends Real {
+      constructor(options?: AudioContextOptions) {
+        super(options);
+        pending.set(this, super.suspend());
+      }
+
+      override resume(): Promise<void> {
+        const suspended = pending.get(this) ?? Promise.resolve();
+        return suspended.then(() => super.resume());
+      }
+    }
+
+    window.AudioContext = SuspendedFirst as unknown as typeof AudioContext;
+  });
+}
