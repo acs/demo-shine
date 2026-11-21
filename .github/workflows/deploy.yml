@@ -104,6 +104,15 @@ jobs:
           # configured for the package and the token can be retired.
           registry-url: https://registry.npmjs.org
 
+      # Trusted publishing is npm's own recommendation for CI: short-lived credentials
+      # minted from this workflow's identity, no token to rotate or leak, and provenance
+      # attestations for free. It needs npm 11.5.1 or later, which Node 22 does not
+      # carry. With a trusted publisher configured for the package the CLI finds the
+      # OIDC identity by itself, and where a token is present too it prefers the OIDC
+      # one — so this step is the same either way.
+      - name: The npm CLI that trusted publishing needs
+        run: npm install -g npm@^11.5.1 && npm --version
+
       - run: npm ci
       - run: npm run build
 
