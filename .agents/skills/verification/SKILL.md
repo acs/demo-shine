@@ -43,10 +43,12 @@ why it was not caught — which the project workflow skill lays out.
 
 ## The browser harness
 
-1. Write `verify-<what>.html` in the repository root: a copy of `index.html` with a
-   module script injected before `</body>`.
+1. Write `web/verify-<what>.html`: a copy of `web/index.html` with a module script
+   injected before `</body>`. The Vite root is `web/`, so it is served at
+   `/verify-<what>.html`.
 2. Build the state by hand rather than recording it:
-   `app.clip.clear(); app.clip.addTake(blob, 4);`, and set `app.marks`, `app.phase`.
+   `session.clip.clear(); session.clip.addTake(blob, 4);`, and set `selection.marks`
+   and `setPhase('review')`.
 3. Report through a `<pre id="verify">` and read that element back — the panel is
    the only view of the page there is.
 4. Open it on the running dev server and read the element back.

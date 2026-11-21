@@ -59,8 +59,11 @@ The headline capabilities; the **[full list is in FEATURES.md](FEATURES.md)**.
 
 ```
 democlip/
-├── index.html            # Entry HTML — links the stylesheet and src/main.ts
-├── styles.css            # All styling (theme variables, layout, components)
+├── web/                  # The web shell: what the browser loads, and nothing else
+│   ├── index.html        # The page — links the stylesheet and the entry below
+│   ├── main.ts           # The page's entry — imports src/main.ts, one level up
+│   ├── styles.css        # All styling (theme variables, layout, components)
+│   └── public/           # Served as-is: branding, manifest.json, sw.js, oauth metadata
 ├── src/                  # TypeScript source
 │   ├── main.ts           # Composition root — the only module importing all four layers
 │   ├── session.ts        # The single Session: the clip and the audio, and the one place that ends it
@@ -292,8 +295,8 @@ Recording** permission in System Settings.
 
 ## Deploy your own
 
-A PWA has to be served over HTTP(S) from an origin — opening `index.html` from
-disk will not register the service worker (it needs a secure context).
+A PWA has to be served over HTTP(S) from an origin — opening `web/index.html`
+from disk will not register the service worker (it needs a secure context).
 
 Pushing to `main` runs the **Deploy** workflow, which runs `npm run build` and
 publishes `dist/` to GitHub Pages. Enable it once in
