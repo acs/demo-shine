@@ -25,6 +25,11 @@ function thirdPartyNotices(): string {
 // for what needs it, such as the service worker, which will not register on an
 // untrusted certificate: `--mode https`, or `npm run dev:https` / `preview:https`.
 export default defineConfig(({ mode }) => ({
+  // The web shell — `index.html`, `styles.css` and `public/` — lives in `web/`, so the
+  // repository root holds the project's config and docs and no application files. The
+  // app's own code stays in `src/`, reached from the page by a relative path, so
+  // `src/` keeps exactly the four layers it documents.
+  root: 'web',
   // Relative asset URLs, so the build works from any base path
   // (localhost root, a GitHub Pages project page, a custom domain).
   base: './',
@@ -69,7 +74,13 @@ export default defineConfig(({ mode }) => ({
       },
     },
   ],
-  server: { port: 5173 },
+  server: {
+    port: 5173,
+    // The app's code is outside the Vite root (`web/`), one level up; the dev server
+    // has to be allowed to serve it. `..` is the repository root, which also holds
+    // `node_modules`.
+    fs: { allow: ['..'] },
+  },
   preview: { port: 5173 },
-  build: { outDir: 'dist', emptyOutDir: true },
+  build: { outDir: '../dist', emptyOutDir: true },
 }));
