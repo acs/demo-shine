@@ -1,10 +1,13 @@
 // The tools the harness sees.
 //
 // One tool per operation the app has, named in the app's own vocabulary, so a person
-// reading a chat recognises what was done. There is no tool that evaluates code,
+// reading a chat recognises what was done. Every tool ends in an operation the surface
+// publishes, and the two lists cannot drift apart. There is no tool that evaluates code,
 // scripts the page, reads or writes a file, or reaches the network except through
-// `publish_clip` — what the server offers is exactly what the surface publishes, and
-// the two lists cannot drift apart.
+// `publish_clip`. One tool reads the person's own clipboard — `add_image` — because a
+// browser hands a picture only to a page a hand has just touched, and a chat is not
+// that; what it reads is the picture the person already copied, and it goes nowhere but
+// the clip.
 //
 // An app-level refusal is a **result**, not a transport error: the surface answers
 // `{ ok: false, reason }` and the tool hands that back, so the agent can read it and
@@ -13,6 +16,7 @@
 import type { Session } from './session.js';
 import { pressScreenButton, screenCaptureBlocked } from './press.js';
 import { watchDownload } from './downloads.js';
+import { readClipboardPicture } from './clipboard.js';
 
 export type Args = Readonly<Record<string, unknown>>;
 
@@ -87,7 +91,7 @@ const cut: Tool = {
 const annotate: Tool = {
   name: 'annotate',
   description:
-    'Add an annotation over a stretch of the clip. `kind` is "arrow" or "text", and `span` is { s, e } as fractions of the clip giving the stretch it is shown over. An arrow needs `from` and `to`, each { x, y } as fractions of the picture. A text needs `text`, and may take `x`, `y` and `height` (fractions) to place it. An "image" annotation cannot be made here: its picture is the person\u2019s to choose.',
+    'Add an annotation over a stretch of the clip. `kind` is "arrow" or "text", and `span` is { s, e } as fractions of the clip giving the stretch it is shown over. An arrow needs `from` and `to`, each { x, y } as fractions of the picture. A text needs `text`, and may take `x`, `y` and `height` (fractions) to place it. An image is not made here: use add_image, which places the picture already on the person\u2019s clipboard.',
   inputSchema: objectSchema({
     kind: { type: 'string', enum: ['arrow', 'text'], description: 'Which kind of annotation' },
     span: {
@@ -104,6 +108,37 @@ const annotate: Tool = {
     height: { type: 'number', description: 'How tall a text is, as a fraction of the height' },
   }, ['kind', 'span']),
   run: (session, args) => callSurface(session, 'edit.annotate', String(args.kind ?? ''), args),
+};
+
+/** Place the picture the person already put on their clipboard. */
+const addImage: Tool = {
+  name: 'add_image',
+  description:
+    'Add the picture already on the person\u2019s own clipboard as an image over a stretch of the clip. The person copies the picture first; the server reads it from the host\u2019s clipboard, and takes no path or address, so there is nothing to point at. `span` is { s, e } as fractions of the clip. `x` and `y` are the rect\u2019s top-left as fractions of the picture, and `width` is its width as a fraction of the picture\u2019s width — centred at 40% when left out — and the picture keeps its own proportions.',
+  inputSchema: objectSchema({
+    span: {
+      type: 'object',
+      properties: { s: fraction('Where the stretch starts'), e: fraction('Where it ends') },
+      required: ['s', 'e'],
+      description: 'The stretch of the clip the image is shown over',
+    },
+    x: fraction('The rect\u2019s left edge, as a fraction of the width'),
+    y: fraction('The rect\u2019s top edge, as a fraction of the height'),
+    width: fraction('How wide, as a fraction of the width (default 0.4)'),
+  }, ['span']),
+  async run(session, args) {
+    const read = await readClipboardPicture();
+    if (!read.ok) return { ok: false, reason: read.reason };
+
+    const params: Record<string, unknown> = {
+      span: args.span,
+      picture: { type: read.picture.type, data: read.picture.bytes.toString('base64') },
+    };
+    for (const key of ['x', 'y', 'width'] as const) {
+      if (args[key] !== undefined) params[key] = args[key];
+    }
+    return callSurface(session, 'edit.annotate', 'image', params);
+  },
 };
 
 /** Change something about a placed annotation. */
@@ -236,6 +271,7 @@ export function toolList(): readonly Tool[] {
     describeClip,
     cut,
     annotate,
+    addImage,
     setProperty,
     removeAnnotation,
     undo,

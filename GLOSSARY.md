@@ -196,7 +196,8 @@ the one registry every group reaches.
 A person asks their agent to start a session. An **MCP server** — a local program
 the person's **agent harness** starts — opens a browser on DemoClip, on a profile
 of its own, and offers the agent the app's own **operations** as tools: cut,
-annotate, change a property, undo, seek, record a take, export, publish. The agent
+annotate, place the picture on the clipboard, change a property, undo, seek, record a
+take, export, publish. The agent
 calls them, and the person watches each change land in that window and can take
 any of it back with the app's own undo.
 
@@ -214,7 +215,8 @@ page offers and what it says cannot disagree, because one flag decides both.
 |---|---|---|
 | **agent session** | one sitting driven by an agent: the browser the server opened, the clip in it, and the person watching. One at a time | `mcp/src/server.ts`; the browser `mcp/src/browser.ts` |
 | **agent harness** | the chat that starts the server and offers its tools to the model — OpenCode first | the person's own tool, configured with `mcp` |
-| **operation** | one thing an agent may do, named in the app's vocabulary: cut, annotate, set a property, remove, undo, seek, record a take, export, publish | `AgentSurface` (`src/ui/agent/surface.ts`) |
+| **operation** | one thing an agent may do, named in the app's vocabulary: cut, annotate, place the clipboard's picture, set a property, remove, undo, seek, record a take, export, publish | `AgentSurface` (`src/ui/agent/surface.ts`) |
+| **clipboard picture** | the picture the person put on their own clipboard, read by the server from the host's clipboard and placed as an image annotation. The one picture source an agent has for now — a file and a drag come later — and read in the server, not the page, because a browser gives a picture only to a focused window a hand has just touched | `mcp/src/clipboard.ts`; placed through `edit.annotate('image', …)` |
 | **automation surface** | what the app offers to be driven, deliberately bounded to its own operations. Published on the page only when the page asks (`?agent=1`); a page that did not ask carries nothing | `src/ui/agent/`, published by `src/main.ts` |
 | **agent badge** | the chip reading **Agent**, beside the status chip, worn only by a page that asked to be driven — the visible half of the same gate as the surface. Explained by its own tooltip: the help is for a person's first use, and this is not that | `#agent-chip` (`web/index.html`, `web/styles.css`), revealed by `src/main.ts` |
 | **MCP server** | the local program that launches the browser, serves the app's own build on loopback, and offers the surface as tools over stdio. In this repository, released with the app | `mcp/` |

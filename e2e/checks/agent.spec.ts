@@ -121,6 +121,70 @@ test('an annotation made through the surface is drawn on the picture and marked 
   expect(described.annotations[0].kind).toBe('arrow');
 });
 
+test('the clipboard\u2019s picture is placed as an image annotation, and painted where it was asked to go', async ({ page }) => {
+  await reviewed(page);
+
+  // What the server sends after reading the person's clipboard: PNG bytes, base64, and
+  // the rect the agent asked for. Magenta is a colour nothing else in the app paints.
+  const made = await call<{ ok: boolean; id?: string; reason?: string }>(page, 'edit.annotate', 'image', {
+    span: { s: 0.1, e: 0.9 },
+    x: 0.3, y: 0.3, width: 0.4,
+    picture: { type: 'image/png', data: MAGENTA_PNG },
+  });
+  expect(made.ok).toBe(true);
+
+  // The clip holds it, and the lane shows where it is.
+  const described = await call<{ annotations: Array<{ kind: string }> }>(page, 'describe');
+  expect(described.annotations[0].kind).toBe('image');
+  await expect(page.locator('#tl-annots > *')).not.toHaveCount(0);
+
+  // Hold the frame the image is shown over: it is drawn where the rect says, inside and
+  // not outside — a picture that failed to decode would leave the frame bare.
+  await call(page, 'view.seek', 1.5);
+  await expect.poll(async () => {
+    const at = await pixelsAt(page, [[0.5, 0.5], [0.9, 0.5]]);
+    return at[0] && !at[1];
+  }).toBe(true);
+
+  // Without a picture there is nothing to place: a refusal, and the clip as it was.
+  const refused = await call<{ ok: boolean; reason: string }>(page, 'edit.annotate', 'image', { span: { s: 0.1, e: 0.9 } });
+  expect(refused.ok).toBe(false);
+  expect(refused.reason).toContain('picture');
+  const after = await call<{ annotations: unknown[] }>(page, 'describe');
+  expect(after.annotations).toHaveLength(1);
+});
+
+/** A solid magenta picture, 8×8: enough to decode, and a colour the app never paints. */
+const MAGENTA_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAE0lEQVR4nGP4z/D/Pz7MMDIUAACD5r9BB2dd7wAAAABJRU5ErkJggg==';
+
+/**
+ * Whether two points of the preview hold magenta, each as fractions of the picture. The
+ * frame is read in one go so both points come from the same paint.
+ */
+async function pixelsAt(page: Page, points: ReadonlyArray<readonly [number, number]>): Promise<boolean[]> {
+  return page.evaluate(spots => {
+    const canvas = document.querySelector<HTMLCanvasElement>('#preview');
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context) return spots.map(() => false);
+    const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height);
+    return spots.map(([fx, fy]) => {
+      // A few pixels around the spot, so a hairline of anti-aliasing does not decide it.
+      const cx = Math.round(fx * (width - 1));
+      const cy = Math.round(fy * (height - 1));
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          const x = cx + dx;
+          const y = cy + dy;
+          if (x < 0 || y < 0 || x >= width || y >= height) continue;
+          const at = (y * width + x) * 4;
+          if (Math.abs(data[at] - 255) <= 8 && Math.abs(data[at + 1]) <= 8 && Math.abs(data[at + 2] - 255) <= 8) return true;
+        }
+      }
+      return false;
+    });
+  }, points as Array<[number, number]>);
+}
+
 test('a property change through the surface repaints, and one undo puts it back', async ({ page }) => {
   await reviewed(page);
 

@@ -8,6 +8,10 @@
 //
 // A refusal is a **value**, not a throw: the app's answer, with a reason, and the clip
 // left alone.
+//
+// Making an annotation is the one operation that may have to wait: an image is decoded
+// and its picture kept before the clip can take it. A maker answers with a promise when
+// it needs the browser, and the clip takes the annotation only once there is one.
 
 import { Span } from '../../domain/clip/Span.js';
 import type { Clip } from '../../domain/clip/Clip.js';
@@ -21,13 +25,14 @@ export type Made = { readonly annotation: Annotation } | { readonly reason: stri
 
 /**
  * Make a new annotation of a kind from data alone. The kinds whose shape *is* data
- * are here; a kind that needs something from outside the clip is not, and says so.
+ * are here; a kind that needs something from outside the clip is not, and says so. A
+ * maker that has to read a picture first answers with a promise.
  */
-export type MakeAnnotation = (kind: string, params: AnnotationParams, span: Span) => Made;
+export type MakeAnnotation = (kind: string, params: AnnotationParams, span: Span) => Made | Promise<Made>;
 
 export interface Editor {
   cut(from: number, to: number): Result<{ removed: number }>;
-  annotate(kind: string, params: AnnotationParams): Result<{ id: string }>;
+  annotate(kind: string, params: AnnotationParams): Promise<Result<{ id: string }>>;
   setProperty(id: string, property: string, value: string): Result<{ value: string }>;
   remove(id: string): Result<{ kind: string }>;
   undo(): Result<{ change: string }>;
@@ -43,13 +48,13 @@ export function createEditor(clip: Clip, make: MakeAnnotation): Editor {
       return { ok: true, removed: clip.approve(span) };
     },
 
-    annotate(kind, params) {
+    async annotate(kind, params) {
       if (!pluginOf(kind)) return { ok: false, reason: `the app has no annotation kind called ${kind}` };
       const span = spanIn(params);
       if (!span) {
         return { ok: false, reason: `an annotation needs a stretch of the clip to be shown over, at least ${MIN_SECTION} long` };
       }
-      const made = make(kind, params, span);
+      const made = await make(kind, params, span);
       if ('reason' in made) return { ok: false, reason: made.reason };
       clip.addAnnotation(made.annotation);
       return { ok: true, id: made.annotation.id };
