@@ -4,3 +4,5 @@ dist/
 .openchamber/
 .DS_Store
 *.local
+playwright-report/
+test-results/

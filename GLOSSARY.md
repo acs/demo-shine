@@ -190,6 +190,25 @@ take, `clip/` the clip and its review, `cutting/` a stretch and its cut,
 `keeping/` a kept clip and its restore, and `lifecycle/` the start and end of a
 session. `dom.ts` stays at the root as the one registry every group reaches.
 
+## Testing
+
+The end-to-end layer drives the real app in a real browser. It lives in `e2e/`,
+outside `src/`, and changes no application code.
+
+| word | what it is | in the code |
+|---|---|---|
+| **suite** | every end-to-end check, run in a real browser on every pull request | `e2e/checks/` |
+| **check** | one end-to-end case: a given, a real interaction, and what a person would see. Named `*.spec.ts`, never run by `npm test` | `e2e/checks/*.spec.ts` |
+| **fixture take** | a real, decodable take built inside a check from a description — never recorded in real time, never committed as a binary | `e2e/fixtures/takes.ts` |
+| **boot helper** | the shared setup that loads the app, waits for it to be ready, and seeds a clip through the app's own modules | `e2e/helpers/app.ts` |
+| **stand-in share** | a canvas stream that takes the place of the share picker, so the app's handling of a share that is handed back is covered | `e2e/helpers/stand-ins.ts` |
+| **regression check** | a check that pins a behaviour that broke before: it fails on the commit before the fix and passes after | `e2e/checks/*.spec.ts` |
+| **suite run** | one execution of every check on a pull request, with its pass, fail and skipped outcomes | the `e2e` CI job |
+| **evidence artifact** | what a failed run leaves behind — a trace, a screenshot, a video — for a reader to diagnose it | `test-results/` |
+
+The share picker itself is not driven: `getDisplayMedia` needs a gesture and a
+browser pane, so it stays a **real session** the user runs.
+
 ## Words we do not use
 
 - **part** — an old name for a **take**. Gone from the code except one comment
@@ -207,6 +226,9 @@ session. `dom.ts` stays at the root as the one registry every group reaches.
 - **a flag kept beside the thing it describes** — `wasCut` beside what the chip
   already said, a `cropRaf` in app state beside the loop that owns it. Ask the
   object.
+- **harness** — the throwaway `verify-*.html` page, written for one change and
+  deleted before the commit. A **check** in the suite replaces it, and the word
+  goes with the file.
 
 ## Keeping it alive
 

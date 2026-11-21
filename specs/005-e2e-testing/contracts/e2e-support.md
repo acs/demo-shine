@@ -1,0 +1,142 @@
+# Phase 1 — Contract: End-to-End Test Support
+
+The suite's "interface" is the small set of helpers every check is written against,
+and the CI job that runs it. A check depends on **these**, and never on the app's
+internals. The contract is deliberately narrow: it is what makes FR-001 (the real
+app), FR-015 (no application change) and SC-006 (a new check touches no app code)
+true at once.
+
+## 1. Fixture takes — `e2e/fixtures/takes.ts`
+
+```ts
+export interface FixtureSpec {
+  width: number;          // > 0
+  height: number;         // > 0
+  seconds: number;        // > 0, the exact duration
+  fps?: number;           // default 30
+  hasAudio?: boolean;     // default false
+  pattern?: string;       // default: a numbered solid colour per frame
+}
+
+export interface FixtureTake {
+  blob: Blob;             // video/webm, real duration and cues
+  seconds: number;
+  shape: string;          // "1280×720"
+  hasAudio: boolean;
+}
+
+/** Build one deterministic take. Resolves in milliseconds, never in real time. */
+export function makeTake(spec: FixtureSpec): Promise<FixtureTake>;
+
+/** Build several, for a multi-take clip. */
+export function makeTakes(...specs: FixtureSpec[]): Promise<FixtureTake[]>;
+```
+
+**Contract**:
+
+- The blob is **WebM** with a real duration and cues, produced with WebCodecs +
+  Mediabunny (the app's own encoder path). It is not a `MediaRecorder` file.
+- The same spec yields the same take from run to run.
+- The blob decodes through the app's own `take-probe` and strip unchanged.
+- Nothing is committed as a binary; takes are generated in the check.
+
+## 2. The boot helper — `e2e/helpers/app.ts`
+
+```ts
+export interface Booted {
+  /** Navigate to "/" and wait until the status chip reads "Ready". */
+  goto(): Promise<void>;
+  /** Clear the clip, the kept copy and the stored pictures. */
+  clear(): Promise<void>;
+  /** Clear the clip and add the given takes, through /src/session.js. */
+  seed(takes: FixtureTake[]): Promise<void>;
+}
+
+/** Wrap a Playwright page. Changes no application code. */
+export function boot(page: Page): Booted;
+```
+
+**Contract**:
+
+- `goto()` waits on a **person-visible** signal (the status chip's text), not a fixed
+  timeout.
+- `seed()` reaches the app through a dynamic import of `/src/session.js` in page
+  context — the same module instance the views use — so no test hook is added to the
+  app.
+- `clear()` empties the clip and the IndexedDB stores, so no check inherits state
+  (FR-013).
+- The helper never asserts; it only sets up.
+
+## 3. Stand-ins — `e2e/helpers/stand-ins.ts`
+
+```ts
+/** Install before goto(): take the place of getDisplayMedia with a canvas stream. */
+export function installStandInShare(page: Page, opts?: { silent?: boolean }): Promise<void>;
+
+/** What the app asked getDisplayMedia for, so a check can assert it. */
+export function askedFor(page: Page): Promise<DisplayMediaStreamOptions>;
+```
+
+**Contract**:
+
+- `installStandInShare` is called **before** the app loads (`page.addInitScript`).
+- It records the constraints the app passed, so the cursor, frame rate and pane can be
+  asserted — the regression that stopped asking for them.
+- `silent: true` resolves a stream with **no** audio track, for the silent-share check.
+- The picker is never opened; this stands in only for what comes back from it
+  (FR-010).
+
+## 4. How a check is written
+
+- **Location and name**: `e2e/checks/<area>.spec.ts`. Vitest's `include` is
+  `src/**/*.test.ts`, so these are never run by `npm test`.
+- **Shape**: `goto()` → `clear()`/`seed(...)` → the real interaction → assert what a
+  person would see (FR-016). The model is reached only where the view shows nothing.
+- **No fixed waits**: assert on a visible state, or wait on an event; a `setTimeout`
+  fallback is the thing this feature retires.
+- **No network**: the publishing service is stood in for.
+- **Skip, don't pass**: a check that cannot run (a missing codec, for example) calls
+  `test.skip(true, '<reason>')` with a stated reason (FR-014).
+- **A regression check** carries, in its own file or a comment, the `beforeCommit` it
+  was proved to fail against (FR-005).
+
+## 5. The CI job
+
+In `.github/workflows/ci.yml`, beside `quality`:
+
+```yaml
+e2e:
+  runs-on: ubuntu-latest
+  env: { HUSKY: 0 }
+  steps:
+    - uses: actions/checkout@v7
+    - uses: actions/setup-node@v7
+      with: { node-version: 22, cache: npm }
+    - run: npm ci
+    - run: npx playwright install --with-deps chromium
+    - run: npm run test:e2e
+    - uses: actions/upload-artifact@v6
+      if: failure()
+      with: { name: playwright-evidence, path: test-results/ }
+```
+
+**Contract**:
+
+- Runs on every pull request; the maintainer marks it a **required status check** so a
+  failure blocks the merge (FR-002).
+- Chromium only (R10).
+- The whole job stays **under 5 minutes** (SC-004).
+- Evidence is uploaded **only on failure** (FR-017).
+- `package.json` gains `"test:e2e": "playwright test"`; `version` is not touched.
+
+## 6. The runner config — `e2e/playwright.config.ts`
+
+- `testDir: 'e2e/checks'`, one `chromium` project.
+- `webServer`: `npm run dev`, `url: 'http://127.0.0.1:5173'`,
+  `reuseExistingServer: !process.env.CI`.
+- Launch args: `--use-fake-device-for-media-stream`,
+  `--use-fake-ui-for-media-stream`, `--autoplay-policy=no-user-gesture-required`.
+- `trace: 'on-first-retry'`, `screenshot: 'only-on-failure'`,
+  `video: 'retain-on-failure'`.
+- `workers` may be greater than one; checks must not share state, so `clear()` runs
+  before each.
